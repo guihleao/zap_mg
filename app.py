@@ -7,7 +7,7 @@ import tempfile
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
 
 # Configuração da conta de serviço
-SERVICE_ACCOUNT_KEY = st.secrets["service_account_key"]["my_project_settings"]  # Acessa o dicionário
+SERVICE_ACCOUNT_KEY = st.secrets["connections.gcs"]  # Acessa as credenciais do GCS
 PROJECT_ID = "ee-zapmg"  # Substitua pelo ID do seu projeto do Google Cloud
 
 # Inicializar session_state

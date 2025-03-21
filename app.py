@@ -10,35 +10,50 @@ import tempfile
 # Título do aplicativo
 st.title("Automatização de Obtenção de dados para o Zoneamento Ambiental e Produtivo")
 
+import ee
+import streamlit as st
+import hashlib
+import base64
+import os
+
+# Título do aplicativo
+st.title("Automatização de Obtenção de dados para o Zoneamento Ambiental e Produtivo")
+
 # Verificar se o usuário já está autenticado
 if not ee.data._credentials:
     st.write("Para começar, autentique sua conta do Earth Engine.")
     
-    # Gerar o code_verifier e o code_challenge
-    code_verifier = base64.urlsafe_b64encode(hashlib.sha256(os.urandom(32)).digest()).rstrip(b'=').decode('utf-8')
-    code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).rstrip(b'=').decode('utf-8')
+    # Obter as credenciais OAuth do Secrets do Streamlit
+    CLIENT_ID = os.environ.get("EARTHENGINE_CLIENT_ID")
+    CLIENT_SECRET = os.environ.get("EARTHENGINE_CLIENT_SECRET")
     
-    # Gerar o link de autenticação
-    auth_url = ee.oauth.get_authorization_url(code_challenge=code_challenge)
-    
-    # Exibir o link para o usuário
-    st.markdown(f"**[Clique aqui para autenticar sua conta do Earth Engine]({auth_url})**")
-    
-    # Solicitar o código de autorização
-    auth_code = st.text_input("Depois de autenticar, cole o código de autorização aqui:")
-    
-    # Botão para autenticar
-    if st.button("Autenticar") and auth_code:
-        try:
-            # Trocar o código de autorização por credenciais
-            ee.oauth.get_tokens(auth_code, code_verifier=code_verifier)
-            ee.Initialize()
-            st.success("Autenticação realizada com sucesso!")
-        except Exception as e:
-            st.error(f"Erro na autenticação: {e}")
+    if not CLIENT_ID or not CLIENT_SECRET:
+        st.error("Credenciais OAuth não configuradas. Verifique o Secrets do Streamlit.")
+    else:
+        # Gerar o code_verifier e o code_challenge
+        code_verifier = base64.urlsafe_b64encode(hashlib.sha256(os.urandom(32)).digest()).rstrip(b'=').decode('utf-8')
+        code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).rstrip(b'=').decode('utf-8')
+        
+        # Gerar o link de autenticação
+        auth_url = ee.oauth.get_authorization_url(code_challenge=code_challenge)
+        
+        # Exibir o link para o usuário
+        st.markdown(f"**[Clique aqui para autenticar sua conta do Earth Engine]({auth_url})**")
+        
+        # Solicitar o código de autorização
+        auth_code = st.text_input("Depois de autenticar, cole o código de autorização aqui:")
+        
+        # Botão para autenticar
+        if st.button("Autenticar") and auth_code:
+            try:
+                # Trocar o código de autorização por credenciais
+                ee.oauth.get_tokens(auth_code, code_verifier=code_verifier)
+                ee.Initialize()
+                st.success("Autenticação realizada com sucesso!")
+            except Exception as e:
+                st.error(f"Erro na autenticação: {e}")
 else:
     st.write("Você já está autenticado! Pode prosseguir com o uso do aplicativo.")
-
 # Função para carregar o GeoPackage e converter para um objeto de geometria do Earth Engine
 def load_geopackage(file_path):
     gdf = gpd.read_file(file_path)

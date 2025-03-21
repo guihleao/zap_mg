@@ -12,7 +12,7 @@ st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e P
 CLIENT_ID = st.secrets["google_oauth"]["client_id"]
 CLIENT_SECRET = st.secrets["google_oauth"]["client_secret"]
 REDIRECT_URI = "https://zap-mg.streamlit.app/"  # Substitua pelo seu redirecionamento
-PROJECT_ID = "ee-zapmg"
+PROJECT_ID = "ee-zapmg"  # Substitua pelo ID do seu projeto do Google Cloud
 
 # Inicializar session_state
 if "oauth_token" not in st.session_state:
@@ -65,11 +65,13 @@ def authenticate(auth_code):
 
     flow.redirect_uri = REDIRECT_URI
     try:
+        # Obtém o token de acesso e as credenciais
         token = flow.fetch_token(code=auth_code)
         st.session_state["oauth_token"] = token
 
-        # Inicializa o Earth Engine com o token de acesso
-        ee.Initialize(credentials=token["access_token"], project=PROJECT_ID)
+        # Inicializa o Earth Engine com as credenciais
+        credentials = flow.credentials
+        ee.Initialize(credentials=credentials, project=PROJECT_ID)
 
         st.success("Autenticação realizada com sucesso!")
         st.rerun()

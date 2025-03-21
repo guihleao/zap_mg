@@ -8,7 +8,7 @@ import json
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
 
 # Configuração da conta de serviço
-SERVICE_ACCOUNT_KEY = st.secrets["service_account_key"]  # Chave JSON da conta de serviço
+SERVICE_ACCOUNT_KEY = st.secrets["service_account_key"]  # Já é um dicionário, não precisa de json.loads
 PROJECT_ID = "ee-zapmg"  # Substitua pelo ID do seu projeto do Google Cloud
 
 # Inicializar session_state
@@ -18,9 +18,11 @@ if "ee_initialized" not in st.session_state:
 # Função para inicializar o Earth Engine
 def initialize_ee():
     try:
-        # Carrega a chave da conta de serviço
-        service_account_info = json.loads(SERVICE_ACCOUNT_KEY)
-        credentials = ee.ServiceAccountCredentials(service_account_info["client_email"], SERVICE_ACCOUNT_KEY)
+        # Usa o dicionário diretamente
+        credentials = ee.ServiceAccountCredentials(
+            SERVICE_ACCOUNT_KEY["client_email"],
+            SERVICE_ACCOUNT_KEY["private_key"],
+        )
         ee.Initialize(credentials=credentials, project=PROJECT_ID)
         st.session_state["ee_initialized"] = True
         st.success("Earth Engine inicializado com sucesso!")

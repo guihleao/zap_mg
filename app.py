@@ -83,9 +83,15 @@ if st.session_state["oauth_token"]:
 else:
     st.write("Para começar, autentique sua conta do Google Earth Engine.")
     login()
-    auth_code = st.text_input("Se já autenticou, cole o código aqui:")
-    if st.button("Confirmar Código") and auth_code:
+
+    # Captura automática do código de autenticação da URL
+    query_params = st.query_params
+    auth_code = query_params.get("code", None)
+
+    if auth_code:
         authenticate(auth_code)
+        st.rerun()  # Recarrega a página para atualizar o estado da sessão
+
 
 # Função para carregar o GeoPackage e converter para um objeto de geometria do Earth Engine
 def load_geopackage(file_path):

@@ -17,10 +17,13 @@ if "ee_initialized" not in st.session_state:
 # Função para inicializar o Earth Engine
 def initialize_ee():
     try:
+        # Formata a chave privada corretamente
+        private_key = SERVICE_ACCOUNT_KEY["private_key"].replace("\\n", "\n")
+        
         # Usa o dicionário diretamente
         credentials = ee.ServiceAccountCredentials(
             SERVICE_ACCOUNT_KEY["client_email"],
-            key_data=SERVICE_ACCOUNT_KEY["private_key"],  # Passa a chave privada formatada
+            key_data=private_key,  # Passa a chave privada formatada
         )
         ee.Initialize(credentials=credentials, project=PROJECT_ID)
         st.session_state["ee_initialized"] = True

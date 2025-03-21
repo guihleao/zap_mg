@@ -10,14 +10,19 @@ import tempfile
 # Título do aplicativo
 st.title("Automatização de Obtenção de dados para o Zoneamento Ambiental e Produtivo")
 
-import ee
-import streamlit as st
-import hashlib
-import base64
-import os
-
-# Título do aplicativo
-st.title("Automatização de Obtenção de dados para o Zoneamento Ambiental e Produtivo")
+# Configurar a meta tag de verificação do Google
+st.set_page_config(
+    page_title="Automatização de Obtenção de dados para o Zoneamento Ambiental e Produtivo",
+    page_icon="🌍",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'About': "Aplicativo para obtenção de dados do Earth Engine."
+    },
+    meta_tags=[
+        {"name": "google-site-verification", "content": "y_IsrsAS9m58uq1YmBuBQf9gzELlg0axsqPmfQmL5T8"}
+    ]
+)
 
 # Verificar se o usuário já está autenticado
 if not ee.data._credentials:

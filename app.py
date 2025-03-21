@@ -7,14 +7,6 @@ import base64
 import os
 import tempfile
 
-# Adicionar a meta tag de verificação do Google
-st.markdown(
-    """
-    <meta name="google-site-verification" content="y_IsrsAS9m58uq1YmBuBQf9gzELlg0axsqPmfQmL5T8" />
-    """,
-    unsafe_allow_html=True
-)
-
 # Configurações da página
 st.set_page_config(
     page_title="Automatização de Obtenção de dados para o Zoneamento Ambiental e Produtivo",
@@ -24,6 +16,14 @@ st.set_page_config(
     menu_items={
         'About': "Aplicativo para obtenção de dados do Earth Engine."
     }
+)
+
+# Adicionar a meta tag de verificação do Google
+st.markdown(
+    """
+    <meta name="google-site-verification" content="y_IsrsAS9m58uq1YmBuBQf9gzELlg0axsqPmfQmL5T8" />
+    """,
+    unsafe_allow_html=True
 )
 
 # Verificar se o usuário já está autenticado

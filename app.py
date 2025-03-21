@@ -10,16 +10,16 @@ st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e P
 # Configuração do OAuth
 CLIENT_ID = st.secrets["google_oauth"]["client_id"]
 CLIENT_SECRET = st.secrets["google_oauth"]["client_secret"]
-REDIRECT_URI = "https://zap-mg.streamlit.app/"
+REDIRECT_URI = "https://zap-mg.streamlit.app/"  # Substitua pelo seu redirecionamento
 
 # Inicializar session_state
 if "oauth_token" not in st.session_state:
     st.session_state["oauth_token"] = None
-if "oauth_state" not in st.session_state:
-    st.session_state["oauth_state"] = None
+if "auth_code" not in st.session_state:
+    st.session_state["auth_code"] = None
 
 def login():
-    """Cria o fluxo OAuth e redireciona o usuário para autenticação."""
+    """Cria o fluxo OAuth e gera a URL de autenticação."""
     flow = Flow.from_client_config(
         {
             "web": {
@@ -34,17 +34,20 @@ def login():
     )
     
     flow.redirect_uri = REDIRECT_URI
-    auth_url, state = flow.authorization_url(prompt="consent")
+    auth_url, _ = flow.authorization_url(prompt="consent")
     
-    st.session_state["oauth_state"] = state
-    st.markdown(f"[Clique aqui para fazer login]({auth_url})")
+    st.markdown(f"""
+        **Siga os passos abaixo para autenticar:**
+        1. Clique no link abaixo para fazer login e autorizar o aplicativo.
+        2. Após autorizar, você será redirecionado para uma página.
+        3. Copie o código de autorização exibido na página.
+        4. Cole o código no campo abaixo.
+        
+        [Clique aqui para fazer login]({auth_url})
+    """)
 
 def authenticate(auth_code):
     """Troca o código de autenticação por um token de acesso."""
-    if not st.session_state["oauth_state"]:
-        st.error("Erro: estado da autenticação inválido. Tente novamente.")
-        return
-
     flow = Flow.from_client_config(
         {
             "web": {
@@ -56,7 +59,6 @@ def authenticate(auth_code):
             }
         },
         scopes=["https://www.googleapis.com/auth/earthengine"],
-        state=st.session_state["oauth_state"]
     )
 
     flow.redirect_uri = REDIRECT_URI
@@ -65,7 +67,7 @@ def authenticate(auth_code):
         st.session_state["oauth_token"] = token
 
         # Inicializa o Earth Engine com o token de acesso
-        ee.Initialize(token=token)
+        ee.Initialize(credentials=token["access_token"])
 
         st.success("Autenticação realizada com sucesso!")
         st.rerun()
@@ -80,12 +82,11 @@ else:
     st.write("Para começar, autentique sua conta do Google Earth Engine.")
     login()
 
-    query_params = st.query_params
-    auth_code = query_params.get("code", None)
-
+    # Campo para o usuário colar o código de autorização
+    auth_code = st.text_input("Cole o código de autorização aqui:")
     if auth_code:
+        st.session_state["auth_code"] = auth_code
         authenticate(auth_code)
-        st.rerun()
 
 # Função para carregar o GeoPackage
 def load_geopackage(file_path):

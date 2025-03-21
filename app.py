@@ -18,14 +18,6 @@ st.set_page_config(
     }
 )
 
-# Adicionar a meta tag de verificação do Google
-st.markdown(
-    """
-    <meta name="google-site-verification" content="y_IsrsAS9m58uq1YmBuBQf9gzELlg0axsqPmfQmL5T8" />
-    """,
-    unsafe_allow_html=True
-)
-
 # Verificar se o usuário já está autenticado
 if not ee.data._credentials:
     st.write("Para começar, autentique sua conta do Earth Engine.")

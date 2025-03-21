@@ -69,7 +69,7 @@ def authenticate(auth_code):
         token = flow.fetch_token(code=auth_code)
         st.session_state["oauth_token"] = token
 
-        # Inicializa o Earth Engine com as credenciais
+        # Inicializa o Earth Engine com as credenciais e o projeto
         credentials = flow.credentials
         ee.Initialize(credentials=credentials, project=PROJECT_ID)
 

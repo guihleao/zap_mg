@@ -10,17 +10,6 @@ import tempfile
 # Título do aplicativo
 st.title("Automatização de Obtenção de dados para o Zoneamento Ambiental e Produtivo")
 
-# Configurações da página
-st.set_page_config(
-    page_title="Automatização de Obtenção de dados para o Zoneamento Ambiental e Produtivo",
-    page_icon="🌍",
-    layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={
-        'About': "Aplicativo para obtenção de dados do Earth Engine."
-    }
-)
-
 # Verificar se o usuário já está autenticado
 if not ee.data._credentials:
     st.write("Para começar, autentique sua conta do Earth Engine.")

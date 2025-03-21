@@ -7,7 +7,7 @@ import tempfile
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
 
 # Configuração da conta de serviço
-SERVICE_ACCOUNT_KEY = st.secrets["service_account_key"]  # Já é um dicionário, não precisa de json.loads
+SERVICE_ACCOUNT_KEY = st.secrets["service_account_key"]["my_project_settings"]  # Acessa o dicionário
 PROJECT_ID = "ee-zapmg"  # Substitua pelo ID do seu projeto do Google Cloud
 
 # Inicializar session_state
@@ -17,13 +17,10 @@ if "ee_initialized" not in st.session_state:
 # Função para inicializar o Earth Engine
 def initialize_ee():
     try:
-        # Formata a chave privada corretamente
-        private_key = SERVICE_ACCOUNT_KEY["private_key"].replace("\\n", "\n")
-        
         # Usa o dicionário diretamente
         credentials = ee.ServiceAccountCredentials(
             SERVICE_ACCOUNT_KEY["client_email"],
-            key_data=private_key,  # Passa a chave privada formatada
+            key_data=SERVICE_ACCOUNT_KEY["private_key"],  # Passa a chave privada formatada
         )
         ee.Initialize(credentials=credentials, project=PROJECT_ID)
         st.session_state["ee_initialized"] = True

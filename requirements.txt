@@ -3,5 +3,5 @@ streamlit
 geopandas
 shapely
 google-auth-oauthlib
-gcsfs
-st-files-connection
+google-cloud-storage
+google-auth

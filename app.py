@@ -2,14 +2,14 @@ import ee
 import streamlit as st
 import geopandas as gpd
 import tempfile
-import gcsfs
-from st_files_connection import FilesConnection
+from google.oauth2 import service_account
+from google.cloud import storage
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
 
 # Configuração da conta de serviço
-SERVICE_ACCOUNT_KEY = st.secrets["connections.gcs"]  # Acessa as credenciais do GCS
+SERVICE_ACCOUNT_KEY = st.secrets["google"]  # Acessa as credenciais do GCS
 PROJECT_ID = "ee-zapmg"  # Substitua pelo ID do seu projeto do Google Cloud
 
 # Inicializar session_state
@@ -20,7 +20,7 @@ if "ee_initialized" not in st.session_state:
 def initialize_ee():
     try:
         # Formata a chave privada corretamente
-        private_key = SERVICE_ACCOUNT_KEY["private_key"].replace("\\n", "\n")
+        private_key = SERVICE_ACCOUNT_KEY["private_key"]
         
         # Usa o dicionário diretamente
         credentials = ee.ServiceAccountCredentials(

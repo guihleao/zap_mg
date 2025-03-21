@@ -2,6 +2,8 @@ import ee
 import streamlit as st
 import geopandas as gpd
 import tempfile
+import gcsfs
+from st_files_connection import FilesConnection
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")

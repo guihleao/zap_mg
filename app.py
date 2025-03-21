@@ -64,9 +64,8 @@ def authenticate(auth_code):
         token = flow.fetch_token(code=auth_code)
         st.session_state["oauth_token"] = token
 
-        # Inicializa o Earth Engine com as credenciais
-        credentials = ee.ServiceAccountCredentials(None, key_data=token)
-        ee.Initialize(credentials)
+        # Inicializa o Earth Engine com o token de acesso
+        ee.Initialize(token=token)
 
         st.success("Autenticação realizada com sucesso!")
         st.rerun()

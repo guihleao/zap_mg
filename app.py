@@ -3,6 +3,7 @@ import streamlit as st
 import geopandas as gpd
 import tempfile
 from google_auth_oauthlib.flow import Flow
+from urllib.parse import urlparse, parse_qs
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -40,7 +41,7 @@ def login():
         **Siga os passos abaixo para autenticar:**
         1. Clique no link abaixo para fazer login e autorizar o aplicativo.
         2. Após autorizar, você será redirecionado para uma página.
-        3. Copie o código de autorização exibido na página.
+        3. Copie o código de autorização exibido na URL da página.
         4. Cole o código no campo abaixo.
         
         [Clique aqui para fazer login]({auth_url})
@@ -82,11 +83,18 @@ else:
     st.write("Para começar, autentique sua conta do Google Earth Engine.")
     login()
 
-    # Campo para o usuário colar o código de autorização
-    auth_code = st.text_input("Cole o código de autorização aqui:")
+    # Captura o código de autorização da URL
+    query_params = st.query_params
+    auth_code = query_params.get("code", None)
+
     if auth_code:
         st.session_state["auth_code"] = auth_code
-        authenticate(auth_code)
+        st.write(f"**Código de autorização capturado:** `{auth_code}`")
+        st.write("Cole o código abaixo para autenticar:")
+        auth_code_input = st.text_input("Cole o código de autorização aqui:")
+
+        if auth_code_input:
+            authenticate(auth_code_input)
 
 # Função para carregar o GeoPackage
 def load_geopackage(file_path):

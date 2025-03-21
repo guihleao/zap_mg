@@ -45,6 +45,7 @@ if not ee.data._credentials:
                 st.error(f"Erro na autenticação: {e}")
 else:
     st.write("Você já está autenticado! Pode prosseguir com o uso do aplicativo.")
+
 # Função para carregar o GeoPackage e converter para um objeto de geometria do Earth Engine
 def load_geopackage(file_path):
     gdf = gpd.read_file(file_path)

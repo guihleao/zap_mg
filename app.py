@@ -1,11 +1,7 @@
 import ee
 import streamlit as st
-import geopandas as gpd
-import datetime
-import folium
-from streamlit_folium import st_folium
+import requests
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 import io
 
@@ -48,55 +44,37 @@ CLIENT_SECRET = st.secrets["google_oauth"]["client_secret"]
 REDIRECT_URI = st.secrets["google_oauth"]["redirect_uris"]  # URI de redirecionamento
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
-# Função para autenticar no Google Drive
-def authenticate_google_drive():
+# Função para gerar o link de autenticação
+def generate_auth_url():
+    auth_url = (
+        f"https://accounts.google.com/o/oauth2/auth?"
+        f"response_type=code&"
+        f"client_id={CLIENT_ID}&"
+        f"scope={'+'.join(SCOPES)}&"
+        f"redirect_uri={REDIRECT_URI}&"
+        f"access_type=offline&"
+        f"prompt=consent"
+    )
+    return auth_url
+
+# Função para trocar o código de autorização por um token de acesso
+def exchange_code_for_token(auth_code):
     try:
-        # Configura o fluxo de autenticação
-        flow = InstalledAppFlow.from_client_config(
-            client_config={
-                "web": {
-                    "client_id": CLIENT_ID,
-                    "client_secret": CLIENT_SECRET,
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                    "token_uri": "https://oauth2.googleapis.com/token",
-                    "redirect_uris": [REDIRECT_URI],  # Certifique-se de que está correto
-                }
-            },
-            scopes=SCOPES,
-        )
-
-        # Gera a URL de autorização
-        auth_url, _ = flow.authorization_url(
-            prompt="consent",
-            access_type="offline",
-        )
-
-        # Exibe o link de autenticação
-        st.write("Clique no link abaixo para autenticar no Google Drive:")
-        st.markdown(f"[Autenticar no Google Drive]({auth_url})")
-
-        # Solicita o código de autorização
-        auth_code = st.text_input("Cole o código de autorização aqui:")
-
-        if auth_code:
-            # Troca o código de autorização por um token de acesso
-            flow.fetch_token(code=auth_code)  # O redirect_uri já está configurado no client_config
-            creds = flow.credentials
-
-            # Armazena as credenciais na sessão
-            st.session_state["creds"] = {
-                "token": creds.token,
-                "refresh_token": creds.refresh_token,
-                "token_uri": creds.token_uri,
-                "client_id": creds.client_id,
-                "client_secret": creds.client_secret,
-                "scopes": creds.scopes,
-            }
-            st.session_state["drive_authenticated"] = True
-            st.success("Autenticação no Google Drive realizada com sucesso!")
+        token_url = "https://oauth2.googleapis.com/token"
+        data = {
+            "code": auth_code,
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
+            "redirect_uri": REDIRECT_URI,
+            "grant_type": "authorization_code",
+        }
+        response = requests.post(token_url, data=data)
+        response.raise_for_status()
+        return response.json()
     except Exception as e:
-        st.error(f"Erro ao autenticar no Google Drive: {e}")
-        
+        st.error(f"Erro ao trocar código por token: {e}")
+        return None
+
 # Função para salvar um arquivo .txt no Google Drive
 def save_txt_to_drive():
     try:
@@ -143,8 +121,28 @@ if not st.session_state["ee_initialized"]:
 # Interface de upload e processamento
 if st.session_state["ee_initialized"]:
     if not st.session_state["drive_authenticated"]:
-        st.write("Para exportar arquivos, faça login no Google Drive:")
-        authenticate_google_drive()
+        # Gera o link de autenticação
+        auth_url = generate_auth_url()
+        st.write("Clique no link abaixo para autenticar no Google Drive:")
+        st.markdown(f"[Autenticar no Google Drive]({auth_url})")
+
+        # Captura o código de autorização da URL de redirecionamento
+        query_params = st.experimental_get_query_params()
+        if "code" in query_params:
+            auth_code = query_params["code"][0]
+            token = exchange_code_for_token(auth_code)
+            if token:
+                # Armazena as credenciais na sessão
+                st.session_state["creds"] = {
+                    "token": token["access_token"],
+                    "refresh_token": token.get("refresh_token"),
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "client_id": CLIENT_ID,
+                    "client_secret": CLIENT_SECRET,
+                    "scopes": SCOPES,
+                }
+                st.session_state["drive_authenticated"] = True
+                st.success("Autenticação no Google Drive realizada com sucesso!")
     
     if st.session_state["drive_authenticated"]:
         # Botão para testar a escrita no Google Drive

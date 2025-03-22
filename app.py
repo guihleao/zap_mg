@@ -14,6 +14,7 @@ import folium
 from streamlit_folium import st_folium
 import json
 from streamlit_oauth import OAuth2Component
+import datetime
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -133,8 +134,11 @@ def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
         # Aplica o buffer à geometria
         bacia = geometry.buffer(buffer_km * 1000)  # Converte km para metros
 
+        # Obtém a data atual
+        data_atual = datetime.datetime.now().strftime("%Y-%m-%d")  # Formato YYYY-MM-DD
+
         # Define o período de análise
-        periodo_fim = ee.Date()  # Data atual
+        periodo_fim = ee.Date(data_atual)  # Data atual
         periodo_inicio = periodo_fim.advance(-365, 'day')  # Um ano antes
 
         # Filtra as imagens Sentinel-2

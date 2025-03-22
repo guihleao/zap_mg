@@ -6,6 +6,8 @@ import zipfile
 import io
 import requests
 from google.oauth2 import service_account
+import folium
+from streamlit_folium import folium_static
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -41,11 +43,16 @@ def initialize_ee():
 if not st.session_state["ee_initialized"]:
     initialize_ee()
 
-# Função para carregar o GeoPackage e visualizar a geometria
-def load_geopackage(file_path):
+# Função para carregar o GeoJSON e visualizar o polígono
+def load_geojson(file):
     try:
-        # Carrega o GeoPackage
-        gdf = gpd.read_file(file_path)
+        # Carrega o GeoJSON
+        gdf = gpd.read_file(file)
+        
+        # Verifica se a geometria é um polígono
+        if not all(gdf.geometry.geom_type == 'Polygon'):
+            st.error("O arquivo deve conter apenas polígonos.")
+            return None
         
         # Corrige geometrias inválidas (se necessário)
         gdf['geometry'] = gdf['geometry'].buffer(0)
@@ -54,18 +61,21 @@ def load_geopackage(file_path):
         if gdf.crs != 'EPSG:4326':
             gdf = gdf.to_crs(epsg=4326)
         
-        # Extrai as coordenadas de latitude e longitude da geometria
-        gdf['latitude'] = gdf.geometry.centroid.y
-        gdf['longitude'] = gdf.geometry.centroid.x
+        # Visualiza o polígono no mapa usando folium
+        st.write("Visualização do polígono carregado:")
+        m = folium.Map(location=[gdf.geometry.centroid.y.mean(), gdf.geometry.centroid.x.mean()], zoom_start=10)
         
-        # Visualiza a geometria no mapa
-        st.write("Visualização da geometria carregada:")
-        st.map(gdf[['latitude', 'longitude']])  # Usa as colunas de latitude e longitude
+        # Adiciona o polígono ao mapa
+        for _, row in gdf.iterrows():
+            folium.GeoJson(row['geometry']).add_to(m)
+        
+        # Exibe o mapa no Streamlit
+        folium_static(m)
         
         # Retorna a geometria para o Earth Engine
         return ee.Geometry(gdf.geometry.iloc[0].__geo_interface__)
     except Exception as e:
-        st.error(f"Erro ao carregar o GeoPackage: {e}")
+        st.error(f"Erro ao carregar o GeoJSON: {e}")
         return None
 
 # Função principal para processar os dados
@@ -101,32 +111,14 @@ def process_data(geometry, epsg, buffer_km=1):
         st.error(f"Erro ao processar os dados: {e}")
         return None
 
-# Função para exportar os índices como GeoTIFF
-def export_geotiff(image, name, geometry, scale=10):
-    try:
-        url = image.getDownloadURL({
-            'name': name,
-            'scale': scale,
-            'region': geometry,
-            'format': 'GEO_TIFF',
-        })
-        return url
-    except Exception as e:
-        st.error(f"Erro ao exportar {name}: {e}")
-        return None
-
 # Interface de upload e processamento
 if st.session_state["ee_initialized"]:
-    uploaded_file = st.file_uploader("Carregue o arquivo GeoPackage da bacia", type=["gpkg"])
+    uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])
     epsg_options = {"31982 (Z 22S)": "EPSG:31982", "31983 (Z 23S)": "EPSG:31983", "31984 (Z 24S)": "EPSG:31984"}
     epsg_selected = st.selectbox("Selecione o EPSG", list(epsg_options.keys()))
 
     if st.button("Processar Dados") and uploaded_file is not None:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.gpkg') as tmp_file:
-            tmp_file.write(uploaded_file.getvalue())
-            tmp_file_path = tmp_file.name
-
-        geometry = load_geopackage(tmp_file_path)
+        geometry = load_geojson(uploaded_file)
         if geometry:
             st.session_state["resultados"] = process_data(geometry, epsg_options[epsg_selected])
 
@@ -134,29 +126,3 @@ if st.session_state["ee_initialized"]:
         st.write("Índices processados:")
         for key in st.session_state["resultados"]:
             st.write(f"- {key}")
-
-        # Exportar os índices como GeoTIFF
-        st.subheader("Exportar Resultados")
-        export_zip = st.checkbox("Exportar todos os índices em um arquivo ZIP")
-
-        if export_zip:
-            zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
-                for name, image in st.session_state["resultados"].items():
-                    download_url = export_geotiff(image, name, geometry)
-                    if download_url:
-                        response = requests.get(download_url)
-                        zip_file.writestr(f"{name}.tif", response.content)
-            
-            zip_buffer.seek(0)
-            st.download_button(
-                label="Baixar todos os índices (ZIP)",
-                data=zip_buffer,
-                file_name="indices.zip",
-                mime="application/zip"
-            )
-        else:
-            for name, image in st.session_state["resultados"].items():
-                download_url = export_geotiff(image, name, geometry)
-                if download_url:
-                    st.markdown(f"**{name}**: [Baixar GeoTIFF]({download_url})")

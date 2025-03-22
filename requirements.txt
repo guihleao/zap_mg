@@ -1,7 +1,10 @@
+streamlit
 earthengine-api
 geopandas
 google-auth
 google-cloud-storage
 requests
-streamlit
 shapely
+folium
+streamlit-folium
+branca

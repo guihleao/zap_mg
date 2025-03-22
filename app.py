@@ -26,11 +26,25 @@ if "tasks" not in st.session_state:
 if "selected_project" not in st.session_state:
     st.session_state["selected_project"] = None
 
+# Configuração do OAuth2
+CLIENT_ID = st.secrets["google_oauth"]["client_id"]  # Acessando o client_id do secrets
+CLIENT_SECRET = st.secrets["google_oauth"]["client_secret"]  # Acessando o client_secret do secrets
+AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/auth"
+TOKEN_URL = "https://oauth2.googleapis.com/token"
+REFRESH_TOKEN_URL = "https://oauth2.googleapis.com/token"
+REVOKE_TOKEN_URL = "https://oauth2.googleapis.com/revoke"
+REDIRECT_URI = st.secrets["google_oauth"]["redirect_uris"]  # Acessando o redirect_uris do secrets
+SCOPES = [
+    "https://www.googleapis.com/auth/earthengine",  # Acesso ao Earth Engine
+    "https://www.googleapis.com/auth/drive",        # Acesso ao Google Drive
+    "https://www.googleapis.com/auth/cloud-platform",  # Acesso ao Google Cloud
+]
+
 # Cria a instância do OAuth2Component
 oauth2 = OAuth2Component(
     client_id=CLIENT_ID,
     client_secret=CLIENT_SECRET,
-    authorize_endpoint=AUTHORIZE_URL,  # Corrigido para authorize_endpoint
+    authorize_endpoint=AUTHORIZE_URL,
     token_endpoint=TOKEN_URL,
     refresh_token_endpoint=REFRESH_TOKEN_URL,
     revoke_token_endpoint=REVOKE_TOKEN_URL,

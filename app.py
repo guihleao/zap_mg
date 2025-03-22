@@ -61,6 +61,30 @@ def load_geojson(file):
         st.error(f"Erro ao carregar o GeoJSON: {e}")
         return None, None
 
+# Função para reprojetar imagens
+def reprojetarImagem(imagem, epsg, escala):
+    return imagem.reproject(crs=f"EPSG:{epsg}", scale=escala)
+
+# Função para exportar imagens para o Google Drive
+def exportarImagem(imagem, nome, escala, regiao, pasta="zap"):
+    try:
+        task = ee.batch.Export.image.toDrive(
+            image=imagem,
+            description=nome,
+            folder=pasta,
+            fileNamePrefix=nome,
+            scale=escala,
+            region=regiao,
+            fileFormat='GeoTIFF',
+            maxPixels=1e13,
+        )
+        task.start()
+        st.success(f"Exportação {nome} iniciada. Verifique seu Google Drive na pasta '{pasta}'.")
+        return task
+    except Exception as e:
+        st.error(f"Erro ao exportar {nome} para o Google Drive: {e}")
+        return None
+
 # Função para processar os dados
 def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
     try:
@@ -68,6 +92,8 @@ def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
         data_atual = datetime.datetime.now().strftime("%Y-%m-%d")
         periodo_fim = ee.Date(data_atual)
         periodo_inicio = periodo_fim.advance(-365, 'day')
+
+        # Carregar imagens Sentinel-2
         sentinel = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
             .select(['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12']) \
             .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 10) \
@@ -82,24 +108,9 @@ def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
         else:
             st.success(f"Imagens encontradas: {num_imagens}")
 
-        # Exportar a lista de imagens para um arquivo CSV
-        task_csv = ee.batch.Export.table.toDrive(
-            collection=sentinel,
-            folder='zap',
-            description=f'lista_imagens_sentinel-2_{nome_bacia_export}',
-            fileFormat='CSV'
-        )
-        task_csv.start()
-        st.success("Exportação da lista de imagens para CSV iniciada.")
-
         # Gerar a mediana das imagens Sentinel-2
         sentinel_median = sentinel.median().clip(bacia)
         sentinel_composite = sentinel_median.select(['B2', 'B3', 'B4', 'B8']).rename(['B2', 'B3', 'B4', 'B8'])
-
-        # Exportar a imagem composta Sentinel-2
-        task_sentinel = export_to_drive(sentinel_composite, f"{nome_bacia_export}_Sentinel_Composite", geometry)
-        if task_sentinel:
-            st.session_state["tasks"].append(task_sentinel)
 
         # Gerar índices
         indices = {
@@ -109,114 +120,81 @@ def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
             "NDMI": sentinel_median.normalizedDifference(['B8', 'B11']),
         }
 
-        # Exportar índices
-        for key, image in indices.items():
-            task_index = export_to_drive(image, f"{nome_bacia_export}_{key}", geometry)
-            if task_index:
-                st.session_state["tasks"].append(task_index)
-
-        # Gerar MDE e Declividade
+        # Carregar MDE e Declividade
         mde_proj = ee.ImageCollection("JAXA/ALOS/AW3D30/V3_2").filterBounds(bacia).first().select(0).projection()
         mde = ee.ImageCollection("JAXA/ALOS/AW3D30/V3_2").filterBounds(bacia).mosaic().clip(bacia).setDefaultProjection(mde_proj)
         elevation = mde.select('DSM')
 
-        # Exportar MDE
-        task_mde = export_to_drive(elevation, f"{nome_bacia_export}_MDE", geometry)
-        if task_mde:
-            st.session_state["tasks"].append(task_mde)
-
         # Calcular a declividade em porcentagem
         declividade_graus = ee.Terrain.slope(elevation)
         declividade = declividade_graus.divide(180).multiply(3.14159).tan().multiply(100)
-
-        # Aplicar máscara para remover valores nulos ou sem dados
         declividade_mascara = declividade.updateMask(declividade)
-
-        # Reclassificar os intervalos de declividade
         declividade_reclass = declividade_mascara.expression(
             "b(0) <= 3 ? 1 : " + 
             "(b(0) > 3 && b(0) <= 8) ? 2 : " + 
             "(b(0) > 8 && b(0) <= 20) ? 3 : " + 
             "(b(0) > 20 && b(0) <= 45) ? 4 : " + 
             "(b(0) > 45 && b(0) <= 75) ? 5 : " + 
-            "(b(0) > 75) ? 6 : -1"  # Valores fora do intervalo recebem -1
+            "(b(0) > 75) ? 6 : -1"
         ).updateMask(declividade_mascara)
 
-        # Exportar Declividade Reclassificada
-        task_declividade = export_to_drive(declividade_reclass, f"{nome_bacia_export}_Declividade", geometry)
-        if task_declividade:
-            st.session_state["tasks"].append(task_declividade)
-
-        # Selecionar apenas a banda de 2023 do MapBiomas
+        # Carregar MapBiomas 2023
         mapbiomas = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_integration_v1") \
             .select('classification_2023') \
             .clip(bacia)
 
-        # Exportar MapBiomas 2023
-        task_mapbiomas = export_to_drive(mapbiomas, f"{nome_bacia_export}_MapBiomas_2023", geometry)
-        if task_mapbiomas:
-            st.session_state["tasks"].append(task_mapbiomas)
-
-        # Exportar Qualidade de Pastagens com resolução de 30 metros
+        # Carregar Qualidade de Pastagens
         pasture_quality = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_pasture_quality_v1") \
             .select('pasture_quality_2023') \
-            .clip(bacia) \
-            .reproject(crs=crs, scale=30)
-        task_pasture = export_to_drive(pasture_quality, f"{nome_bacia_export}_QualidadePastagem", geometry)
-        if task_pasture:
-            st.session_state["tasks"].append(task_pasture)
+            .clip(bacia)
 
-        # Adicionar PUC (UFV, IBGE, Embrapa)
+        # Carregar PUC (UFV, IBGE, Embrapa)
         puc_ufv = ee.ImageCollection('users/zap/puc_ufv').filterBounds(bacia).mosaic().clip(bacia)
         puc_ibge = ee.ImageCollection('users/zap/puc_ibge').filterBounds(bacia).mosaic().clip(bacia)
         puc_embrapa = ee.ImageCollection('users/zap/puc_embrapa').filterBounds(bacia).mosaic().clip(bacia)
 
-        # Exportar PUC
-        task_puc_ufv = export_to_drive(puc_ufv, f"{nome_bacia_export}_PUC_UFV", geometry)
-        task_puc_ibge = export_to_drive(puc_ibge, f"{nome_bacia_export}_PUC_IBGE", geometry)
-        task_puc_embrapa = export_to_drive(puc_embrapa, f"{nome_bacia_export}_PUC_Embrapa", geometry)
-
-        # Adicionar Landforms
+        # Carregar Landforms
         landforms = ee.Image('CSP/ERGo/1_0/Global/SRTM_landforms').clip(bacia)
-        task_landforms = export_to_drive(landforms, f"{nome_bacia_export}_Landforms", geometry)
 
-        return {
-            "sentinel_median": sentinel_median,
-            "indices": indices,
-            "mde": mde,
-            "declividade": declividade_reclass,
-            "mapbiomas": mapbiomas,
-            "pasture_quality": pasture_quality,
-            "puc_ufv": puc_ufv,
-            "puc_ibge": puc_ibge,
-            "puc_embrapa": puc_embrapa,
-            "landforms": landforms,
-            "nome_bacia_export": nome_bacia_export,
-        }
+        # Determinar o EPSG com base no fuso
+        fusos_mg = ee.FeatureCollection('users/zap/fusos_mg')
+        fuso_maior_area = fusos_mg.filterBounds(bacia).map(lambda f: f.set('area', f.area())).sort('area', False).first()
+        epsg = fuso_maior_area.get('epsg').getInfo()
+
+        # Reprojetar todas as imagens
+        utm_elevation = reprojetarImagem(elevation, epsg, 30)
+        utm_declividade = reprojetarImagem(declividade_reclass, epsg, 30).float()
+        utm_ndvi = reprojetarImagem(indices["NDVI"], epsg, 10)
+        utm_gndvi = reprojetarImagem(indices["GNDVI"], epsg, 10)
+        utm_ndwi = reprojetarImagem(indices["NDWI"], epsg, 10)
+        utm_ndmi = reprojetarImagem(indices["NDMI"], epsg, 10)
+        utm_sentinel2 = reprojetarImagem(sentinel_composite, epsg, 10).float()
+        utm_mapbiomas = reprojetarImagem(mapbiomas, epsg, 30)
+        utm_pasture_quality = reprojetarImagem(pasture_quality, epsg, 30).float()
+        utm_landforms = reprojetarImagem(landforms, epsg, 30)
+        utm_puc_ufv = reprojetarImagem(puc_ufv, epsg, 30).float()
+        utm_puc_ibge = reprojetarImagem(puc_ibge, epsg, 30).float()
+        utm_puc_embrapa = reprojetarImagem(puc_embrapa, epsg, 30).float()
+
+        # Exportar todas as imagens
+        tasks = []
+        tasks.append(exportarImagem(utm_elevation, f"{nome_bacia_export}_SRTM_MDE", 30, bacia))
+        tasks.append(exportarImagem(utm_declividade, f"{nome_bacia_export}_Declividade", 30, bacia))
+        tasks.append(exportarImagem(utm_ndvi, f"{nome_bacia_export}_NDVI", 10, bacia))
+        tasks.append(exportarImagem(utm_gndvi, f"{nome_bacia_export}_GNDVI", 10, bacia))
+        tasks.append(exportarImagem(utm_ndwi, f"{nome_bacia_export}_NDWI", 10, bacia))
+        tasks.append(exportarImagem(utm_ndmi, f"{nome_bacia_export}_NDMI", 10, bacia))
+        tasks.append(exportarImagem(utm_sentinel2, f"{nome_bacia_export}_Sentinel_Composite", 10, bacia))
+        tasks.append(exportarImagem(utm_mapbiomas, f"{nome_bacia_export}_MapBiomas_2023", 30, bacia))
+        tasks.append(exportarImagem(utm_pasture_quality, f"{nome_bacia_export}_QualidadePastagem", 30, bacia))
+        tasks.append(exportarImagem(utm_landforms, f"{nome_bacia_export}_Landforms", 30, bacia))
+        tasks.append(exportarImagem(utm_puc_ufv, f"{nome_bacia_export}_PUC_UFV", 30, bacia))
+        tasks.append(exportarImagem(utm_puc_ibge, f"{nome_bacia_export}_PUC_IBGE", 30, bacia))
+        tasks.append(exportarImagem(utm_puc_embrapa, f"{nome_bacia_export}_PUC_Embrapa", 30, bacia))
+
+        return tasks
     except Exception as e:
         st.error(f"Erro ao processar os dados: {e}")
-        return None
-
-# Função para exportar para o Google Drive
-def export_to_drive(image, name, geometry, folder="zap", epsg=None):
-    try:
-        if epsg:
-            image = image.reproject(crs=f"EPSG:{epsg}", scale=10)
-        task = ee.batch.Export.image.toDrive(
-            image=image,
-            description=name,
-            folder=folder,
-            fileNamePrefix=name,
-            scale=10,
-            region=geometry,
-            fileFormat='GeoTIFF',
-            maxPixels=1e13,
-        )
-        task.start()
-        st.success(f"Exportação {name} iniciada. Verifique seu Google Drive na pasta '{folder}'.")
-        return task
-    except Exception as e:
-        st.error(f"Erro ao exportar {name} para o Google Drive: {e}")
         return None
 
 # Função para verificar o status das tarefas
@@ -300,34 +278,8 @@ else:
                 nome_bacia_export = st.text_input("Digite o nome para exportação (sem espaços ou caracteres especiais):")
                 
                 if st.button("Processar Dados") and nome_bacia_export:
-                    resultados = process_data(geometry, crs, nome_bacia_export=nome_bacia_export)
-                    if resultados:
-                        st.session_state["resultados"] = resultados
-                        st.write("Índices processados:")
-                        for key in resultados["indices"]:
-                            st.write(f"- {key}")
-                
-                if st.session_state.get("resultados"):
-                    if st.button("Exportar Tudo para o Google Drive"):
-                        st.session_state["export_started"] = True
-                        resultados = st.session_state["resultados"]
-                        tasks = []
-                        for key, image in resultados["indices"].items():
-                            task = export_to_drive(image, f"{resultados['nome_bacia_export']}_{key}", geometry)
-                            if task:
-                                tasks.append(task)
-                        task = export_to_drive(resultados["mde"], f"{resultados['nome_bacia_export']}_MDE", geometry)
-                        if task:
-                            tasks.append(task)
-                        task = export_to_drive(resultados["declividade"], f"{resultados['nome_bacia_export']}_Declividade", geometry)
-                        if task:
-                            tasks.append(task)
-                        task = export_to_drive(resultados["mapbiomas"], f"{resultados['nome_bacia_export']}_MapBiomas", geometry)
-                        if task:
-                            tasks.append(task)
-                        task = export_to_drive(resultados["pasture_quality"], f"{resultados['nome_bacia_export']}_QualidadePastagem", geometry)
-                        if task:
-                            tasks.append(task)
+                    tasks = process_data(geometry, crs, nome_bacia_export=nome_bacia_export)
+                    if tasks:
                         st.session_state["tasks"] = tasks
                         st.success("Todas as tarefas de exportação foram iniciadas.")
                     

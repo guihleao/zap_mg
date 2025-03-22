@@ -4,6 +4,7 @@ import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import io
+from googleapiclient.http import MediaIoBaseUpload
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -167,3 +168,19 @@ if st.session_state["ee_initialized"]:
         # Botão para testar a escrita no Google Drive
         if st.button("Salvar arquivo de teste no Google Drive"):
             save_txt_to_drive()
+
+# Adiciona JavaScript para fechar a janela pop-up e atualizar a janela principal
+st.markdown(
+    """
+    <script>
+        // Verifica se a URL contém o código de autorização
+        if (window.location.href.includes("code=")) {
+            // Fecha a janela pop-up
+            window.close();
+            // Atualiza a janela principal
+            window.opener.location.reload();
+        }
+    </script>
+    """,
+    unsafe_allow_html=True,
+)

@@ -259,4 +259,3 @@ if st.session_state["ee_initialized"]:
                             export_to_drive(resultados["mapbiomas"], f"{nome_bacia_export}_MapBiomas", geometry)
                             export_to_drive(resultados["pasture_quality"], f"{nome_bacia_export}_QualidadePastagem", geometry)
                             st.success("Todos os dados foram enviados para exportação. Verifique seu Google Drive na pasta 'zap'.")
-                            

@@ -49,7 +49,7 @@ def initialize_ee():
     except Exception as e:
         st.error(f"Erro ao inicializar o Earth Engine: {e}")
 
-# Função para autenticar no Google Drive
+# Função para autenticar no Google Drive (fluxo manual)
 def authenticate_google_drive():
     try:
         # Reconstruir o credentials.json a partir dos secrets
@@ -69,31 +69,36 @@ def authenticate_google_drive():
         with open('credentials.json', 'w') as f:
             json.dump(credentials, f)
 
-        # Carrega as credenciais OAuth 2.0
-        creds = None
-        if os.path.exists('token.json'):
-            creds = Credentials.from_authorized_user_file('token.json')
-        
-        # Se não houver credenciais válidas, solicita a autenticação
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    'credentials.json',  # Arquivo de credenciais OAuth 2.0
-                    scopes=['https://www.googleapis.com/auth/drive']
-                )
-                creds = flow.run_local_server(port=0)
-            
+        # Configura o fluxo de autenticação
+        flow = InstalledAppFlow.from_client_secrets_file(
+            'credentials.json',
+            scopes=['https://www.googleapis.com/auth/drive']
+        )
+
+        # Gera a URL de autorização
+        auth_url, _ = flow.authorization_url(prompt='consent')
+
+        # Exibe a URL para o usuário
+        st.write("Por favor, acesse o link abaixo para autenticar:")
+        st.write(auth_url)
+
+        # Solicita o código de autorização
+        auth_code = st.text_input("Cole o código de autorização aqui:")
+
+        if auth_code:
+            # Troca o código por credenciais
+            flow.fetch_token(code=auth_code)
+            creds = flow.credentials
+
             # Salva as credenciais para uso futuro
             with open('token.json', 'w') as token:
                 token.write(creds.to_json())
-        
-        # Cria o serviço do Google Drive
-        drive_service = build('drive', 'v3', credentials=creds)
-        st.session_state["drive_service"] = drive_service
-        st.session_state["drive_authenticated"] = True
-        st.success("Autenticação no Google Drive realizada com sucesso!")
+
+            # Cria o serviço do Google Drive
+            drive_service = build('drive', 'v3', credentials=creds)
+            st.session_state["drive_service"] = drive_service
+            st.session_state["drive_authenticated"] = True
+            st.success("Autenticação no Google Drive realizada com sucesso!")
     except Exception as e:
         st.error(f"Erro ao autenticar no Google Drive: {e}")
 

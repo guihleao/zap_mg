@@ -45,34 +45,21 @@ if 'token' not in st.session_state:
         st.session_state.token = result.get('token')
         st.rerun()
 else:
-    # Se o token estiver na session state, mostrar o botão para inicializar o Earth Engine
+    # Se o token estiver na session state, inicializar o Earth Engine automaticamente
     token = st.session_state['token']
     st.success("Você está conectado à sua conta Google!")
 
-    # Inicializar session_state para o Earth Engine
+    # Inicializar o Earth Engine
     if "ee_initialized" not in st.session_state:
-        st.session_state["ee_initialized"] = False
-    if "resultados" not in st.session_state:
-        st.session_state["resultados"] = None
-    if "export_started" not in st.session_state:
-        st.session_state["export_started"] = False
-    if "tasks" not in st.session_state:
-        st.session_state["tasks"] = []
-    if "selected_project" not in st.session_state:
-        st.session_state["selected_project"] = None
+        try:
+            ee.Initialize()
+            st.session_state["ee_initialized"] = True
+            st.success("Earth Engine inicializado com sucesso!")
+        except Exception as e:
+            st.error(f"Erro ao inicializar o Earth Engine: {e}")
+            st.stop()  # Interrompe a execução se a inicialização falhar
 
-    # Botão para inicializar o Earth Engine
-    if not st.session_state.get("ee_initialized"):
-        st.write("Agora, inicialize o Earth Engine:")
-        if st.button("Inicializar Earth Engine"):
-            try:
-                ee.Initialize()
-                st.session_state["ee_initialized"] = True
-                st.success("Earth Engine inicializado com sucesso!")
-            except Exception as e:
-                st.error(f"Erro ao inicializar o Earth Engine: {e}")
-
-    # Interface de upload e processamento
+    # Restante do código (carregar GeoJSON, processar dados, exportar para o Drive)
     if st.session_state.get("ee_initialized"):
         uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])
         

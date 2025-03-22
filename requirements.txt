@@ -1,7 +1,7 @@
 earthengine-api
-streamlit
 geopandas
-shapely
-google-auth-oauthlib
-google-cloud-storage
 google-auth
+google-cloud-storage
+requests
+streamlit
+shapely

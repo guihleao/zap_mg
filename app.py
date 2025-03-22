@@ -2,6 +2,8 @@ import ee
 import streamlit as st
 import geopandas as gpd
 import tempfile
+import zipfile
+import os
 from google.oauth2 import service_account
 
 # Título do aplicativo
@@ -78,6 +80,20 @@ def process_data(geometry, epsg, buffer_km=1):
         st.error(f"Erro ao processar os dados: {e}")
         return None
 
+# Função para exportar os índices como GeoTIFF
+def export_geotiff(image, name, geometry, scale=10):
+    try:
+        url = image.getDownloadURL({
+            'name': name,
+            'scale': scale,
+            'region': geometry,
+            'format': 'GEO_TIFF',
+        })
+        return url
+    except Exception as e:
+        st.error(f"Erro ao exportar {name}: {e}")
+        return None
+
 # Interface de upload e processamento
 if st.session_state["ee_initialized"]:
     uploaded_file = st.file_uploader("Carregue o arquivo GeoPackage da bacia", type=["gpkg"])
@@ -97,3 +113,29 @@ if st.session_state["ee_initialized"]:
                 st.write("Índices processados:")
                 for key in resultados:
                     st.write(f"- {key}")
+
+                # Exportar os índices como GeoTIFF
+                st.subheader("Exportar Resultados")
+                export_zip = st.checkbox("Exportar todos os índices em um arquivo ZIP")
+
+                if export_zip:
+                    zip_buffer = io.BytesIO()
+                    with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
+                        for name, image in resultados.items():
+                            download_url = export_geotiff(image, name, geometry)
+                            if download_url:
+                                response = requests.get(download_url)
+                                zip_file.writestr(f"{name}.tif", response.content)
+                    
+                    zip_buffer.seek(0)
+                    st.download_button(
+                        label="Baixar todos os índices (ZIP)",
+                        data=zip_buffer,
+                        file_name="indices.zip",
+                        mime="application/zip"
+                    )
+                else:
+                    for name, image in resultados.items():
+                        download_url = export_geotiff(image, name, geometry)
+                        if download_url:
+                            st.markdown(f"**{name}**: [Baixar GeoTIFF]({download_url})")

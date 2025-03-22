@@ -230,7 +230,7 @@ if not st.session_state.get("ee_initialized"):
     st.markdown(f"[Autenticar no Google Drive e Earth Engine]({auth_url})")
 
     # Captura o código de autorização da URL de redirecionamento
-    query_params = st.query_params()
+    query_params = st.query_params.get_all()
     if "code" in query_params:
         auth_code = query_params["code"][0]
         token = exchange_code_for_token(auth_code)

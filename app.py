@@ -52,36 +52,44 @@ def load_geojson(file):
         # Verifica se o GeoJSON contém geometrias
         if gdf.geometry.is_empty.any():
             st.error("O arquivo GeoJSON contém geometrias vazias.")
-            return None
+            return None, None
         
         # Verifica se as geometrias são polígonos ou multipolígonos
         if not all(gdf.geometry.geom_type.isin(['Polygon', 'MultiPolygon'])):
             st.error("O arquivo deve conter apenas polígonos ou multipolígonos.")
-            return None
+            return None, None
         
         # Corrige geometrias inválidas (se necessário)
         gdf['geometry'] = gdf['geometry'].buffer(0)
         
-        # Reprojeta para WGS84 (lat/lon) se necessário
-        if gdf.crs != 'EPSG:4326':
-            gdf = gdf.to_crs(epsg=4326)
+        # Obtém o CRS do GeoDataFrame
+        crs = gdf.crs
+        if crs is None:
+            st.warning("O arquivo GeoJSON não possui CRS definido. Assumindo WGS84 (EPSG:4326).")
+            crs = "EPSG:4326"
+        else:
+            st.write(f"CRS do arquivo GeoJSON: {crs}")
         
         # Visualiza o polígono no mapa usando folium
         st.write("Visualização do polígono carregado:")
-        m = folium.Map(location=[gdf.geometry.centroid.y.mean(), gdf.geometry.centroid.x.mean()], zoom_start=10)
+        
+        # Calcula o centróide para centralizar o mapa
+        centroid = gdf.geometry.centroid
+        m = folium.Map(location=[centroid.y.mean(), centroid.x.mean()], zoom_start=10)
         
         # Adiciona o polígono ao mapa
         for _, row in gdf.iterrows():
             folium.GeoJson(row['geometry']).add_to(m)
         
-        # Exibe o mapa no Streamlit
-        folium_static(m)
+        # Exibe o mapa no Streamlit usando st_folium
+        from streamlit_folium import st_folium
+        st_folium(m, returned_objects=[])
         
-        # Retorna a geometria para o Earth Engine
-        return ee.Geometry(gdf.geometry.iloc[0].__geo_interface__)
+        # Retorna a geometria e o CRS
+        return ee.Geometry(gdf.geometry.iloc[0].__geo_interface__), crs
     except Exception as e:
         st.error(f"Erro ao carregar o GeoJSON: {e}")
-        return None
+        return None, None
 
 # Função principal para processar os dados
 def process_data(geometry, epsg, buffer_km=1):
@@ -119,15 +127,19 @@ def process_data(geometry, epsg, buffer_km=1):
 # Interface de upload e processamento
 if st.session_state["ee_initialized"]:
     uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])
-    epsg_options = {"31982 (Z 22S)": "EPSG:31982", "31983 (Z 23S)": "EPSG:31983", "31984 (Z 24S)": "EPSG:31984"}
-    epsg_selected = st.selectbox("Selecione o EPSG", list(epsg_options.keys()))
-
-    if st.button("Processar Dados") and uploaded_file is not None:
-        geometry = load_geojson(uploaded_file)
+    
+    if uploaded_file is not None:
+        # Carrega o GeoJSON e obtém o CRS
+        geometry, crs = load_geojson(uploaded_file)
+        
         if geometry:
-            st.session_state["resultados"] = process_data(geometry, epsg_options[epsg_selected])
-
-    if st.session_state["resultados"]:
-        st.write("Índices processados:")
-        for key in st.session_state["resultados"]:
-            st.write(f"- {key}")
+            # Exibe o CRS encontrado
+            st.write(f"CRS do arquivo GeoJSON: {crs}")
+            
+            # Processa os dados usando o CRS identificado
+            if st.button("Processar Dados"):
+                resultados = process_data(geometry, crs)
+                if resultados:
+                    st.write("Índices processados:")
+                    for key in resultados:
+                        st.write(f"- {key}")

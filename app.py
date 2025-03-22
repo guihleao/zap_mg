@@ -82,7 +82,7 @@ def save_txt_to_drive():
         # Obtém o token da sessão
         token = st.session_state["token"]
 
-        # Verifica se o token contém os campos mínimos necessários
+        # Verifica se o token contém o campo 'access_token'
         if "access_token" not in token:
             st.error("Erro: Token de autenticação incompleto. Falta o campo 'access_token'.")
             return
@@ -91,9 +91,9 @@ def save_txt_to_drive():
         creds = Credentials(
             token=token["access_token"],  # Token de acesso
             refresh_token=token.get("refresh_token"),  # Token de atualização (opcional)
-            token_uri=token.get("token_uri", TOKEN_URL),  # URL do token (usa o padrão se não estiver presente)
-            client_id=token.get("client_id", CLIENT_ID),  # ID do cliente (usa o padrão se não estiver presente)
-            client_secret=token.get("client_secret", CLIENT_SECRET),  # Segredo do cliente (usa o padrão se não estiver presente)
+            token_uri=TOKEN_URL,  # URL do token (usando o valor do secret)
+            client_id=CLIENT_ID,  # ID do cliente (usando o valor do secret)
+            client_secret=CLIENT_SECRET,  # Segredo do cliente (usando o valor do secret)
         )
 
         # Cria o serviço do Google Drive

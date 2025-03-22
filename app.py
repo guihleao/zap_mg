@@ -283,6 +283,7 @@ else:
                 # Inicializar o Earth Engine com o projeto selecionado
                 ee.Initialize(credentials, project=selected_project)
                 st.session_state["ee_initialized"] = True
+                st.session_state["tasks"] = []  # Inicializar a lista de tarefas
                 st.success(f"Earth Engine inicializado com sucesso no projeto: {selected_project}")
         except Exception as e:
             st.error(f"Erro ao inicializar o Earth Engine: {e}")

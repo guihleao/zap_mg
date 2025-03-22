@@ -69,11 +69,15 @@ def exchange_code_for_token(auth_code):
             "redirect_uri": REDIRECT_URI,
             "grant_type": "authorization_code",
         }
-        response = requests.post(token_url, data=data)
-        response.raise_for_status()
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+        response = requests.post(token_url, data=data, headers=headers)
+        response.raise_for_status()  # Lança uma exceção se a requisição falhar
         return response.json()
-    except Exception as e:
+    except requests.exceptions.HTTPError as e:
         st.error(f"Erro ao trocar código por token: {e}")
+        st.error(f"Resposta do servidor: {response.text}")  # Exibe a resposta do servidor para depuração
         return None
 
 # Função para salvar um arquivo .txt no Google Drive

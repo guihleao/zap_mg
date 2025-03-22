@@ -6,13 +6,19 @@ import zipfile
 import io
 import requests
 from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+import os
 import folium
-from streamlit_folium import folium_static
+from streamlit_folium import st_folium
+import json
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
 
-# Configuração da conta de serviço
+# Configuração da conta de serviço do Earth Engine
 SERVICE_ACCOUNT_KEY = st.secrets["google"]  # Acessa as credenciais do GCS
 PROJECT_ID = "ee-zapmg"  # Substitua pelo ID do seu projeto do Google Cloud
 
@@ -21,6 +27,10 @@ if "ee_initialized" not in st.session_state:
     st.session_state["ee_initialized"] = False
 if "resultados" not in st.session_state:
     st.session_state["resultados"] = None
+if "drive_authenticated" not in st.session_state:
+    st.session_state["drive_authenticated"] = False
+if "drive_service" not in st.session_state:
+    st.session_state["drive_service"] = None
 
 # Função para inicializar o Earth Engine
 def initialize_ee():
@@ -39,9 +49,53 @@ def initialize_ee():
     except Exception as e:
         st.error(f"Erro ao inicializar o Earth Engine: {e}")
 
-# Inicializa o Earth Engine
-if not st.session_state["ee_initialized"]:
-    initialize_ee()
+# Função para autenticar no Google Drive
+def authenticate_google_drive():
+    try:
+        # Reconstruir o credentials.json a partir dos secrets
+        credentials = {
+            "web": {
+                "client_id": st.secrets["google_oauth"]["client_id"],
+                "project_id": st.secrets["google_oauth"]["project_id"],
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                "client_secret": st.secrets["google_oauth"]["client_secret"],
+                "redirect_uris": [st.secrets["google_oauth"]["redirect_uris"]]
+            }
+        }
+
+        # Salvar o credentials.json temporariamente
+        with open('credentials.json', 'w') as f:
+            json.dump(credentials, f)
+
+        # Carrega as credenciais OAuth 2.0
+        creds = None
+        if os.path.exists('token.json'):
+            creds = Credentials.from_authorized_user_file('token.json')
+        
+        # Se não houver credenciais válidas, solicita a autenticação
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    'credentials.json',  # Arquivo de credenciais OAuth 2.0
+                    scopes=['https://www.googleapis.com/auth/drive']
+                )
+                creds = flow.run_local_server(port=0)
+            
+            # Salva as credenciais para uso futuro
+            with open('token.json', 'w') as token:
+                token.write(creds.to_json())
+        
+        # Cria o serviço do Google Drive
+        drive_service = build('drive', 'v3', credentials=creds)
+        st.session_state["drive_service"] = drive_service
+        st.session_state["drive_authenticated"] = True
+        st.success("Autenticação no Google Drive realizada com sucesso!")
+    except Exception as e:
+        st.error(f"Erro ao autenticar no Google Drive: {e}")
 
 # Função para carregar o GeoJSON e visualizar o polígono
 def load_geojson(file):
@@ -82,7 +136,6 @@ def load_geojson(file):
             folium.GeoJson(row['geometry']).add_to(m)
         
         # Exibe o mapa no Streamlit usando st_folium
-        from streamlit_folium import st_folium
         st_folium(m, returned_objects=[])
         
         # Retorna a geometria e o CRS
@@ -91,55 +144,50 @@ def load_geojson(file):
         st.error(f"Erro ao carregar o GeoJSON: {e}")
         return None, None
 
-# Função principal para processar os dados
-def process_data(geometry, epsg, buffer_km=1):
+# Função para exportar para o Google Drive
+def export_to_drive(image, name, geometry, folder_id=None):
     try:
-        bacia = geometry.buffer(buffer_km * 1000)  # Buffer em metros
-
-        # Filtrar imagens Sentinel-2 Harmonized
-        periodo_fim = ee.Date("2023-12-31")  
-        periodo_inicio = periodo_fim.advance(-365, 'day')
-
-        sentinel = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
-            .select(['B4', 'B3', 'B8', 'B11']) \
-            .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 10) \
-            .filterBounds(bacia) \
-            .filterDate(periodo_inicio, periodo_fim)
-
-        if sentinel.size().getInfo() == 0:
-            st.error("Nenhuma imagem foi encontrada para o período especificado.")
-            return None
-
-        sentinel_median = sentinel.median().clip(bacia)
-        
-        indices = {
-            "NDVI": sentinel_median.normalizedDifference(['B8', 'B4']),
-            "GNDVI": sentinel_median.normalizedDifference(['B8', 'B3']),
-            "NDWI": sentinel_median.normalizedDifference(['B3', 'B8']),
-            "NDMI": sentinel_median.normalizedDifference(['B8', 'B11']),
-        }
-
-        return {name: img.reproject(crs=epsg, scale=10) for name, img in indices.items()}
+        # Exporta a imagem para o Google Drive
+        task = ee.batch.Export.image.toDrive(
+            image=image,
+            description=name,
+            folder=folder_id,  # ID da pasta no Google Drive (opcional)
+            fileNamePrefix=name,
+            scale=10,
+            region=geometry,
+            fileFormat='GeoTIFF',
+        )
+        task.start()
+        st.success(f"Exportação {name} iniciada. Verifique seu Google Drive.")
+        return task
     except Exception as e:
-        st.error(f"Erro ao processar os dados: {e}")
+        st.error(f"Erro ao exportar {name} para o Google Drive: {e}")
         return None
 
 # Interface de upload e processamento
 if st.session_state["ee_initialized"]:
-    uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])
+    # Autenticação no Google Drive
+    if not st.session_state["drive_authenticated"]:
+        if st.button("Autenticar no Google Drive"):
+            authenticate_google_drive()
     
-    if uploaded_file is not None:
-        # Carrega o GeoJSON e obtém o CRS
-        geometry, crs = load_geojson(uploaded_file)
+    if st.session_state["drive_authenticated"]:
+        uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])
         
-        if geometry:
-            # Exibe o CRS encontrado
-            st.write(f"CRS do arquivo GeoJSON: {crs}")
+        if uploaded_file is not None:
+            # Carrega o GeoJSON e obtém o CRS
+            geometry, crs = load_geojson(uploaded_file)
             
-            # Processa os dados usando o CRS identificado
-            if st.button("Processar Dados"):
-                resultados = process_data(geometry, crs)
-                if resultados:
-                    st.write("Índices processados:")
-                    for key in resultados:
-                        st.write(f"- {key}")
+            if geometry:
+                # Exibe o CRS encontrado
+                st.write(f"CRS do arquivo GeoJSON: {crs}")
+                
+                # Processa os dados usando o CRS identificado
+                if st.button("Processar Dados"):
+                    resultados = process_data(geometry, crs)
+                    if resultados:
+                        st.write("Índices processados:")
+                        for key, image in resultados.items():
+                            st.write(f"- {key}")
+                            if st.button(f"Exportar {key} para o Google Drive"):
+                                export_to_drive(image, key, geometry)

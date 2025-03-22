@@ -58,7 +58,7 @@ TOKEN_URL = "https://oauth2.googleapis.com/token"
 SCOPES = "https://www.googleapis.com/auth/drive"
 
 # Inicializa o componente OAuth2
-oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL, REDIRECT_URI, SCOPES)
+oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL)
 
 # Função para autenticar no Google Drive
 def authenticate_google_drive():
@@ -66,7 +66,11 @@ def authenticate_google_drive():
         # Verifica se já existe um token de acesso
         if "token" not in st.session_state:
             # Inicia o fluxo de autenticação
-            result = oauth2.authorize_button("Autenticar no Google Drive")
+            result = oauth2.authorize_button(
+                "Autenticar no Google Drive",
+                redirect_uri=REDIRECT_URI,
+                scope=SCOPES
+            )
             if result:
                 st.session_state["token"] = result
                 st.session_state["drive_authenticated"] = True

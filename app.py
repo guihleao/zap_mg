@@ -4,9 +4,9 @@ import geopandas as gpd
 import datetime
 import folium
 from streamlit_folium import st_folium
-from streamlit_oauth import OAuth2Component
-from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
 import io
 
 # Título do aplicativo
@@ -46,54 +46,70 @@ def initialize_ee():
 CLIENT_ID = st.secrets["google_oauth"]["client_id"]
 CLIENT_SECRET = st.secrets["google_oauth"]["client_secret"]
 REDIRECT_URI = st.secrets["google_oauth"]["redirect_uris"]
-AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/auth"
-TOKEN_URL = "https://oauth2.googleapis.com/token"
-SCOPES = "https://www.googleapis.com/auth/drive"
-
-# Inicializa o componente OAuth2
-oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL)
+SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 # Função para autenticar no Google Drive
 def authenticate_google_drive():
     try:
-        if "token" not in st.session_state:
-            result = oauth2.authorize_button(
-                "Autenticar no Google Drive",
-                redirect_uri=REDIRECT_URI,
-                scope=SCOPES
-            )
-            if result:
-                st.session_state["token"] = result
-                st.session_state["drive_authenticated"] = True
-                st.success("Autenticação no Google Drive realizada com sucesso!")
-        else:
-            st.success("Você já está autenticado no Google Drive.")
+        # Configura o fluxo de autenticação
+        flow = InstalledAppFlow.from_client_config(
+            client_config={
+                "web": {
+                    "client_id": CLIENT_ID,
+                    "client_secret": CLIENT_SECRET,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [REDIRECT_URI],
+                }
+            },
+            scopes=SCOPES,
+        )
+
+        # Gera a URL de autorização
+        auth_url, _ = flow.authorization_url(prompt="consent")
+
+        # Exibe o link de autenticação
+        st.write("Clique no link abaixo para autenticar no Google Drive:")
+        st.markdown(f"[Autenticar no Google Drive]({auth_url})")
+
+        # Solicita o código de autorização
+        auth_code = st.text_input("Cole o código de autorização aqui:")
+
+        if auth_code:
+            # Troca o código de autorização por um token de acesso
+            flow.fetch_token(code=auth_code)
+            creds = flow.credentials
+
+            # Armazena as credenciais na sessão
+            st.session_state["creds"] = {
+                "token": creds.token,
+                "refresh_token": creds.refresh_token,
+                "token_uri": creds.token_uri,
+                "client_id": creds.client_id,
+                "client_secret": creds.client_secret,
+                "scopes": creds.scopes,
+            }
+            st.session_state["drive_authenticated"] = True
+            st.success("Autenticação no Google Drive realizada com sucesso!")
     except Exception as e:
         st.error(f"Erro ao autenticar no Google Drive: {e}")
 
 # Função para salvar um arquivo .txt no Google Drive
 def save_txt_to_drive():
     try:
-        # Verifica se o token de autenticação está disponível
-        if "token" not in st.session_state:
-            st.error("Erro: Token de autenticação não encontrado.")
+        # Verifica se as credenciais estão disponíveis
+        if "creds" not in st.session_state:
+            st.error("Erro: Credenciais de autenticação não encontradas.")
             return
 
-        # Obtém o token da sessão
-        token = st.session_state["token"]
-
-        # Verifica se o token contém o campo 'access_token'
-        if "access_token" not in token:
-            st.error("Erro: Token de autenticação incompleto. Falta o campo 'access_token'.")
-            return
-
-        # Cria as credenciais manualmente
+        # Cria as credenciais a partir do token armazenado
         creds = Credentials(
-            token=token["access_token"],  # Token de acesso
-            refresh_token=token.get("refresh_token"),  # Token de atualização (opcional)
-            token_uri=TOKEN_URL,  # URL do token (usando o valor do secret)
-            client_id=CLIENT_ID,  # ID do cliente (usando o valor do secret)
-            client_secret=CLIENT_SECRET,  # Segredo do cliente (usando o valor do secret)
+            token=st.session_state["creds"]["token"],
+            refresh_token=st.session_state["creds"]["refresh_token"],
+            token_uri=st.session_state["creds"]["token_uri"],
+            client_id=st.session_state["creds"]["client_id"],
+            client_secret=st.session_state["creds"]["client_secret"],
+            scopes=st.session_state["creds"]["scopes"],
         )
 
         # Cria o serviço do Google Drive

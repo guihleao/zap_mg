@@ -3,7 +3,8 @@ import streamlit as st
 import geopandas as gpd
 import tempfile
 import zipfile
-import os
+import io
+import requests
 from google.oauth2 import service_account
 
 # Título do aplicativo
@@ -16,6 +17,8 @@ PROJECT_ID = "ee-zapmg"  # Substitua pelo ID do seu projeto do Google Cloud
 # Inicializar session_state
 if "ee_initialized" not in st.session_state:
     st.session_state["ee_initialized"] = False
+if "resultados" not in st.session_state:
+    st.session_state["resultados"] = None
 
 # Função para inicializar o Earth Engine
 def initialize_ee():
@@ -107,35 +110,35 @@ if st.session_state["ee_initialized"]:
 
         geometry = load_geopackage(tmp_file_path)
         if geometry:
-            resultados = process_data(geometry, epsg_options[epsg_selected])
+            st.session_state["resultados"] = process_data(geometry, epsg_options[epsg_selected])
 
-            if resultados:
-                st.write("Índices processados:")
-                for key in resultados:
-                    st.write(f"- {key}")
+    if st.session_state["resultados"]:
+        st.write("Índices processados:")
+        for key in st.session_state["resultados"]:
+            st.write(f"- {key}")
 
-                # Exportar os índices como GeoTIFF
-                st.subheader("Exportar Resultados")
-                export_zip = st.checkbox("Exportar todos os índices em um arquivo ZIP")
+        # Exportar os índices como GeoTIFF
+        st.subheader("Exportar Resultados")
+        export_zip = st.checkbox("Exportar todos os índices em um arquivo ZIP")
 
-                if export_zip:
-                    zip_buffer = io.BytesIO()
-                    with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
-                        for name, image in resultados.items():
-                            download_url = export_geotiff(image, name, geometry)
-                            if download_url:
-                                response = requests.get(download_url)
-                                zip_file.writestr(f"{name}.tif", response.content)
-                    
-                    zip_buffer.seek(0)
-                    st.download_button(
-                        label="Baixar todos os índices (ZIP)",
-                        data=zip_buffer,
-                        file_name="indices.zip",
-                        mime="application/zip"
-                    )
-                else:
-                    for name, image in resultados.items():
-                        download_url = export_geotiff(image, name, geometry)
-                        if download_url:
-                            st.markdown(f"**{name}**: [Baixar GeoTIFF]({download_url})")
+        if export_zip:
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
+                for name, image in st.session_state["resultados"].items():
+                    download_url = export_geotiff(image, name, geometry)
+                    if download_url:
+                        response = requests.get(download_url)
+                        zip_file.writestr(f"{name}.tif", response.content)
+            
+            zip_buffer.seek(0)
+            st.download_button(
+                label="Baixar todos os índices (ZIP)",
+                data=zip_buffer,
+                file_name="indices.zip",
+                mime="application/zip"
+            )
+        else:
+            for name, image in st.session_state["resultados"].items():
+                download_url = export_geotiff(image, name, geometry)
+                if download_url:
+                    st.markdown(f"**{name}**: [Baixar GeoTIFF]({download_url})")

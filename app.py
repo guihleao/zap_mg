@@ -181,6 +181,24 @@ def export_to_drive(image, name, geometry, folder="zap"):
         st.error(f"Erro ao exportar {name} para o Google Drive: {e}")
         return None
 
+# Função para verificar o status das tarefas
+def check_task_status(task):
+    try:
+        status = task.status()
+        state = status["state"]
+        if state == "COMPLETED":
+            st.success(f"Tarefa {task.id} concluída com sucesso!")
+        elif state == "RUNNING":
+            st.warning(f"Tarefa {task.id} ainda está em execução.")
+        elif state == "FAILED":
+            st.error(f"Tarefa {task.id} falhou. Motivo: {status['error_message']}")
+        else:
+            st.info(f"Status da tarefa {task.id}: {state}")
+        return state
+    except Exception as e:
+        st.error(f"Erro ao verificar o status da tarefa: {e}")
+        return None
+        
 # Inicializa o Earth Engine
 if not st.session_state["ee_initialized"]:
     initialize_ee()

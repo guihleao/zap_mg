@@ -2,7 +2,6 @@ streamlit
 streamlit-oauth
 earthengine-api
 geopandas
-streamlit-oauth2-component
 google-auth
 google-auth-oauthlib
 google-auth-httplib2

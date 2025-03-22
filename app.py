@@ -79,8 +79,22 @@ def save_txt_to_drive():
             st.error("Erro: Token de autenticação não encontrado.")
             return
 
+        # Obtém o token da sessão
+        token = st.session_state["token"]
+
+        # Verifica se o token contém os campos necessários
+        if not all(key in token for key in ["client_id", "client_secret", "refresh_token", "token_uri"]):
+            st.error("Erro: Token de autenticação incompleto.")
+            return
+
         # Cria as credenciais a partir do token
-        creds = Credentials.from_authorized_user_info(st.session_state["token"])
+        creds = Credentials(
+            token=token["access_token"],
+            refresh_token=token["refresh_token"],
+            token_uri=token["token_uri"],
+            client_id=token["client_id"],
+            client_secret=token["client_secret"],
+        )
 
         # Cria o serviço do Google Drive
         drive_service = build("drive", "v3", credentials=creds)

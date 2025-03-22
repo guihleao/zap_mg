@@ -5,6 +5,8 @@ import datetime
 import folium
 from streamlit_folium import st_folium
 from streamlit_oauth import OAuth2Component
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -52,9 +54,36 @@ else:
     # Inicializar o Earth Engine
     if "ee_initialized" not in st.session_state:
         try:
-            ee.Initialize()
-            st.session_state["ee_initialized"] = True
-            st.success("Earth Engine inicializado com sucesso!")
+            # Criar credenciais a partir do token
+            credentials = Credentials(
+                token=token['access_token'],
+                refresh_token=token.get('refresh_token'),
+                token_uri=TOKEN_URL,
+                client_id=CLIENT_ID,
+                client_secret=CLIENT_SECRET,
+                scopes=SCOPES
+            )
+
+            # Listar projetos disponíveis
+            service = build('cloudresourcemanager', 'v1', credentials=credentials)
+            projects = service.projects().list().execute().get('projects', [])
+            project_ids = [project['projectId'] for project in projects]
+
+            if not project_ids:
+                st.warning("Nenhum projeto encontrado na sua conta do Google Cloud.")
+                if st.button("Criar um novo projeto"):
+                    # Lógica para criar um novo projeto (implemente conforme necessário)
+                    st.info("Funcionalidade de criação de projetos ainda não implementada.")
+                    st.stop()
+            else:
+                # Permitir que o usuário selecione um projeto
+                selected_project = st.selectbox("Selecione um projeto:", project_ids)
+                st.session_state["selected_project"] = selected_project
+
+                # Inicializar o Earth Engine com o projeto selecionado
+                ee.Initialize(credentials, project=selected_project)
+                st.session_state["ee_initialized"] = True
+                st.success(f"Earth Engine inicializado com sucesso no projeto: {selected_project}")
         except Exception as e:
             st.error(f"Erro ao inicializar o Earth Engine: {e}")
             st.stop()  # Interrompe a execução se a inicialização falhar

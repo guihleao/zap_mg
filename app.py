@@ -164,10 +164,15 @@ def export_to_drive(image, name, geometry, folder_id=None):
         st.error(f"Erro ao exportar {name} para o Google Drive: {e}")
         return None
 
+# Inicializa o Earth Engine
+if not st.session_state["ee_initialized"]:
+    initialize_ee()
+
 # Interface de upload e processamento
 if st.session_state["ee_initialized"]:
     # Autenticação no Google Drive
     if not st.session_state["drive_authenticated"]:
+        st.write("Para exportar arquivos, faça login no Google Drive:")
         if st.button("Autenticar no Google Drive"):
             authenticate_google_drive()
     

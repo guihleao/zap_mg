@@ -8,12 +8,12 @@ import requests
 from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 import os
 import folium
 from streamlit_folium import st_folium
 import json
+from streamlit_oauth import OAuth2Component
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -49,57 +49,30 @@ def initialize_ee():
     except Exception as e:
         st.error(f"Erro ao inicializar o Earth Engine: {e}")
 
-# Função para autenticar no Google Drive (fluxo manual)
+# Configuração do OAuth2
+CLIENT_ID = st.secrets["google_oauth"]["client_id"]
+CLIENT_SECRET = st.secrets["google_oauth"]["client_secret"]
+REDIRECT_URI = st.secrets["google_oauth"]["redirect_uris"]
+AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/auth"
+TOKEN_URL = "https://oauth2.googleapis.com/token"
+SCOPES = "https://www.googleapis.com/auth/drive"
+
+# Inicializa o componente OAuth2
+oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL, REDIRECT_URI, SCOPES)
+
+# Função para autenticar no Google Drive
 def authenticate_google_drive():
     try:
-        # Reconstruir o credentials.json a partir dos secrets
-        credentials = {
-            "web": {
-                "client_id": st.secrets["google_oauth"]["client_id"],
-                "project_id": st.secrets["google_oauth"]["project_id"],
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                "client_secret": st.secrets["google_oauth"]["client_secret"],
-                "redirect_uris": [st.secrets["google_oauth"]["redirect_uris"]]
-            }
-        }
-
-        # Salvar o credentials.json temporariamente
-        with open('credentials.json', 'w') as f:
-            json.dump(credentials, f)
-
-        # Configura o fluxo de autenticação
-        flow = InstalledAppFlow.from_client_secrets_file(
-            'credentials.json',
-            scopes=['https://www.googleapis.com/auth/drive'],
-            redirect_uri=st.secrets["google_oauth"]["redirect_uris"]  # Adiciona o redirect_uri
-        )
-
-        # Gera a URL de autorização
-        auth_url, _ = flow.authorization_url(prompt='consent')
-
-        # Exibe a URL para o usuário
-        st.write("Por favor, acesse o link abaixo para autenticar:")
-        st.write(auth_url)
-
-        # Solicita o código de autorização
-        auth_code = st.text_input("Cole o código de autorização aqui:")
-
-        if auth_code:
-            # Troca o código por credenciais
-            flow.fetch_token(code=auth_code)
-            creds = flow.credentials
-
-            # Salva as credenciais para uso futuro
-            with open('token.json', 'w') as token:
-                token.write(creds.to_json())
-
-            # Cria o serviço do Google Drive
-            drive_service = build('drive', 'v3', credentials=creds)
-            st.session_state["drive_service"] = drive_service
-            st.session_state["drive_authenticated"] = True
-            st.success("Autenticação no Google Drive realizada com sucesso!")
+        # Verifica se já existe um token de acesso
+        if "token" not in st.session_state:
+            # Inicia o fluxo de autenticação
+            result = oauth2.authorize_button("Autenticar no Google Drive")
+            if result:
+                st.session_state["token"] = result
+                st.session_state["drive_authenticated"] = True
+                st.success("Autenticação no Google Drive realizada com sucesso!")
+        else:
+            st.success("Você já está autenticado no Google Drive.")
     except Exception as e:
         st.error(f"Erro ao autenticar no Google Drive: {e}")
 
@@ -179,8 +152,7 @@ if st.session_state["ee_initialized"]:
     # Autenticação no Google Drive
     if not st.session_state["drive_authenticated"]:
         st.write("Para exportar arquivos, faça login no Google Drive:")
-        if st.button("Autenticar no Google Drive"):
-            authenticate_google_drive()
+        authenticate_google_drive()
     
     if st.session_state["drive_authenticated"]:
         uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])

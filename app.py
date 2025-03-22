@@ -8,17 +8,24 @@ import time
 secrets = st.secrets["google_oauth"]
 client_id = secrets["client_id"]
 client_secret = secrets["client_secret"]
-authorization_url = "https://accounts.google.com/o/oauth2/auth"
+authorize_url = "https://accounts.google.com/o/oauth2/auth"
 token_url = "https://oauth2.googleapis.com/token"
+refresh_token_url = "https://oauth2.googleapis.com/token"
+revoke_token_url = "https://oauth2.googleapis.com/revoke"
+redirect_uri = "https://zap-mg.streamlit.app/"
+scope = "https://www.googleapis.com/auth/earthengine.readonly"
 
-oauth = OAuth2Component(client_id, client_secret, authorization_url, token_url)
-token = oauth.get_access_token()
-if token:
-    st.session_state["oauth_token"] = token
-    ee.Initialize()
+oauth2 = OAuth2Component(client_id, client_secret, authorize_url, token_url, refresh_token_url, revoke_token_url)
+
+if "oauth_token" not in st.session_state:
+    result = oauth2.authorize_button("Login com Google", redirect_uri, scope)
+    if result and "token" in result:
+        st.session_state["oauth_token"] = result["token"]
+        st.rerun()
 else:
-    st.error("Falha na autenticação. Faça login novamente.")
-    st.stop()
+    token = st.session_state["oauth_token"]
+    st.success("Login bem-sucedido!")
+    ee.Initialize(credentials=token)
 
 def processar_imagens(bacia):
     sentinel = ee.ImageCollection("COPERNICUS/S2")\

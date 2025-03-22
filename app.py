@@ -127,6 +127,71 @@ def load_geojson(file):
         st.error(f"Erro ao carregar o GeoJSON: {e}")
         return None, None
 
+# Função para processar os dados
+def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
+    try:
+        # Aplica o buffer à geometria
+        bacia = geometry.buffer(buffer_km * 1000)  # Converte km para metros
+
+        # Define o período de análise
+        periodo_fim = ee.Date.now()
+        periodo_inicio = periodo_fim.advance(-365, 'day')
+
+        # Filtra as imagens Sentinel-2
+        sentinel = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
+            .select(['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12']) \
+            .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 10) \
+            .filterBounds(bacia) \
+            .filterDate(periodo_inicio, periodo_fim)
+
+        # Verifica se há imagens disponíveis
+        if sentinel.size().getInfo() == 0:
+            st.error("Nenhuma imagem foi encontrada para o período especificado.")
+            return None
+
+        # Calcula a mediana das imagens
+        sentinel_median = sentinel.median().clip(bacia)
+
+        # Calcula os índices
+        indices = {
+            "NDVI": sentinel_median.normalizedDifference(['B8', 'B4']),
+            "GNDVI": sentinel_median.normalizedDifference(['B8', 'B3']),
+            "NDWI": sentinel_median.normalizedDifference(['B3', 'B8']),
+            "NDMI": sentinel_median.normalizedDifference(['B8', 'B11']),
+        }
+
+        # Carrega o MDE (ALOS-PALSAR)
+        mde = ee.ImageCollection("JAXA/ALOS/AW3D30/V3_2") \
+            .filterBounds(bacia) \
+            .mosaic() \
+            .clip(bacia)
+
+        # Calcula a declividade
+        declividade = ee.Terrain.slope(mde.select('DSM'))
+
+        # Carrega o MapBiomas
+        mapbiomas = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_integration_v1") \
+            .clip(bacia)
+
+        # Carrega a qualidade de pastagem
+        pasture_quality = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_pasture_quality_v1") \
+            .select('pasture_quality_2023') \
+            .clip(bacia)
+
+        # Retorna os resultados
+        return {
+            "sentinel_median": sentinel_median,
+            "indices": indices,
+            "mde": mde,
+            "declividade": declividade,
+            "mapbiomas": mapbiomas,
+            "pasture_quality": pasture_quality,
+            "nome_bacia_export": nome_bacia_export,
+        }
+    except Exception as e:
+        st.error(f"Erro ao processar os dados: {e}")
+        return None
+
 # Função para exportar para o Google Drive
 def export_to_drive(image, name, geometry, folder_id=None):
     try:
@@ -169,12 +234,15 @@ if st.session_state["ee_initialized"]:
                 # Exibe o CRS encontrado
                 st.write(f"CRS do arquivo GeoJSON: {crs}")
                 
+                # Solicita o nome do arquivo de exportação
+                nome_bacia_export = st.text_input("Digite o nome para exportação (sem espaços ou caracteres especiais):")
+                
                 # Processa os dados usando o CRS identificado
-                if st.button("Processar Dados"):
-                    resultados = process_data(geometry, crs)
+                if st.button("Processar Dados") and nome_bacia_export:
+                    resultados = process_data(geometry, crs, nome_bacia_export=nome_bacia_export)
                     if resultados:
                         st.write("Índices processados:")
-                        for key, image in resultados.items():
+                        for key, image in resultados["indices"].items():
                             st.write(f"- {key}")
                             if st.button(f"Exportar {key} para o Google Drive"):
-                                export_to_drive(image, key, geometry)
+                                export_to_drive(image, f"{nome_bacia_export}_{key}", geometry)

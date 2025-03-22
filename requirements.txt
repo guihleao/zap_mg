@@ -1,14 +1,8 @@
 streamlit
-streamlit-oauth
 earthengine-api
 geopandas
-google-auth
-google-auth-oauthlib
-google-auth-httplib2
-google-cloud-storage
-requests
-shapely
 folium
 streamlit-folium
-branca
-google-api-python-client
+streamlit-oauth
+httpx-oauth
+python-dotenv

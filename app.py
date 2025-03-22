@@ -65,7 +65,7 @@ def load_geojson(file):
 def reprojetarImagem(imagem, epsg, escala):
     return imagem.reproject(crs=f"EPSG:{epsg}", scale=escala)
 
-def exportarImagem(imagem, nome_prefixo, nome_sufixo, escala, regiao, pasta="zap"):
+def exportarImagem(imagem, nome_prefixo, nome_sufixo, escala, regiao, nome_bacia_export, pasta="zap"):
     """
     Exporta uma imagem para o Google Drive com um nome personalizado.
 
@@ -75,11 +75,12 @@ def exportarImagem(imagem, nome_prefixo, nome_sufixo, escala, regiao, pasta="zap
         nome_sufixo (str): Texto fixo no final do nome do arquivo (ex: "_puc_embrapa").
         escala (int): Resolução da imagem (ex: 10, 30).
         regiao (ee.Geometry): Região de interesse para exportação.
+        nome_bacia_export (str): Nome da bacia digitado pelo usuário.
         pasta (str): Nome da pasta no Google Drive (padrão: "zap").
     """
     try:
         # Montar o nome do arquivo
-        nome_arquivo = f"{nome_prefixo}{st.session_state['nome_bacia_export']}{nome_sufixo}"
+        nome_arquivo = f"{nome_prefixo}{nome_bacia_export}{nome_sufixo}"
 
         # Exportar a imagem
         task = ee.batch.Export.image.toDrive(
@@ -197,19 +198,19 @@ def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
 
         # Exportar todas as imagens
         tasks = []
-        tasks.append(exportarImagem(utm_elevation, "06_", "_SRTM_MDE", 30, bacia, "zap"))
-        tasks.append(exportarImagem(utm_declividade, "02_", "_declividade", 30, bacia, "zap"))
-        tasks.append(exportarImagem(utm_ndvi, "06_", f"_NDVImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
-        tasks.append(exportarImagem(utm_gndvi, "06_", f"_GNDVImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
-        tasks.append(exportarImagem(utm_ndwi, "06_", f"_NDWImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
-        tasks.append(exportarImagem(utm_ndmi, "06_", f"_NDMImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
-        tasks.append(exportarImagem(utm_mapbiomas, "06_", "_MapBiomas_col9_2023", 30, bacia, "zap"))
-        tasks.append(exportarImagem(utm_pasture_quality, "06_", "_Pastagem_col9_2023", 30, bacia, "zap"))
-        tasks.append(exportarImagem(utm_sentinel2, "06_", f"_S2_B2B3B4B8_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
-        tasks.append(exportarImagem(utm_puc_ufv, "02_", "_puc_ufv", 30, bacia, "zap"))
-        tasks.append(exportarImagem(utm_puc_ibge, "02_", "_puc_ibge", 30, bacia, "zap"))
-        tasks.append(exportarImagem(utm_puc_embrapa, "02_", "_puc_embrapa", 30, bacia, "zap"))
-        tasks.append(exportarImagem(utm_landforms, "06_", "_landforms", 30, bacia, "zap"))
+        tasks.append(exportarImagem(utm_elevation, "06_", "_SRTM_MDE", 30, bacia, nome_bacia_export, "zap"))
+        tasks.append(exportarImagem(utm_declividade, "02_", "_declividade", 30, bacia, nome_bacia_export, "zap"))
+        tasks.append(exportarImagem(utm_ndvi, "06_", f"_NDVImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, nome_bacia_export, "zap"))
+        tasks.append(exportarImagem(utm_gndvi, "06_", f"_GNDVImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, nome_bacia_export, "zap"))
+        tasks.append(exportarImagem(utm_ndwi, "06_", f"_NDWImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, nome_bacia_export, "zap"))
+        tasks.append(exportarImagem(utm_ndmi, "06_", f"_NDMImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, nome_bacia_export, "zap"))
+        tasks.append(exportarImagem(utm_mapbiomas, "06_", "_MapBiomas_col9_2023", 30, bacia, nome_bacia_export, "zap"))
+        tasks.append(exportarImagem(utm_pasture_quality, "06_", "_Pastagem_col9_2023", 30, bacia, nome_bacia_export, "zap"))
+        tasks.append(exportarImagem(utm_sentinel2, "06_", f"_S2_B2B3B4B8_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, nome_bacia_export, "zap"))
+        tasks.append(exportarImagem(utm_puc_ufv, "02_", "_puc_ufv", 30, bacia, nome_bacia_export, "zap"))
+        tasks.append(exportarImagem(utm_puc_ibge, "02_", "_puc_ibge", 30, bacia, nome_bacia_export, "zap"))
+        tasks.append(exportarImagem(utm_puc_embrapa, "02_", "_puc_embrapa", 30, bacia, nome_bacia_export, "zap"))
+        tasks.append(exportarImagem(utm_landforms, "06_", "_landforms", 30, bacia, nome_bacia_export, "zap"))
 
         return tasks
     except Exception as e:

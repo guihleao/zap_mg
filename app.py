@@ -7,7 +7,6 @@ from streamlit_folium import st_folium
 import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from streamlit_oauth import OAuth2Component
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -29,56 +28,43 @@ if "selected_project" not in st.session_state:
 # Configuração do OAuth2
 CLIENT_ID = st.secrets["google_oauth"]["client_id"]
 CLIENT_SECRET = st.secrets["google_oauth"]["client_secret"]
-AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/auth"
-TOKEN_URL = "https://oauth2.googleapis.com/token"
-REFRESH_TOKEN_URL = "https://oauth2.googleapis.com/token"
-REVOKE_TOKEN_URL = "https://oauth2.googleapis.com/revoke"
 REDIRECT_URI = st.secrets["google_oauth"]["redirect_uris"]
+SCOPES = [
+    "https://www.googleapis.com/auth/earthengine",  # Acesso ao Earth Engine
+    "https://www.googleapis.com/auth/drive",        # Acesso ao Google Drive
+    "https://www.googleapis.com/auth/cloud-platform",  # Acesso ao Google Cloud
+]
 
-# Escopos como uma string separada por espaços
-SCOPES = "https://www.googleapis.com/auth/earthengine https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/cloud-platform"
-
-# Cria a instância do OAuth2Component
-oauth2 = OAuth2Component(
-    client_id=CLIENT_ID,
-    client_secret=CLIENT_SECRET,
-    authorize_endpoint=AUTHORIZE_URL,
-    token_endpoint=TOKEN_URL,
-    refresh_token_endpoint=REFRESH_TOKEN_URL,
-    revoke_token_endpoint=REVOKE_TOKEN_URL,
-)
-
-# Verifica se o token já está na session_state
-if "token" not in st.session_state:
-    # Se não estiver, exibe o botão de autorização
-    result = oauth2.authorize_button(
-        name="Autenticar no Google Drive e Earth Engine",
-        redirect_uri=REDIRECT_URI,
-        scope=SCOPES,  # Passa a string de escopos
+# Função para gerar o link de autenticação
+def generate_auth_url():
+    auth_url = (
+        f"https://accounts.google.com/o/oauth2/auth?"
+        f"response_type=code&"
+        f"client_id={CLIENT_ID}&"
+        f"scope={'+'.join(SCOPES)}&"
+        f"redirect_uri={REDIRECT_URI}&"
+        f"access_type=offline&"
+        f"prompt=consent"
     )
-    if result and "token" in result:
-        # Se a autorização for bem-sucedida, salva o token na session_state
-        st.session_state["token"] = result["token"]
-        st.session_state["creds"] = {
-            "token": result["token"]["access_token"],
-            "refresh_token": result["token"].get("refresh_token"),
-            "token_uri": "https://oauth2.googleapis.com/token",
+    return auth_url
+
+# Função para trocar o código de autorização por um token de acesso
+def exchange_code_for_token(auth_code):
+    try:
+        token_url = "https://oauth2.googleapis.com/token"
+        data = {
+            "code": auth_code,
             "client_id": CLIENT_ID,
             "client_secret": CLIENT_SECRET,
-            "scopes": SCOPES.split(),  # Converte a string de escopos de volta para lista
+            "redirect_uri": REDIRECT_URI,
+            "grant_type": "authorization_code",
         }
-        st.session_state["drive_authenticated"] = True
-        st.rerun()  # Recarrega a página para atualizar o estado
-else:
-    # Se o token já estiver na session_state, exibe o token
-    token = st.session_state["token"]
-    st.json(token)  # Exibe o token em formato JSON (apenas para depuração)
-
-    # Botão para atualizar o token
-    if st.button("Atualizar Token"):
-        token = oauth2.refresh_token(token)
-        st.session_state["token"] = token
-        st.rerun()  # Recarrega a página para atualizar o estado
+        response = requests.post(token_url, data=data)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        st.error(f"Erro ao trocar código por token: {e}")
+        return None
 
 # Função para listar projetos do Google Cloud
 def list_google_cloud_projects():
@@ -240,43 +226,42 @@ def check_task_status(task):
 # Interface de upload e processamento
 if not st.session_state.get("ee_initialized"):
     st.write("Para começar, faça login no Google Drive e Earth Engine:")
+    auth_url = generate_auth_url()
+    st.markdown(f"[Autenticar no Google Drive e Earth Engine]({auth_url})")
 
-    # Botão de login integrado
-    result = oauth2.authorize_button(
-        "Autenticar no Google Drive e Earth Engine",
-        redirect_uri=REDIRECT_URI,
-        scope=SCOPES,
-    )
+    # Captura o código de autorização da URL de redirecionamento
+    query_params = st.experimental_get_query_params()
+    if "code" in query_params:
+        auth_code = query_params["code"][0]
+        token = exchange_code_for_token(auth_code)
+        if token:
+            # Armazena as credenciais na sessão
+            st.session_state["creds"] = {
+                "token": token["access_token"],
+                "refresh_token": token.get("refresh_token"),
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "client_id": CLIENT_ID,
+                "client_secret": CLIENT_SECRET,
+                "scopes": SCOPES,
+            }
+            st.session_state["drive_authenticated"] = True
+            st.success("Autenticação no Google Drive e Earth Engine realizada com sucesso!")
 
-    # Após o login
-    if result:
-        token = result["token"]
-        st.session_state["creds"] = {
-            "token": token["access_token"],
-            "refresh_token": token.get("refresh_token"),
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET,
-            "scopes": SCOPES.split(),  # Converte a string de escopos de volta para lista
-        }
-        st.session_state["drive_authenticated"] = True
-        st.success("Autenticação no Google Drive e Earth Engine realizada com sucesso!")
-
-        # Lista os projetos disponíveis
-        projects = list_google_cloud_projects()
-        if projects:
-            selected_project = st.selectbox("Escolha um projeto:", projects)
-            if st.button("Usar este projeto"):
-                if initialize_ee_with_project(selected_project):
-                    st.session_state["selected_project"] = selected_project
-        else:
-            st.error("""
-                Nenhum projeto encontrado no Google Cloud. 
-                Para usar o Earth Engine, você precisa criar um projeto no Google Cloud Platform:
-                1. Acesse o [Google Cloud Console](https://console.cloud.google.com/).
-                2. Crie um novo projeto.
-                3. Volte aqui e recarregue a página.
-            """)
+            # Lista os projetos disponíveis
+            projects = list_google_cloud_projects()
+            if projects:
+                selected_project = st.selectbox("Escolha um projeto:", projects)
+                if st.button("Usar este projeto"):
+                    if initialize_ee_with_project(selected_project):
+                        st.session_state["selected_project"] = selected_project
+            else:
+                st.error("""
+                    Nenhum projeto encontrado no Google Cloud. 
+                    Para usar o Earth Engine, você precisa criar um projeto no Google Cloud Platform:
+                    1. Acesse o [Google Cloud Console](https://console.cloud.google.com/).
+                    2. Crie um novo projeto.
+                    3. Volte aqui e recarregue a página.
+                """)
 
 if st.session_state.get("ee_initialized"):
     uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])

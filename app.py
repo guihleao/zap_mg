@@ -7,6 +7,7 @@ from streamlit_folium import st_folium
 from streamlit_oauth import OAuth2Component
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+import time
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -72,33 +73,124 @@ def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
             .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 10) \
             .filterBounds(bacia) \
             .filterDate(periodo_inicio, periodo_fim)
-        if sentinel.size().getInfo() == 0:
+
+        # Verificar se há imagens para o período definido
+        num_imagens = sentinel.size().getInfo()
+        if num_imagens == 0:
             st.error("Nenhuma imagem foi encontrada para o período especificado.")
             return None
+        else:
+            st.success(f"Imagens encontradas: {num_imagens}")
+
+        # Exportar a lista de imagens para um arquivo CSV
+        task_csv = ee.batch.Export.table.toDrive(
+            collection=sentinel,
+            folder='zap',
+            description=f'lista_imagens_sentinel-2_{nome_bacia_export}',
+            fileFormat='CSV'
+        )
+        task_csv.start()
+        st.success("Exportação da lista de imagens para CSV iniciada.")
+
+        # Gerar a mediana das imagens Sentinel-2
         sentinel_median = sentinel.median().clip(bacia)
+        sentinel_composite = sentinel_median.select(['B2', 'B3', 'B4', 'B8']).rename(['B2', 'B3', 'B4', 'B8'])
+
+        # Exportar a imagem composta Sentinel-2
+        task_sentinel = export_to_drive(sentinel_composite, f"{nome_bacia_export}_Sentinel_Composite", geometry)
+        if task_sentinel:
+            st.session_state["tasks"].append(task_sentinel)
+
+        # Gerar índices
         indices = {
             "NDVI": sentinel_median.normalizedDifference(['B8', 'B4']),
             "GNDVI": sentinel_median.normalizedDifference(['B8', 'B3']),
             "NDWI": sentinel_median.normalizedDifference(['B3', 'B8']),
             "NDMI": sentinel_median.normalizedDifference(['B8', 'B11']),
         }
-        mde = ee.ImageCollection("JAXA/ALOS/AW3D30/V3_2") \
-            .filterBounds(bacia) \
-            .mosaic() \
-            .clip(bacia)
-        declividade = ee.Terrain.slope(mde.select('DSM'))
+
+        # Exportar índices
+        for key, image in indices.items():
+            task_index = export_to_drive(image, f"{nome_bacia_export}_{key}", geometry)
+            if task_index:
+                st.session_state["tasks"].append(task_index)
+
+        # Gerar MDE e Declividade
+        mde_proj = ee.ImageCollection("JAXA/ALOS/AW3D30/V3_2").filterBounds(bacia).first().select(0).projection()
+        mde = ee.ImageCollection("JAXA/ALOS/AW3D30/V3_2").filterBounds(bacia).mosaic().clip(bacia).setDefaultProjection(mde_proj)
+        elevation = mde.select('DSM')
+
+        # Exportar MDE
+        task_mde = export_to_drive(elevation, f"{nome_bacia_export}_MDE", geometry)
+        if task_mde:
+            st.session_state["tasks"].append(task_mde)
+
+        # Calcular a declividade em porcentagem
+        declividade_graus = ee.Terrain.slope(elevation)
+        declividade = declividade_graus.divide(180).multiply(3.14159).tan().multiply(100)
+
+        # Aplicar máscara para remover valores nulos ou sem dados
+        declividade_mascara = declividade.updateMask(declividade)
+
+        # Reclassificar os intervalos de declividade
+        declividade_reclass = declividade_mascara.expression(
+            "b(0) <= 3 ? 1 : " + 
+            "(b(0) > 3 && b(0) <= 8) ? 2 : " + 
+            "(b(0) > 8 && b(0) <= 20) ? 3 : " + 
+            "(b(0) > 20 && b(0) <= 45) ? 4 : " + 
+            "(b(0) > 45 && b(0) <= 75) ? 5 : " + 
+            "(b(0) > 75) ? 6 : -1"  # Valores fora do intervalo recebem -1
+        ).updateMask(declividade_mascara)
+
+        # Exportar Declividade Reclassificada
+        task_declividade = export_to_drive(declividade_reclass, f"{nome_bacia_export}_Declividade", geometry)
+        if task_declividade:
+            st.session_state["tasks"].append(task_declividade)
+
+        # Selecionar apenas a banda de 2023 do MapBiomas
         mapbiomas = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_integration_v1") \
+            .select('classification_2023') \
             .clip(bacia)
+
+        # Exportar MapBiomas 2023
+        task_mapbiomas = export_to_drive(mapbiomas, f"{nome_bacia_export}_MapBiomas_2023", geometry)
+        if task_mapbiomas:
+            st.session_state["tasks"].append(task_mapbiomas)
+
+        # Exportar Qualidade de Pastagens com resolução de 30 metros
         pasture_quality = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_pasture_quality_v1") \
             .select('pasture_quality_2023') \
-            .clip(bacia)
+            .clip(bacia) \
+            .reproject(crs=crs, scale=30)
+        task_pasture = export_to_drive(pasture_quality, f"{nome_bacia_export}_QualidadePastagem", geometry)
+        if task_pasture:
+            st.session_state["tasks"].append(task_pasture)
+
+        # Adicionar PUC (UFV, IBGE, Embrapa)
+        puc_ufv = ee.ImageCollection('users/zap/puc_ufv').filterBounds(bacia).mosaic().clip(bacia)
+        puc_ibge = ee.ImageCollection('users/zap/puc_ibge').filterBounds(bacia).mosaic().clip(bacia)
+        puc_embrapa = ee.ImageCollection('users/zap/puc_embrapa').filterBounds(bacia).mosaic().clip(bacia)
+
+        # Exportar PUC
+        task_puc_ufv = export_to_drive(puc_ufv, f"{nome_bacia_export}_PUC_UFV", geometry)
+        task_puc_ibge = export_to_drive(puc_ibge, f"{nome_bacia_export}_PUC_IBGE", geometry)
+        task_puc_embrapa = export_to_drive(puc_embrapa, f"{nome_bacia_export}_PUC_Embrapa", geometry)
+
+        # Adicionar Landforms
+        landforms = ee.Image('CSP/ERGo/1_0/Global/SRTM_landforms').clip(bacia)
+        task_landforms = export_to_drive(landforms, f"{nome_bacia_export}_Landforms", geometry)
+
         return {
             "sentinel_median": sentinel_median,
             "indices": indices,
             "mde": mde,
-            "declividade": declividade,
+            "declividade": declividade_reclass,
             "mapbiomas": mapbiomas,
             "pasture_quality": pasture_quality,
+            "puc_ufv": puc_ufv,
+            "puc_ibge": puc_ibge,
+            "puc_embrapa": puc_embrapa,
+            "landforms": landforms,
             "nome_bacia_export": nome_bacia_export,
         }
     except Exception as e:
@@ -106,9 +198,10 @@ def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
         return None
 
 # Função para exportar para o Google Drive
-def export_to_drive(image, name, geometry, folder="zap"):
+def export_to_drive(image, name, geometry, folder="zap", epsg=None):
     try:
-        # Exporta a imagem para o Drive
+        if epsg:
+            image = image.reproject(crs=f"EPSG:{epsg}", scale=10)
         task = ee.batch.Export.image.toDrive(
             image=image,
             description=name,
@@ -117,7 +210,7 @@ def export_to_drive(image, name, geometry, folder="zap"):
             scale=10,
             region=geometry,
             fileFormat='GeoTIFF',
-            maxPixels=1e13,  # Ajuste conforme necessário
+            maxPixels=1e13,
         )
         task.start()
         st.success(f"Exportação {name} iniciada. Verifique seu Google Drive na pasta '{folder}'.")
@@ -239,5 +332,8 @@ else:
                     
                     if st.session_state.get("tasks"):
                         st.write("Verificando status das tarefas...")
-                        for task in st.session_state["tasks"]:
-                            check_task_status(task)
+                        while True:
+                            for task in st.session_state["tasks"]:
+                                check_task_status(task)
+                            time.sleep(60)  # Verificar a cada 60 segundos
+                            st.rerun()  # Atualizar a interface

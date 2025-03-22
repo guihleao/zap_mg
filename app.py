@@ -66,7 +66,11 @@ def authenticate_google_drive():
         )
 
         # Gera a URL de autorização
-        auth_url, _ = flow.authorization_url(prompt="consent")
+        auth_url, _ = flow.authorization_url(
+            prompt="consent",
+            access_type="offline",
+            redirect_uri=REDIRECT_URI  # Adiciona o redirect_uri
+        )
 
         # Exibe o link de autenticação
         st.write("Clique no link abaixo para autenticar no Google Drive:")

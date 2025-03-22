@@ -196,23 +196,26 @@ def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
         utm_puc_ibge = reprojetarImagem(puc_ibge, epsg, 30).float()
         utm_puc_embrapa = reprojetarImagem(puc_embrapa, epsg, 30).float()
 
-        # Exportar todas as imagens
-        tasks = []
-        tasks.append(exportarImagem(utm_elevation, "06_", "_SRTM_MDE", 30, bacia, nome_bacia_export, "zap"))
-        tasks.append(exportarImagem(utm_declividade, "02_", "_declividade", 30, bacia, nome_bacia_export, "zap"))
-        tasks.append(exportarImagem(utm_ndvi, "06_", f"_NDVImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, nome_bacia_export, "zap"))
-        tasks.append(exportarImagem(utm_gndvi, "06_", f"_GNDVImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, nome_bacia_export, "zap"))
-        tasks.append(exportarImagem(utm_ndwi, "06_", f"_NDWImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, nome_bacia_export, "zap"))
-        tasks.append(exportarImagem(utm_ndmi, "06_", f"_NDMImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, nome_bacia_export, "zap"))
-        tasks.append(exportarImagem(utm_mapbiomas, "06_", "_MapBiomas_col9_2023", 30, bacia, nome_bacia_export, "zap"))
-        tasks.append(exportarImagem(utm_pasture_quality, "06_", "_Pastagem_col9_2023", 30, bacia, nome_bacia_export, "zap"))
-        tasks.append(exportarImagem(utm_sentinel2, "06_", f"_S2_B2B3B4B8_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, nome_bacia_export, "zap"))
-        tasks.append(exportarImagem(utm_puc_ufv, "02_", "_puc_ufv", 30, bacia, nome_bacia_export, "zap"))
-        tasks.append(exportarImagem(utm_puc_ibge, "02_", "_puc_ibge", 30, bacia, nome_bacia_export, "zap"))
-        tasks.append(exportarImagem(utm_puc_embrapa, "02_", "_puc_embrapa", 30, bacia, nome_bacia_export, "zap"))
-        tasks.append(exportarImagem(utm_landforms, "06_", "_landforms", 30, bacia, nome_bacia_export, "zap"))
-
-        return tasks
+        # Retornar as imagens processadas
+        return {
+            "utm_elevation": utm_elevation,
+            "utm_declividade": utm_declividade,
+            "utm_ndvi": utm_ndvi,
+            "utm_gndvi": utm_gndvi,
+            "utm_ndwi": utm_ndwi,
+            "utm_ndmi": utm_ndmi,
+            "utm_sentinel2": utm_sentinel2,
+            "utm_mapbiomas": utm_mapbiomas,
+            "utm_pasture_quality": utm_pasture_quality,
+            "utm_landforms": utm_landforms,
+            "utm_puc_ufv": utm_puc_ufv,
+            "utm_puc_ibge": utm_puc_ibge,
+            "utm_puc_embrapa": utm_puc_embrapa,
+            "nome_bacia_export": nome_bacia_export,
+            "mes_formatado": mes_formatado,
+            "ano_atual": ano_atual,
+            "ano_anterior": ano_anterior,
+        }
     except Exception as e:
         st.error(f"Erro ao processar os dados: {e}")
         return None
@@ -299,9 +302,9 @@ else:
                 
                 if st.button("Processar Dados") and nome_bacia_export:
                     # Processar os dados
-                    tasks = process_data(geometry, crs, nome_bacia_export=nome_bacia_export)
-                    if tasks:
-                        st.session_state["tasks"] = tasks
+                    resultados = process_data(geometry, crs, nome_bacia_export=nome_bacia_export)
+                    if resultados:
+                        st.session_state["resultados"] = resultados
                         st.success("Dados processados com sucesso!")
 
                         # Interface de seleção de produtos
@@ -324,31 +327,31 @@ else:
                         if st.button("Exportar Produtos Selecionados"):
                             tasks_selecionadas = []
                             if exportar_srtm_mde:
-                                tasks_selecionadas.append(exportarImagem(utm_elevation, "06_", "_SRTM_MDE", 30, bacia, "zap"))
+                                tasks_selecionadas.append(exportarImagem(resultados["utm_elevation"], "06_", "_SRTM_MDE", 30, geometry, nome_bacia_export, "zap"))
                             if exportar_declividade:
-                                tasks_selecionadas.append(exportarImagem(utm_declividade, "02_", "_declividade", 30, bacia, "zap"))
+                                tasks_selecionadas.append(exportarImagem(resultados["utm_declividade"], "02_", "_declividade", 30, geometry, nome_bacia_export, "zap"))
                             if exportar_ndvi:
-                                tasks_selecionadas.append(exportarImagem(utm_ndvi, "06_", f"_NDVImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+                                tasks_selecionadas.append(exportarImagem(resultados["utm_ndvi"], "06_", f"_NDVImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
                             if exportar_gndvi:
-                                tasks_selecionadas.append(exportarImagem(utm_gndvi, "06_", f"_GNDVImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+                                tasks_selecionadas.append(exportarImagem(resultados["utm_gndvi"], "06_", f"_GNDVImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
                             if exportar_ndwi:
-                                tasks_selecionadas.append(exportarImagem(utm_ndwi, "06_", f"_NDWImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+                                tasks_selecionadas.append(exportarImagem(resultados["utm_ndwi"], "06_", f"_NDWImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
                             if exportar_ndmi:
-                                tasks_selecionadas.append(exportarImagem(utm_ndmi, "06_", f"_NDMImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+                                tasks_selecionadas.append(exportarImagem(resultados["utm_ndmi"], "06_", f"_NDMImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
                             if exportar_mapbiomas:
-                                tasks_selecionadas.append(exportarImagem(utm_mapbiomas, "06_", "_MapBiomas_col9_2023", 30, bacia, "zap"))
+                                tasks_selecionadas.append(exportarImagem(resultados["utm_mapbiomas"], "06_", "_MapBiomas_col9_2023", 30, geometry, nome_bacia_export, "zap"))
                             if exportar_pasture_quality:
-                                tasks_selecionadas.append(exportarImagem(utm_pasture_quality, "06_", "_Pastagem_col9_2023", 30, bacia, "zap"))
+                                tasks_selecionadas.append(exportarImagem(resultados["utm_pasture_quality"], "06_", "_Pastagem_col9_2023", 30, geometry, nome_bacia_export, "zap"))
                             if exportar_sentinel_composite:
-                                tasks_selecionadas.append(exportarImagem(utm_sentinel2, "06_", f"_S2_B2B3B4B8_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+                                tasks_selecionadas.append(exportarImagem(resultados["utm_sentinel2"], "06_", f"_S2_B2B3B4B8_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
                             if exportar_puc_ufv:
-                                tasks_selecionadas.append(exportarImagem(utm_puc_ufv, "02_", "_puc_ufv", 30, bacia, "zap"))
+                                tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ufv"], "02_", "_puc_ufv", 30, geometry, nome_bacia_export, "zap"))
                             if exportar_puc_ibge:
-                                tasks_selecionadas.append(exportarImagem(utm_puc_ibge, "02_", "_puc_ibge", 30, bacia, "zap"))
+                                tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ibge"], "02_", "_puc_ibge", 30, geometry, nome_bacia_export, "zap"))
                             if exportar_puc_embrapa:
-                                tasks_selecionadas.append(exportarImagem(utm_puc_embrapa, "02_", "_puc_embrapa", 30, bacia, "zap"))
+                                tasks_selecionadas.append(exportarImagem(resultados["utm_puc_embrapa"], "02_", "_puc_embrapa", 30, geometry, nome_bacia_export, "zap"))
                             if exportar_landforms:
-                                tasks_selecionadas.append(exportarImagem(utm_landforms, "06_", "_landforms", 30, bacia, "zap"))
+                                tasks_selecionadas.append(exportarImagem(resultados["utm_landforms"], "06_", "_landforms", 30, geometry, nome_bacia_export, "zap"))
 
                             if tasks_selecionadas:
                                 st.session_state["tasks"] = tasks_selecionadas

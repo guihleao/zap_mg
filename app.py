@@ -4,8 +4,6 @@ import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import io
-from googleapiclient.http import MediaIoBaseUpload
-import streamlit.components.v1 as components  # Importa o Streamlit Components
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -43,7 +41,7 @@ def initialize_ee():
 # Configuração do OAuth2
 CLIENT_ID = st.secrets["google_oauth"]["client_id"]
 CLIENT_SECRET = st.secrets["google_oauth"]["client_secret"]
-REDIRECT_URI = "https://zap-mg.streamlit.app/"  # URI de redirecionamento
+REDIRECT_URI = st.secrets["google_oauth"]["redirect_uris"]  # URI de redirecionamento
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 # Função para gerar o link de autenticação
@@ -70,15 +68,11 @@ def exchange_code_for_token(auth_code):
             "redirect_uri": REDIRECT_URI,
             "grant_type": "authorization_code",
         }
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
-        response = requests.post(token_url, data=data, headers=headers)
-        response.raise_for_status()  # Lança uma exceção se a requisição falhar
+        response = requests.post(token_url, data=data)
+        response.raise_for_status()
         return response.json()
-    except requests.exceptions.HTTPError as e:
+    except Exception as e:
         st.error(f"Erro ao trocar código por token: {e}")
-        st.error(f"Resposta do servidor: {response.text}")  # Exibe a resposta do servidor para depuração
         return None
 
 # Função para salvar um arquivo .txt no Google Drive
@@ -107,13 +101,7 @@ def save_txt_to_drive():
             "name": "teste.txt",  # Nome do arquivo
             "mimeType": "text/plain",  # Tipo do arquivo
         }
-
-        # Cria o objeto MediaIoBaseUpload para o conteúdo do arquivo
-        media_body = MediaIoBaseUpload(
-            io.BytesIO(b"OKAY"),  # Conteúdo do arquivo
-            mimetype="text/plain",  # Tipo MIME do arquivo
-            resumable=True,  # Permite uploads grandes
-        )
+        media_body = io.BytesIO(b"OKAY")  # Conteúdo do arquivo
 
         # Envia o arquivo para o Google Drive
         file = drive_service.files().create(
@@ -135,20 +123,11 @@ if st.session_state["ee_initialized"]:
     if not st.session_state["drive_authenticated"]:
         # Gera o link de autenticação
         auth_url = generate_auth_url()
-
-        # Exibe o botão para abrir a janela pop-up
-        st.write("Clique no botão abaixo para autenticar no Google Drive:")
-        components.html(
-            f"""
-            <button onclick="window.open('{auth_url}', 'authWindow', 'width=500,height=600');">
-                Autenticar no Google Drive
-            </button>
-            """,
-            height=50,
-        )
+        st.write("Clique no link abaixo para autenticar no Google Drive:")
+        st.markdown(f"[Autenticar no Google Drive]({auth_url})")
 
         # Captura o código de autorização da URL de redirecionamento
-        query_params = st.query_params
+        query_params = st.experimental_get_query_params()
         if "code" in query_params:
             auth_code = query_params["code"][0]
             token = exchange_code_for_token(auth_code)
@@ -169,19 +148,3 @@ if st.session_state["ee_initialized"]:
         # Botão para testar a escrita no Google Drive
         if st.button("Salvar arquivo de teste no Google Drive"):
             save_txt_to_drive()
-
-# Adiciona JavaScript para fechar a janela pop-up e atualizar a janela principal
-components.html(
-    """
-    <script>
-        // Verifica se a URL contém o código de autorização
-        if (window.location.href.includes("code=")) {
-            // Fecha a janela pop-up
-            window.close();
-            // Atualiza a janela principal
-            window.opener.location.reload();
-        }
-    </script>
-    """,
-    height=0,
-)

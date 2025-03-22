@@ -173,18 +173,16 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
 
         # Calcular a declividade em porcentagem
         declividade_graus = ee.Terrain.slope(elevation)
-        declividade_reclass = declividade_graus.divide(180).multiply(3.14159).tan().multiply(100)
-        #declividade = declividade.unmask(0)
-        #declividade_mascara = declividade.updateMask(declividade.gte(0))
-        #declividade_reclass = declividade_mascara.expression(
-        #    "b(0) == 0 ? 1 : " +  # Inclui declividade = 0 no valor 1
-        #    "b(0) <= 3 ? 1 : " + 
-        #    "(b(0) > 3 && b(0) <= 8) ? 2 : " + 
-        #    "(b(0) > 8 && b(0) <= 20) ? 3 : " + 
-        #    "(b(0) > 20 && b(0) <= 45) ? 4 : " + 
-        #    "(b(0) > 45 && b(0) <= 75) ? 5 : " + 
-        #    "(b(0) > 75) ? 6 : -1"
-        #).updateMask(declividade_mascara)
+        declividade = declividade_graus.divide(180).multiply(3.14159).tan().multiply(100)
+        declividade_reclass = declividade.expression(
+            "b(0) == 0 ? 1 : " +  # Inclui declividade = 0 no valor 1
+            "b(0) <= 3 ? 1 : " + 
+            "(b(0) > 3 && b(0) <= 8) ? 2 : " + 
+            "(b(0) > 8 && b(0) <= 20) ? 3 : " + 
+            "(b(0) > 20 && b(0) <= 45) ? 4 : " + 
+            "(b(0) > 45 && b(0) <= 75) ? 5 : " + 
+            "(b(0) > 75) ? 6 : -1"
+        )
 
         # Carregar MapBiomas 2023
         mapbiomas = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_integration_v1") \

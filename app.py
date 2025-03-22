@@ -14,7 +14,7 @@ import folium
 from streamlit_folium import st_folium
 import json
 from streamlit_oauth import OAuth2Component
-import datetime
+import datetime  # Para manipulação de datas
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -197,20 +197,20 @@ def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
         return None
 
 # Função para exportar para o Google Drive
-def export_to_drive(image, name, geometry, folder_id=None):
+def export_to_drive(image, name, geometry, folder="zap"):
     try:
         # Exporta a imagem para o Google Drive
         task = ee.batch.Export.image.toDrive(
             image=image,
             description=name,
-            folder=folder_id,  # ID da pasta no Google Drive (opcional)
+            folder=folder,  # Pasta no Google Drive
             fileNamePrefix=name,
             scale=10,
             region=geometry,
             fileFormat='GeoTIFF',
         )
         task.start()
-        st.success(f"Exportação {name} iniciada. Verifique seu Google Drive.")
+        st.success(f"Exportação {name} iniciada. Verifique seu Google Drive na pasta '{folder}'.")
         return task
     except Exception as e:
         st.error(f"Erro ao exportar {name} para o Google Drive: {e}")
@@ -245,8 +245,17 @@ if st.session_state["ee_initialized"]:
                 if st.button("Processar Dados") and nome_bacia_export:
                     resultados = process_data(geometry, crs, nome_bacia_export=nome_bacia_export)
                     if resultados:
+                        st.session_state["resultados"] = resultados
                         st.write("Índices processados:")
-                        for key, image in resultados["indices"].items():
+                        for key in resultados["indices"]:
                             st.write(f"- {key}")
-                            if st.button(f"Exportar {key} para o Google Drive"):
+
+                        # Botão para exportar tudo de uma vez
+                        if st.button("Exportar Tudo para o Google Drive"):
+                            for key, image in resultados["indices"].items():
                                 export_to_drive(image, f"{nome_bacia_export}_{key}", geometry)
+                            export_to_drive(resultados["mde"], f"{nome_bacia_export}_MDE", geometry)
+                            export_to_drive(resultados["declividade"], f"{nome_bacia_export}_Declividade", geometry)
+                            export_to_drive(resultados["mapbiomas"], f"{nome_bacia_export}_MapBiomas", geometry)
+                            export_to_drive(resultados["pasture_quality"], f"{nome_bacia_export}_QualidadePastagem", geometry)
+                            st.success("Todos os dados foram enviados para exportação. Verifique seu Google Drive na pasta 'zap'.")

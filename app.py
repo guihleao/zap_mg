@@ -140,7 +140,7 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
                         'id': ee.Image(img).id(),
                         'date': ee.Image(img).date().format('YYYY-MM-dd'),
                         'cloud_cover': ee.Image(img).get('CLOUDY_PIXEL_PERCENTAGE')
-                    }))
+                    })))
 
                     # Exportar a lista de imagens para um arquivo CSV
                     export_task = ee.batch.Export.table.toDrive(

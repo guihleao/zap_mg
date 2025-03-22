@@ -145,7 +145,7 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
                     # Exportar a lista de imagens para um arquivo CSV
                     export_task = ee.batch.Export.table.toDrive(
                         collection=features,
-                        folder='export_zap',
+                        folder='zap',
                         description='lista_imagens_sentinel-2',
                         fileFormat='CSV'
                     )
@@ -174,8 +174,8 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
         # Calcular a declividade em porcentagem
         declividade_graus = ee.Terrain.slope(elevation)
         declividade = declividade_graus.divide(180).multiply(3.14159).tan().multiply(100)
-        declividade = declividade.unmask(0)  # Substitui NaN por 0
-        declividade_mascara = declividade.updateMask(declividade)
+        declividade = declividade.unmask(0)
+        declividade_mascara = declividade.updateMask(declividade.gte(0))
         declividade_reclass = declividade_mascara.expression(
             "b(0) == 0 ? 1 : " +  # Inclui declividade = 0 no valor 1
             "b(0) <= 3 ? 1 : " + 
@@ -376,7 +376,7 @@ else:
                             
                             if resultados:
                                 st.session_state["resultados"] = resultados
-                                st.success("Dados processados com sucesso!")
+                                st.success("Dados processados com sucesso, iniciando exportação de dados para Google Drive!")
 
                                 # Exportar automaticamente os produtos selecionados
                                 tasks_selecionadas = []
@@ -415,7 +415,7 @@ else:
                                 
                                 # Verificar status das tarefas
                                 if st.session_state.get("tasks"):
-                                    st.write("Verificando status das tarefas...")
+                                    st.write("Verificando status das tarefas... Por favor aguarde, dependendo do tamanho da bacia, pode levar até 20 minutos. Caso deseje, você pode sair dessa página, as tarefas estão sendo processadas na nuvem pela Earth Engine.")
                                     
                                     # Criar um espaço reservado (placeholder) para exibir o status
                                     status_placeholder = st.empty()

@@ -44,14 +44,26 @@ if not st.session_state["ee_initialized"]:
 # Função para carregar o GeoPackage e visualizar a geometria
 def load_geopackage(file_path):
     try:
+        # Carrega o GeoPackage
         gdf = gpd.read_file(file_path)
-        geometry = ee.Geometry(gdf.geometry.iloc[0].__geo_interface__)
         
-        # Visualizar a geometria no mapa
+        # Corrige geometrias inválidas (se necessário)
+        gdf['geometry'] = gdf['geometry'].buffer(0)
+        
+        # Reprojeta para WGS84 (lat/lon) se necessário
+        if gdf.crs != 'EPSG:4326':
+            gdf = gdf.to_crs(epsg=4326)
+        
+        # Extrai as coordenadas de latitude e longitude da geometria
+        gdf['latitude'] = gdf.geometry.centroid.y
+        gdf['longitude'] = gdf.geometry.centroid.x
+        
+        # Visualiza a geometria no mapa
         st.write("Visualização da geometria carregada:")
-        map_center = geometry.centroid().getInfo()['coordinates'][::-1]  # Inverte lat/lon para lon/lat
-        st.map(gdf, zoom=10)  # Exibe o mapa com a geometria
-        return geometry
+        st.map(gdf[['latitude', 'longitude']])  # Usa as colunas de latitude e longitude
+        
+        # Retorna a geometria para o Earth Engine
+        return ee.Geometry(gdf.geometry.iloc[0].__geo_interface__)
     except Exception as e:
         st.error(f"Erro ao carregar o GeoPackage: {e}")
         return None

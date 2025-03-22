@@ -11,10 +11,6 @@ from googleapiclient.discovery import build
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
 
-# Configuração da conta de serviço do Earth Engine
-SERVICE_ACCOUNT_KEY = st.secrets["google"]  # Acessa as credenciais do GCS
-PROJECT_ID = "ee-zapmg"  # Substitua pelo ID do seu projeto do Google Cloud
-
 # Inicializar session_state
 if "ee_initialized" not in st.session_state:
     st.session_state["ee_initialized"] = False
@@ -27,25 +23,14 @@ if "export_started" not in st.session_state:
 if "tasks" not in st.session_state:
     st.session_state["tasks"] = []
 
-# Função para inicializar o Earth Engine
-def initialize_ee():
-    try:
-        private_key = SERVICE_ACCOUNT_KEY["private_key"]
-        credentials = ee.ServiceAccountCredentials(
-            SERVICE_ACCOUNT_KEY["client_email"],
-            key_data=private_key,
-        )
-        ee.Initialize(credentials=credentials, project=PROJECT_ID)
-        st.session_state["ee_initialized"] = True
-        st.success("Earth Engine inicializado com sucesso!")
-    except Exception as e:
-        st.error(f"Erro ao inicializar o Earth Engine: {e}")
-
 # Configuração do OAuth2
 CLIENT_ID = st.secrets["google_oauth"]["client_id"]
 CLIENT_SECRET = st.secrets["google_oauth"]["client_secret"]
 REDIRECT_URI = st.secrets["google_oauth"]["redirect_uris"]
-SCOPES = ["https://www.googleapis.com/auth/drive"]
+SCOPES = [
+    "https://www.googleapis.com/auth/earthengine",  # Acesso ao Earth Engine
+    "https://www.googleapis.com/auth/drive",        # Acesso ao Google Drive
+]
 
 # Função para gerar o link de autenticação
 def generate_auth_url():
@@ -77,6 +62,26 @@ def exchange_code_for_token(auth_code):
     except Exception as e:
         st.error(f"Erro ao trocar código por token: {e}")
         return None
+
+# Função para inicializar o Earth Engine com o token do usuário
+def initialize_ee_with_user_token():
+    try:
+        # Verifica se o token de acesso está disponível
+        if "creds" not in st.session_state:
+            st.error("Erro: Token de acesso não encontrado. Faça a autenticação no Google Drive.")
+            return False
+
+        # Extrai o token de acesso
+        access_token = st.session_state["creds"]["token"]
+
+        # Inicializa o Earth Engine com o token do usuário
+        ee.Initialize(credentials=access_token)
+        st.session_state["ee_initialized"] = True
+        st.success("Earth Engine inicializado com sucesso!")
+        return True
+    except Exception as e:
+        st.error(f"Erro ao inicializar o Earth Engine: {e}")
+        return False
 
 # Função para carregar o GeoJSON e visualizar o polígono
 def load_geojson(file):
@@ -154,16 +159,6 @@ def export_to_drive(image, name, geometry, folder="zap"):
             st.error("Erro: Credenciais de autenticação não encontradas.")
             return None
 
-        # Cria as credenciais a partir do token armazenado
-        creds = Credentials(
-            token=st.session_state["creds"]["token"],
-            refresh_token=st.session_state["creds"]["refresh_token"],
-            token_uri="https://oauth2.googleapis.com/token",
-            client_id=CLIENT_ID,
-            client_secret=CLIENT_SECRET,
-            scopes=SCOPES,
-        )
-
         # Exporta a imagem para o Drive
         task = ee.batch.Export.image.toDrive(
             image=image,
@@ -173,6 +168,7 @@ def export_to_drive(image, name, geometry, folder="zap"):
             scale=10,
             region=geometry,
             fileFormat='GeoTIFF',
+            maxPixels=1e13,  # Ajuste conforme necessário
         )
         task.start()
         st.success(f"Exportação {name} iniciada. Verifique seu Google Drive na pasta '{folder}'.")
@@ -198,79 +194,76 @@ def check_task_status(task):
     except Exception as e:
         st.error(f"Erro ao verificar o status da tarefa: {e}")
         return None
-        
-# Inicializa o Earth Engine
-if not st.session_state["ee_initialized"]:
-    initialize_ee()
 
 # Interface de upload e processamento
-if st.session_state["ee_initialized"]:
-    if not st.session_state["drive_authenticated"]:
-        # Gera o link de autenticação
-        auth_url = generate_auth_url()
-        st.write("Clique no link abaixo para autenticar no Google Drive:")
-        st.markdown(f"[Autenticar no Google Drive]({auth_url})")
+if not st.session_state.get("ee_initialized"):
+    st.write("Para começar, faça login no Google Drive e Earth Engine:")
+    auth_url = generate_auth_url()
+    st.markdown(f"[Autenticar no Google Drive e Earth Engine]({auth_url})")
 
-        # Captura o código de autorização da URL de redirecionamento
-        query_params = st.experimental_get_query_params()
-        if "code" in query_params:
-            auth_code = query_params["code"][0]
-            token = exchange_code_for_token(auth_code)
-            if token:
-                # Armazena as credenciais na sessão
-                st.session_state["creds"] = {
-                    "token": token["access_token"],
-                    "refresh_token": token.get("refresh_token"),
-                    "token_uri": "https://oauth2.googleapis.com/token",
-                    "client_id": CLIENT_ID,
-                    "client_secret": CLIENT_SECRET,
-                    "scopes": SCOPES,
-                }
-                st.session_state["drive_authenticated"] = True
-                st.success("Autenticação no Google Drive realizada com sucesso!")
+    # Captura o código de autorização da URL de redirecionamento
+    query_params = st.experimental_get_query_params()
+    if "code" in query_params:
+        auth_code = query_params["code"][0]
+        token = exchange_code_for_token(auth_code)
+        if token:
+            # Armazena as credenciais na sessão
+            st.session_state["creds"] = {
+                "token": token["access_token"],
+                "refresh_token": token.get("refresh_token"),
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "client_id": CLIENT_ID,
+                "client_secret": CLIENT_SECRET,
+                "scopes": SCOPES,
+            }
+            st.session_state["drive_authenticated"] = True
+            st.success("Autenticação no Google Drive e Earth Engine realizada com sucesso!")
+
+            # Inicializa o Earth Engine com o token do usuário
+            initialize_ee_with_user_token()
+
+if st.session_state.get("ee_initialized"):
+    uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])
     
-    if st.session_state["drive_authenticated"]:
-        uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])
-        
-        if uploaded_file is not None:
-            geometry, crs = load_geojson(uploaded_file)
-            if geometry:
-                st.write(f"CRS do arquivo GeoJSON: {crs}")
-                nome_bacia_export = st.text_input("Digite o nome para exportação (sem espaços ou caracteres especiais):")
+    if uploaded_file is not None:
+        geometry, crs = load_geojson(uploaded_file)
+        if geometry:
+            st.write(f"CRS do arquivo GeoJSON: {crs}")
+            nome_bacia_export = st.text_input("Digite o nome para exportação (sem espaços ou caracteres especiais):")
+            
+            if st.button("Processar Dados") and nome_bacia_export:
+                resultados = process_data(geometry, crs, nome_bacia_export=nome_bacia_export)
+                if resultados:
+                    st.session_state["resultados"] = resultados
+                    st.write("Índices processados:")
+                    for key in resultados["indices"]:
+                        st.write(f"- {key}")
+            
+            if st.session_state.get("resultados"):
+                if st.button("Exportar Tudo para o Google Drive"):
+                    st.session_state["export_started"] = True
+                    resultados = st.session_state["resultados"]
+                    tasks = []
+                    for key, image in resultados["indices"].items():
+                        task = export_to_drive(image, f"{resultados['nome_bacia_export']}_{key}", geometry)
+                        if task:
+                            tasks.append(task)
+                    task = export_to_drive(resultados["mde"], f"{resultados['nome_bacia_export']}_MDE", geometry)
+                    if task:
+                        tasks.append(task)
+                    task = export_to_drive(resultados["declividade"], f"{resultados['nome_bacia_export']}_Declividade", geometry)
+                    if task:
+                        tasks.append(task)
+                    task = export_to_drive(resultados["mapbiomas"], f"{resultados['nome_bacia_export']}_MapBiomas", geometry)
+                    if task:
+                        tasks.append(task)
+                    task = export_to_drive(resultados["pasture_quality"], f"{resultados['nome_bacia_export']}_QualidadePastagem", geometry)
+                    if task:
+                        tasks.append(task)
+                    st.session_state["tasks"] = tasks
+                    st.success("Todas as tarefas de exportação foram iniciadas.")
                 
-                if st.button("Processar Dados") and nome_bacia_export:
-                    resultados = process_data(geometry, crs, nome_bacia_export=nome_bacia_export)
-                    if resultados:
-                        st.session_state["resultados"] = resultados
-                        st.write("Índices processados:")
-                        for key in resultados["indices"]:
-                            st.write(f"- {key}")
-                
-                if st.session_state.get("resultados"):
-                    if st.button("Exportar Tudo para o Google Drive"):
-                        st.session_state["export_started"] = True
-                        resultados = st.session_state["resultados"]
-                        tasks = []
-                        for key, image in resultados["indices"].items():
-                            task = export_to_drive(image, f"{resultados['nome_bacia_export']}_{key}", geometry)
-                            if task:
-                                tasks.append(task)
-                        task = export_to_drive(resultados["mde"], f"{resultados['nome_bacia_export']}_MDE", geometry)
-                        if task:
-                            tasks.append(task)
-                        task = export_to_drive(resultados["declividade"], f"{resultados['nome_bacia_export']}_Declividade", geometry)
-                        if task:
-                            tasks.append(task)
-                        task = export_to_drive(resultados["mapbiomas"], f"{resultados['nome_bacia_export']}_MapBiomas", geometry)
-                        if task:
-                            tasks.append(task)
-                        task = export_to_drive(resultados["pasture_quality"], f"{resultados['nome_bacia_export']}_QualidadePastagem", geometry)
-                        if task:
-                            tasks.append(task)
-                        st.session_state["tasks"] = tasks
-                        st.success("Todas as tarefas de exportação foram iniciadas.")
-                    
-                    if st.session_state.get("tasks"):
-                        st.write("Verificando status das tarefas...")
-                        for task in st.session_state["tasks"]:
-                            check_task_status(task)
+                if st.session_state.get("tasks"):
+                    st.write("Verificando status das tarefas...")
+                    for task in st.session_state["tasks"]:
+                        check_task_status(task)

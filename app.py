@@ -97,6 +97,7 @@ def authenticate_google_drive():
             st.success("Autenticação no Google Drive realizada com sucesso!")
     except Exception as e:
         st.error(f"Erro ao autenticar no Google Drive: {e}")
+        
 
 # Função para salvar um arquivo .txt no Google Drive
 def save_txt_to_drive():

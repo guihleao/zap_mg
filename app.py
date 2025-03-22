@@ -45,7 +45,7 @@ def initialize_ee():
 # Configuração do OAuth2
 CLIENT_ID = st.secrets["google_oauth"]["client_id"]
 CLIENT_SECRET = st.secrets["google_oauth"]["client_secret"]
-REDIRECT_URI = st.secrets["google_oauth"]["redirect_uris"]
+REDIRECT_URI = st.secrets["google_oauth"]["redirect_uris"]  # URI de redirecionamento
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 # Função para autenticar no Google Drive
@@ -59,7 +59,7 @@ def authenticate_google_drive():
                     "client_secret": CLIENT_SECRET,
                     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                     "token_uri": "https://oauth2.googleapis.com/token",
-                    "redirect_uris": [REDIRECT_URI],
+                    "redirect_uris": [REDIRECT_URI],  # Certifique-se de que está correto
                 }
             },
             scopes=SCOPES,
@@ -77,7 +77,7 @@ def authenticate_google_drive():
 
         if auth_code:
             # Troca o código de autorização por um token de acesso
-            flow.fetch_token(code=auth_code)
+            flow.fetch_token(code=auth_code, redirect_uri=REDIRECT_URI)  # Passa o redirect_uri
             creds = flow.credentials
 
             # Armazena as credenciais na sessão

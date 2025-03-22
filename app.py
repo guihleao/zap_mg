@@ -103,7 +103,17 @@ def save_txt_to_drive():
     except Exception as e:
         st.error(f"Erro ao salvar o arquivo no Google Drive: {e}")
 
-# Botão para testar a escrita no Google Drive
-if st.session_state.get("drive_authenticated"):
-    if st.button("Salvar arquivo de teste no Google Drive"):
-        save_txt_to_drive()
+# Inicializa o Earth Engine
+if not st.session_state["ee_initialized"]:
+    initialize_ee()
+
+# Interface de upload e processamento
+if st.session_state["ee_initialized"]:
+    if not st.session_state["drive_authenticated"]:
+        st.write("Para exportar arquivos, faça login no Google Drive:")
+        authenticate_google_drive()
+    
+    if st.session_state["drive_authenticated"]:
+        # Botão para testar a escrita no Google Drive
+        if st.button("Salvar arquivo de teste no Google Drive"):
+            save_txt_to_drive()

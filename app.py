@@ -3,6 +3,7 @@ import streamlit as st
 import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload  # Importe esta classe
 import io
 
 # Título do aplicativo
@@ -101,7 +102,7 @@ def save_txt_to_drive():
             "name": "teste.txt",  # Nome do arquivo
             "mimeType": "text/plain",  # Tipo do arquivo
         }
-        media_body = io.BytesIO(b"OKAY")  # Conteúdo do arquivo
+        media_body = MediaIoBaseUpload(io.BytesIO(b"OKAY"), mimetype="text/plain")  # Corrigido aqui
 
         # Envia o arquivo para o Google Drive
         file = drive_service.files().create(

@@ -176,6 +176,7 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
         declividade = declividade_graus.divide(180).multiply(3.14159).tan().multiply(100)
         declividade_mascara = declividade.updateMask(declividade)
         declividade_reclass = declividade_mascara.expression(
+            "b(0) == 0 ? 1 : " +  # Inclui declividade = 0 no valor 1
             "b(0) <= 3 ? 1 : " + 
             "(b(0) > 3 && b(0) <= 8) ? 2 : " + 
             "(b(0) > 8 && b(0) <= 20) ? 3 : " + 

@@ -41,11 +41,17 @@ def initialize_ee():
 if not st.session_state["ee_initialized"]:
     initialize_ee()
 
-# Função para carregar o GeoPackage
+# Função para carregar o GeoPackage e visualizar a geometria
 def load_geopackage(file_path):
     try:
         gdf = gpd.read_file(file_path)
-        return ee.Geometry(gdf.geometry.iloc[0].__geo_interface__)
+        geometry = ee.Geometry(gdf.geometry.iloc[0].__geo_interface__)
+        
+        # Visualizar a geometria no mapa
+        st.write("Visualização da geometria carregada:")
+        map_center = geometry.centroid().getInfo()['coordinates'][::-1]  # Inverte lat/lon para lon/lat
+        st.map(gdf, zoom=10)  # Exibe o mapa com a geometria
+        return geometry
     except Exception as e:
         st.error(f"Erro ao carregar o GeoPackage: {e}")
         return None

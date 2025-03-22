@@ -4,7 +4,6 @@ import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import io
-from googleapiclient.http import MediaIoBaseUpload
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -42,7 +41,7 @@ def initialize_ee():
 # Configuração do OAuth2
 CLIENT_ID = st.secrets["google_oauth"]["client_id"]
 CLIENT_SECRET = st.secrets["google_oauth"]["client_secret"]
-REDIRECT_URI = st.secrets["google_oauth"]["redirect_uris"]  # URI de redirecionamento
+REDIRECT_URI = "https://zap-mg.streamlit.app/"  # URI de redirecionamento
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 # Função para gerar o link de autenticação
@@ -134,11 +133,20 @@ if st.session_state["ee_initialized"]:
     if not st.session_state["drive_authenticated"]:
         # Gera o link de autenticação
         auth_url = generate_auth_url()
-        st.write("Clique no link abaixo para autenticar no Google Drive:")
-        st.markdown(f"[Autenticar no Google Drive]({auth_url})")
+
+        # Exibe o link de autenticação em uma janela pop-up
+        st.write("Clique no botão abaixo para autenticar no Google Drive:")
+        st.markdown(
+            f"""
+            <button onclick="window.open('{auth_url}', 'authWindow', 'width=500,height=600');">
+                Autenticar no Google Drive
+            </button>
+            """,
+            unsafe_allow_html=True,
+        )
 
         # Captura o código de autorização da URL de redirecionamento
-        query_params = st.query_params  # Usa st.query_params em vez de st.experimental_get_query_params
+        query_params = st.query_params
         if "code" in query_params:
             auth_code = query_params["code"][0]
             token = exchange_code_for_token(auth_code)

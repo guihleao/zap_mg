@@ -22,6 +22,8 @@ if "drive_authenticated" not in st.session_state:
     st.session_state["drive_authenticated"] = False
 if "export_started" not in st.session_state:
     st.session_state["export_started"] = False
+if "tasks" not in st.session_state:
+    st.session_state["tasks"] = []
 
 # Função para inicializar o Earth Engine
 def initialize_ee():
@@ -153,6 +155,24 @@ def export_to_drive(image, name, geometry, folder="zap"):
         st.error(f"Erro ao exportar {name} para o Google Drive: {e}")
         return None
 
+# Função para verificar o status das tarefas
+def check_task_status(task):
+    try:
+        status = task.status()
+        state = status["state"]
+        if state == "COMPLETED":
+            st.success(f"Tarefa {task.id} concluída com sucesso!")
+        elif state == "RUNNING":
+            st.warning(f"Tarefa {task.id} ainda está em execução.")
+        elif state == "FAILED":
+            st.error(f"Tarefa {task.id} falhou. Motivo: {status['error_message']}")
+        else:
+            st.info(f"Status da tarefa {task.id}: {state}")
+        return state
+    except Exception as e:
+        st.error(f"Erro ao verificar o status da tarefa: {e}")
+        return None
+
 # Inicializa o Earth Engine
 if not st.session_state["ee_initialized"]:
     initialize_ee()
@@ -184,10 +204,27 @@ if st.session_state["ee_initialized"]:
                     if st.button("Exportar Tudo para o Google Drive"):
                         st.session_state["export_started"] = True
                         resultados = st.session_state["resultados"]
+                        tasks = []
                         for key, image in resultados["indices"].items():
-                            export_to_drive(image, f"{resultados['nome_bacia_export']}_{key}", geometry)
-                        export_to_drive(resultados["mde"], f"{resultados['nome_bacia_export']}_MDE", geometry)
-                        export_to_drive(resultados["declividade"], f"{resultados['nome_bacia_export']}_Declividade", geometry)
-                        export_to_drive(resultados["mapbiomas"], f"{resultados['nome_bacia_export']}_MapBiomas", geometry)
-                        export_to_drive(resultados["pasture_quality"], f"{resultados['nome_bacia_export']}_QualidadePastagem", geometry)
-                        st.success("Todos os dados foram enviados para exportação. Verifique seu Google Drive na pasta 'zap'.")
+                            task = export_to_drive(image, f"{resultados['nome_bacia_export']}_{key}", geometry)
+                            if task:
+                                tasks.append(task)
+                        task = export_to_drive(resultados["mde"], f"{resultados['nome_bacia_export']}_MDE", geometry)
+                        if task:
+                            tasks.append(task)
+                        task = export_to_drive(resultados["declividade"], f"{resultados['nome_bacia_export']}_Declividade", geometry)
+                        if task:
+                            tasks.append(task)
+                        task = export_to_drive(resultados["mapbiomas"], f"{resultados['nome_bacia_export']}_MapBiomas", geometry)
+                        if task:
+                            tasks.append(task)
+                        task = export_to_drive(resultados["pasture_quality"], f"{resultados['nome_bacia_export']}_QualidadePastagem", geometry)
+                        if task:
+                            tasks.append(task)
+                        st.session_state["tasks"] = tasks
+                        st.success("Todas as tarefas de exportação foram iniciadas.")
+                    
+                    if st.session_state.get("tasks"):
+                        st.write("Verificando status das tarefas...")
+                        for task in st.session_state["tasks"]:
+                            check_task_status(task)

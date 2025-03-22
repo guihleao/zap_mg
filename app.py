@@ -49,9 +49,14 @@ def load_geojson(file):
         # Carrega o GeoJSON
         gdf = gpd.read_file(file)
         
-        # Verifica se a geometria é um polígono
-        if not all(gdf.geometry.geom_type == 'Polygon'):
-            st.error("O arquivo deve conter apenas polígonos.")
+        # Verifica se o GeoJSON contém geometrias
+        if gdf.geometry.is_empty.any():
+            st.error("O arquivo GeoJSON contém geometrias vazias.")
+            return None
+        
+        # Verifica se as geometrias são polígonos ou multipolígonos
+        if not all(gdf.geometry.geom_type.isin(['Polygon', 'MultiPolygon'])):
+            st.error("O arquivo deve conter apenas polígonos ou multipolígonos.")
             return None
         
         # Corrige geometrias inválidas (se necessário)

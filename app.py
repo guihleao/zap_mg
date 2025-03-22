@@ -7,6 +7,7 @@ from streamlit_folium import st_folium
 import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from streamlit_oauth2_component import OAuth2Component  # Importe a biblioteca
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -35,18 +36,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/cloud-platform",  # Acesso ao Google Cloud
 ]
 
-# Função para gerar o link de autenticação
-def generate_auth_url():
-    auth_url = (
-        f"https://accounts.google.com/o/oauth2/auth?"
-        f"response_type=code&"
-        f"client_id={CLIENT_ID}&"
-        f"scope={'+'.join(SCOPES)}&"
-        f"redirect_uri={REDIRECT_URI}&"
-        f"access_type=offline&"
-        f"prompt=consent"
-    )
-    return auth_url
+# Inicializa o componente OAuth2
+oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL="https://accounts.google.com/o/oauth2/auth", TOKEN_URL="https://oauth2.googleapis.com/token")
 
 # Função para trocar o código de autorização por um token de acesso
 def exchange_code_for_token(auth_code):
@@ -226,42 +217,43 @@ def check_task_status(task):
 # Interface de upload e processamento
 if not st.session_state.get("ee_initialized"):
     st.write("Para começar, faça login no Google Drive e Earth Engine:")
-    auth_url = generate_auth_url()
-    st.markdown(f"[Autenticar no Google Drive e Earth Engine]({auth_url})")
 
-    # Captura o código de autorização da URL de redirecionamento
-    query_params = st.query_params.get_all()
-    if "code" in query_params:
-        auth_code = query_params["code"][0]
-        token = exchange_code_for_token(auth_code)
-        if token:
-            # Armazena as credenciais na sessão
-            st.session_state["creds"] = {
-                "token": token["access_token"],
-                "refresh_token": token.get("refresh_token"),
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "client_id": CLIENT_ID,
-                "client_secret": CLIENT_SECRET,
-                "scopes": SCOPES,
-            }
-            st.session_state["drive_authenticated"] = True
-            st.success("Autenticação no Google Drive e Earth Engine realizada com sucesso!")
+    # Botão de login integrado
+    result = oauth2.authorize_button(
+        "Autenticar no Google Drive e Earth Engine",
+        redirect_uri=REDIRECT_URI,
+        scope=SCOPES,
+    )
 
-            # Lista os projetos disponíveis
-            projects = list_google_cloud_projects()
-            if projects:
-                selected_project = st.selectbox("Escolha um projeto:", projects)
-                if st.button("Usar este projeto"):
-                    if initialize_ee_with_project(selected_project):
-                        st.session_state["selected_project"] = selected_project
-            else:
-                st.error("""
-                    Nenhum projeto encontrado no Google Cloud. 
-                    Para usar o Earth Engine, você precisa criar um projeto no Google Cloud Platform:
-                    1. Acesse o [Google Cloud Console](https://console.cloud.google.com/).
-                    2. Crie um novo projeto.
-                    3. Volte aqui e recarregue a página.
-                """)
+    # Após o login
+    if result:
+        token = result["token"]
+        st.session_state["creds"] = {
+            "token": token["access_token"],
+            "refresh_token": token.get("refresh_token"),
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
+            "scopes": SCOPES,
+        }
+        st.session_state["drive_authenticated"] = True
+        st.success("Autenticação no Google Drive e Earth Engine realizada com sucesso!")
+
+        # Lista os projetos disponíveis
+        projects = list_google_cloud_projects()
+        if projects:
+            selected_project = st.selectbox("Escolha um projeto:", projects)
+            if st.button("Usar este projeto"):
+                if initialize_ee_with_project(selected_project):
+                    st.session_state["selected_project"] = selected_project
+        else:
+            st.error("""
+                Nenhum projeto encontrado no Google Cloud. 
+                Para usar o Earth Engine, você precisa criar um projeto no Google Cloud Platform:
+                1. Acesse o [Google Cloud Console](https://console.cloud.google.com/).
+                2. Crie um novo projeto.
+                3. Volte aqui e recarregue a página.
+            """)
 
 if st.session_state.get("ee_initialized"):
     uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])

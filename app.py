@@ -69,7 +69,6 @@ def authenticate_google_drive():
         auth_url, _ = flow.authorization_url(
             prompt="consent",
             access_type="offline",
-            redirect_uri=REDIRECT_URI  # Adiciona o redirect_uri
         )
 
         # Exibe o link de autenticação
@@ -81,7 +80,7 @@ def authenticate_google_drive():
 
         if auth_code:
             # Troca o código de autorização por um token de acesso
-            flow.fetch_token(code=auth_code, redirect_uri=REDIRECT_URI)  # Passa o redirect_uri
+            flow.fetch_token(code=auth_code)  # O redirect_uri já está configurado no client_config
             creds = flow.credentials
 
             # Armazena as credenciais na sessão
@@ -98,7 +97,6 @@ def authenticate_google_drive():
     except Exception as e:
         st.error(f"Erro ao autenticar no Google Drive: {e}")
         
-
 # Função para salvar um arquivo .txt no Google Drive
 def save_txt_to_drive():
     try:

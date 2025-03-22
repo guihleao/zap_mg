@@ -4,6 +4,7 @@ import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import io
+from googleapiclient.http import MediaIoBaseUpload
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -101,7 +102,13 @@ def save_txt_to_drive():
             "name": "teste.txt",  # Nome do arquivo
             "mimeType": "text/plain",  # Tipo do arquivo
         }
-        media_body = io.BytesIO(b"OKAY")  # Conteúdo do arquivo
+
+        # Cria o objeto MediaIoBaseUpload para o conteúdo do arquivo
+        media_body = MediaIoBaseUpload(
+            io.BytesIO(b"OKAY"),  # Conteúdo do arquivo
+            mimetype="text/plain",  # Tipo MIME do arquivo
+            resumable=True,  # Permite uploads grandes
+        )
 
         # Envia o arquivo para o Google Drive
         file = drive_service.files().create(
@@ -127,7 +134,7 @@ if st.session_state["ee_initialized"]:
         st.markdown(f"[Autenticar no Google Drive]({auth_url})")
 
         # Captura o código de autorização da URL de redirecionamento
-        query_params = st.experimental_get_query_params()
+        query_params = st.query_params  # Usa st.query_params em vez de st.experimental_get_query_params
         if "code" in query_params:
             auth_code = query_params["code"][0]
             token = exchange_code_for_token(auth_code)

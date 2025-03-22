@@ -72,7 +72,8 @@ def authenticate_google_drive():
         # Configura o fluxo de autenticação
         flow = InstalledAppFlow.from_client_secrets_file(
             'credentials.json',
-            scopes=['https://www.googleapis.com/auth/drive']
+            scopes=['https://www.googleapis.com/auth/drive'],
+            redirect_uri=st.secrets["google_oauth"]["redirect_uris"]  # Adiciona o redirect_uri
         )
 
         # Gera a URL de autorização

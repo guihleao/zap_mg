@@ -4,7 +4,7 @@ import geopandas as gpd
 import datetime
 import folium
 from streamlit_folium import st_folium
-from streamlit_oauth import OAuth2Component
+import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
@@ -45,30 +45,38 @@ def initialize_ee():
 CLIENT_ID = st.secrets["google_oauth"]["client_id"]
 CLIENT_SECRET = st.secrets["google_oauth"]["client_secret"]
 REDIRECT_URI = st.secrets["google_oauth"]["redirect_uris"]
-AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/auth"
-TOKEN_URL = "https://oauth2.googleapis.com/token"
-SCOPES = "https://www.googleapis.com/auth/drive"
+SCOPES = ["https://www.googleapis.com/auth/drive"]
 
-# Inicializa o componente OAuth2
-oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL)
+# Função para gerar o link de autenticação
+def generate_auth_url():
+    auth_url = (
+        f"https://accounts.google.com/o/oauth2/auth?"
+        f"response_type=code&"
+        f"client_id={CLIENT_ID}&"
+        f"scope={'+'.join(SCOPES)}&"
+        f"redirect_uri={REDIRECT_URI}&"
+        f"access_type=offline&"
+        f"prompt=consent"
+    )
+    return auth_url
 
-# Função para autenticar no Google Drive
-def authenticate_google_drive():
+# Função para trocar o código de autorização por um token de acesso
+def exchange_code_for_token(auth_code):
     try:
-        if "token" not in st.session_state:
-            result = oauth2.authorize_button(
-                "Autenticar no Google Drive",
-                redirect_uri=REDIRECT_URI,
-                scope=SCOPES
-            )
-            if result:
-                st.session_state["token"] = result
-                st.session_state["drive_authenticated"] = True
-                st.success("Autenticação no Google Drive realizada com sucesso!")
-        else:
-            st.success("Você já está autenticado no Google Drive.")
+        token_url = "https://oauth2.googleapis.com/token"
+        data = {
+            "code": auth_code,
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
+            "redirect_uri": REDIRECT_URI,
+            "grant_type": "authorization_code",
+        }
+        response = requests.post(token_url, data=data)
+        response.raise_for_status()
+        return response.json()
     except Exception as e:
-        st.error(f"Erro ao autenticar no Google Drive: {e}")
+        st.error(f"Erro ao trocar código por token: {e}")
+        return None
 
 # Função para carregar o GeoJSON e visualizar o polígono
 def load_geojson(file):
@@ -141,29 +149,20 @@ def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
 # Função para exportar para o Google Drive
 def export_to_drive(image, name, geometry, folder="zap"):
     try:
-        # Verifica se o token de acesso está disponível
-        if "token" not in st.session_state:
-            st.error("Erro: Token de acesso não encontrado. Faça a autenticação no Google Drive.")
+        # Verifica se as credenciais estão disponíveis
+        if "creds" not in st.session_state:
+            st.error("Erro: Credenciais de autenticação não encontradas.")
             return None
 
-        # Extrai o token de acesso
-        access_token = st.session_state["token"].get("access_token")
-        if not access_token:
-            st.error("Erro: Token de acesso inválido ou expirado.")
-            return None
-
-        # Configura as credenciais OAuth do usuário
+        # Cria as credenciais a partir do token armazenado
         creds = Credentials(
-            token=access_token,
-            refresh_token=st.session_state["token"].get("refresh_token"),
-            token_uri=TOKEN_URL,
+            token=st.session_state["creds"]["token"],
+            refresh_token=st.session_state["creds"]["refresh_token"],
+            token_uri="https://oauth2.googleapis.com/token",
             client_id=CLIENT_ID,
             client_secret=CLIENT_SECRET,
-            scopes=[SCOPES],
+            scopes=SCOPES,
         )
-
-        # Inicializa o serviço do Drive
-        drive_service = build("drive", "v3", credentials=creds)
 
         # Exporta a imagem para o Drive
         task = ee.batch.Export.image.toDrive(
@@ -182,24 +181,6 @@ def export_to_drive(image, name, geometry, folder="zap"):
         st.error(f"Erro ao exportar {name} para o Google Drive: {e}")
         return None
 
-# Função para verificar o status das tarefas
-def check_task_status(task):
-    try:
-        status = task.status()
-        state = status["state"]
-        if state == "COMPLETED":
-            st.success(f"Tarefa {task.id} concluída com sucesso!")
-        elif state == "RUNNING":
-            st.warning(f"Tarefa {task.id} ainda está em execução.")
-        elif state == "FAILED":
-            st.error(f"Tarefa {task.id} falhou. Motivo: {status['error_message']}")
-        else:
-            st.info(f"Status da tarefa {task.id}: {state}")
-        return state
-    except Exception as e:
-        st.error(f"Erro ao verificar o status da tarefa: {e}")
-        return None
-
 # Inicializa o Earth Engine
 if not st.session_state["ee_initialized"]:
     initialize_ee()
@@ -207,8 +188,28 @@ if not st.session_state["ee_initialized"]:
 # Interface de upload e processamento
 if st.session_state["ee_initialized"]:
     if not st.session_state["drive_authenticated"]:
-        st.write("Para exportar arquivos, faça login no Google Drive:")
-        authenticate_google_drive()
+        # Gera o link de autenticação
+        auth_url = generate_auth_url()
+        st.write("Clique no link abaixo para autenticar no Google Drive:")
+        st.markdown(f"[Autenticar no Google Drive]({auth_url})")
+
+        # Captura o código de autorização da URL de redirecionamento
+        query_params = st.experimental_get_query_params()
+        if "code" in query_params:
+            auth_code = query_params["code"][0]
+            token = exchange_code_for_token(auth_code)
+            if token:
+                # Armazena as credenciais na sessão
+                st.session_state["creds"] = {
+                    "token": token["access_token"],
+                    "refresh_token": token.get("refresh_token"),
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "client_id": CLIENT_ID,
+                    "client_secret": CLIENT_SECRET,
+                    "scopes": SCOPES,
+                }
+                st.session_state["drive_authenticated"] = True
+                st.success("Autenticação no Google Drive realizada com sucesso!")
     
     if st.session_state["drive_authenticated"]:
         uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])

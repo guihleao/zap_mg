@@ -4,25 +4,21 @@ from streamlit_oauth import OAuth2Component
 import json
 import time
 
-def authenticate():
-    client_id = "SUA_CLIENT_ID"
-    client_secret = "SUA_CLIENT_SECRET"
-    authorization_url = "https://accounts.google.com/o/oauth2/auth"
-    token_url = "https://oauth2.googleapis.com/token"
-    
-    oauth = OAuth2Component(client_id, client_secret, authorization_url, token_url)
-    token = oauth.get_access_token()
-    if token:
-        st.session_state["oauth_token"] = token
-        return True
-    return False
+# Autenticação OAuth
+secrets = st.secrets["google_oauth"]
+client_id = secrets["client_id"]
+client_secret = secrets["client_secret"]
+authorization_url = "https://accounts.google.com/o/oauth2/auth"
+token_url = "https://oauth2.googleapis.com/token"
 
-if "oauth_token" not in st.session_state:
-    authenticated = authenticate()
-    if not authenticated:
-        st.stop()
-
-ee.Initialize()
+oauth = OAuth2Component(client_id, client_secret, authorization_url, token_url)
+token = oauth.get_access_token()
+if token:
+    st.session_state["oauth_token"] = token
+    ee.Initialize()
+else:
+    st.error("Falha na autenticação. Faça login novamente.")
+    st.stop()
 
 def processar_imagens(bacia):
     sentinel = ee.ImageCollection("COPERNICUS/S2")\
@@ -76,13 +72,16 @@ def exportar_para_drive(imagem, nome_arquivo):
     return task
 
 def checar_status_exportacao(task):
+    progress_bar = st.progress(0)
     while task.status()["state"] in ["READY", "RUNNING"]:
         st.info(f"Exportando: {task.status()['state']}")
         time.sleep(10)
+        progress_bar.progress(50)
     if task.status()["state"] == "COMPLETED":
         st.success("Exportação concluída com sucesso!")
+        progress_bar.progress(100)
     else:
-        st.error(f"Erro na exportação: {task.status()['error_message']}")
+        st.error(f"Erro na exportação: {task.status().get('error_message', 'Erro desconhecido')}")
 
 bacia = ee.Geometry.Polygon([[[LONG, LAT], [LONG, LAT], [LONG, LAT], [LONG, LAT]]])
 

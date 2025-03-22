@@ -292,41 +292,6 @@ else:
 
     # Restante do código (carregar GeoJSON, processar dados, exportar para o Drive)
     if st.session_state.get("ee_initialized"):
-        # Seleção de produtos
-        st.write("Selecione os produtos que deseja exportar:")
-        with st.form(key='product_selection_form'):
-            exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=True)
-            exportar_declividade = st.checkbox("Declividade (30m)", value=True)
-            exportar_ndvi = st.checkbox("NDVI (10m)", value=True)
-            exportar_gndvi = st.checkbox("GNDVI (10m)", value=True)
-            exportar_ndwi = st.checkbox("NDWI (10m)", value=True)
-            exportar_ndmi = st.checkbox("NDMI (10m)", value=True)
-            exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=True)
-            exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=True)
-            exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=True)
-            exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=True)
-            exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=True)
-            exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=True)
-            exportar_landforms = st.checkbox("Landforms (30m)", value=True)
-
-            # Salvar seleções na session state
-            st.session_state["exportar_srtm_mde"] = exportar_srtm_mde
-            st.session_state["exportar_declividade"] = exportar_declividade
-            st.session_state["exportar_ndvi"] = exportar_ndvi
-            st.session_state["exportar_gndvi"] = exportar_gndvi
-            st.session_state["exportar_ndwi"] = exportar_ndwi
-            st.session_state["exportar_ndmi"] = exportar_ndmi
-            st.session_state["exportar_mapbiomas"] = exportar_mapbiomas
-            st.session_state["exportar_pasture_quality"] = exportar_pasture_quality
-            st.session_state["exportar_sentinel_composite"] = exportar_sentinel_composite
-            st.session_state["exportar_puc_ufv"] = exportar_puc_ufv
-            st.session_state["exportar_puc_ibge"] = exportar_puc_ibge
-            st.session_state["exportar_puc_embrapa"] = exportar_puc_embrapa
-            st.session_state["exportar_landforms"] = exportar_landforms
-
-            # Botão para confirmar seleção
-            submit_button = st.form_submit_button(label='Confirmar Seleção')
-
         # Carregar GeoJSON
         uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])
         
@@ -336,6 +301,42 @@ else:
                 st.write(f"CRS do arquivo GeoJSON: {crs}")
                 nome_bacia_export = st.text_input("Digite o nome para exportação (sem espaços ou caracteres especiais):")
                 
+                # Seleção de produtos (aparece apenas após o GeoJSON ser carregado)
+                st.write("Selecione os produtos que deseja exportar:")
+                with st.form(key='product_selection_form'):
+                    exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=True)
+                    exportar_declividade = st.checkbox("Declividade (30m)", value=True)
+                    exportar_ndvi = st.checkbox("NDVI (10m)", value=True)
+                    exportar_gndvi = st.checkbox("GNDVI (10m)", value=True)
+                    exportar_ndwi = st.checkbox("NDWI (10m)", value=True)
+                    exportar_ndmi = st.checkbox("NDMI (10m)", value=True)
+                    exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=True)
+                    exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=True)
+                    exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=True)
+                    exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=True)
+                    exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=True)
+                    exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=True)
+                    exportar_landforms = st.checkbox("Landforms (30m)", value=True)
+
+                    # Botão para confirmar seleção
+                    submit_button = st.form_submit_button(label='Confirmar Seleção')
+
+                # Salvar seleções na session state
+                st.session_state["exportar_srtm_mde"] = exportar_srtm_mde
+                st.session_state["exportar_declividade"] = exportar_declividade
+                st.session_state["exportar_ndvi"] = exportar_ndvi
+                st.session_state["exportar_gndvi"] = exportar_gndvi
+                st.session_state["exportar_ndwi"] = exportar_ndwi
+                st.session_state["exportar_ndmi"] = exportar_ndmi
+                st.session_state["exportar_mapbiomas"] = exportar_mapbiomas
+                st.session_state["exportar_pasture_quality"] = exportar_pasture_quality
+                st.session_state["exportar_sentinel_composite"] = exportar_sentinel_composite
+                st.session_state["exportar_puc_ufv"] = exportar_puc_ufv
+                st.session_state["exportar_puc_ibge"] = exportar_puc_ibge
+                st.session_state["exportar_puc_embrapa"] = exportar_puc_embrapa
+                st.session_state["exportar_landforms"] = exportar_landforms
+
+                # Processar dados e exportar produtos selecionados
                 if st.button("Processar Dados") and nome_bacia_export:
                     # Processar os dados
                     resultados = process_data(geometry, crs, nome_bacia_export=nome_bacia_export)

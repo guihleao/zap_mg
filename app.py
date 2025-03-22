@@ -5,6 +5,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import io
 from googleapiclient.http import MediaIoBaseUpload
+import streamlit.components.v1 as components  # Importa o Streamlit Components
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -135,15 +136,15 @@ if st.session_state["ee_initialized"]:
         # Gera o link de autenticação
         auth_url = generate_auth_url()
 
-        # Exibe o link de autenticação em uma janela pop-up
+        # Exibe o botão para abrir a janela pop-up
         st.write("Clique no botão abaixo para autenticar no Google Drive:")
-        st.markdown(
+        components.html(
             f"""
             <button onclick="window.open('{auth_url}', 'authWindow', 'width=500,height=600');">
                 Autenticar no Google Drive
             </button>
             """,
-            unsafe_allow_html=True,
+            height=50,
         )
 
         # Captura o código de autorização da URL de redirecionamento
@@ -170,7 +171,7 @@ if st.session_state["ee_initialized"]:
             save_txt_to_drive()
 
 # Adiciona JavaScript para fechar a janela pop-up e atualizar a janela principal
-st.markdown(
+components.html(
     """
     <script>
         // Verifica se a URL contém o código de autorização
@@ -182,5 +183,5 @@ st.markdown(
         }
     </script>
     """,
-    unsafe_allow_html=True,
+    height=0,
 )

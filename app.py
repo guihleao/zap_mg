@@ -65,33 +65,52 @@ def load_geojson(file):
 def reprojetarImagem(imagem, epsg, escala):
     return imagem.reproject(crs=f"EPSG:{epsg}", scale=escala)
 
-# Função para exportar imagens para o Google Drive
-def exportarImagem(imagem, nome, escala, regiao, pasta="zap"):
+def exportarImagem(imagem, nome_prefixo, nome_sufixo, escala, regiao, pasta="zap"):
+    """
+    Exporta uma imagem para o Google Drive com um nome personalizado.
+
+    Parâmetros:
+        imagem (ee.Image): A imagem a ser exportada.
+        nome_prefixo (str): Texto fixo no início do nome do arquivo (ex: "02_").
+        nome_sufixo (str): Texto fixo no final do nome do arquivo (ex: "_puc_embrapa").
+        escala (int): Resolução da imagem (ex: 10, 30).
+        regiao (ee.Geometry): Região de interesse para exportação.
+        pasta (str): Nome da pasta no Google Drive (padrão: "zap").
+    """
     try:
+        # Montar o nome do arquivo
+        nome_arquivo = f"{nome_prefixo}{st.session_state['nome_bacia_export']}{nome_sufixo}"
+
+        # Exportar a imagem
         task = ee.batch.Export.image.toDrive(
             image=imagem,
-            description=nome,
+            description=nome_arquivo,
             folder=pasta,
-            fileNamePrefix=nome,
+            fileNamePrefix=nome_arquivo,
             scale=escala,
             region=regiao,
             fileFormat='GeoTIFF',
             maxPixels=1e13,
         )
         task.start()
-        st.success(f"Exportação {nome} iniciada. Verifique seu Google Drive na pasta '{pasta}'.")
+        st.success(f"Exportação {nome_arquivo} iniciada. Verifique seu Google Drive na pasta '{pasta}'.")
         return task
     except Exception as e:
-        st.error(f"Erro ao exportar {nome} para o Google Drive: {e}")
+        st.error(f"Erro ao exportar {nome_arquivo} para o Google Drive: {e}")
         return None
 
 # Função para processar os dados
 def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
     try:
         bacia = geometry.buffer(buffer_km * 1000)
-        data_atual = datetime.datetime.now().strftime("%Y-%m-%d")
-        periodo_fim = ee.Date(data_atual)
+        data_atual = datetime.datetime.now()
+        periodo_fim = ee.Date(data_atual.strftime("%Y-%m-%d"))
         periodo_inicio = periodo_fim.advance(-365, 'day')
+
+        # Obter ano e mês formatados
+        ano_atual = data_atual.year
+        ano_anterior = ano_atual - 1
+        mes_formatado = data_atual.strftime("%b")  # Ex: "Jan"
 
         # Carregar imagens Sentinel-2
         sentinel = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
@@ -178,19 +197,19 @@ def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
 
         # Exportar todas as imagens
         tasks = []
-        tasks.append(exportarImagem(utm_elevation, f"{nome_bacia_export}_SRTM_MDE", 30, bacia))
-        tasks.append(exportarImagem(utm_declividade, f"{nome_bacia_export}_Declividade", 30, bacia))
-        tasks.append(exportarImagem(utm_ndvi, f"{nome_bacia_export}_NDVI", 10, bacia))
-        tasks.append(exportarImagem(utm_gndvi, f"{nome_bacia_export}_GNDVI", 10, bacia))
-        tasks.append(exportarImagem(utm_ndwi, f"{nome_bacia_export}_NDWI", 10, bacia))
-        tasks.append(exportarImagem(utm_ndmi, f"{nome_bacia_export}_NDMI", 10, bacia))
-        tasks.append(exportarImagem(utm_sentinel2, f"{nome_bacia_export}_Sentinel_Composite", 10, bacia))
-        tasks.append(exportarImagem(utm_mapbiomas, f"{nome_bacia_export}_MapBiomas_2023", 30, bacia))
-        tasks.append(exportarImagem(utm_pasture_quality, f"{nome_bacia_export}_QualidadePastagem", 30, bacia))
-        tasks.append(exportarImagem(utm_landforms, f"{nome_bacia_export}_Landforms", 30, bacia))
-        tasks.append(exportarImagem(utm_puc_ufv, f"{nome_bacia_export}_PUC_UFV", 30, bacia))
-        tasks.append(exportarImagem(utm_puc_ibge, f"{nome_bacia_export}_PUC_IBGE", 30, bacia))
-        tasks.append(exportarImagem(utm_puc_embrapa, f"{nome_bacia_export}_PUC_Embrapa", 30, bacia))
+        tasks.append(exportarImagem(utm_elevation, "06_", "_SRTM_MDE", 30, bacia, "zap"))
+        tasks.append(exportarImagem(utm_declividade, "02_", "_declividade", 30, bacia, "zap"))
+        tasks.append(exportarImagem(utm_ndvi, "06_", f"_NDVImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+        tasks.append(exportarImagem(utm_gndvi, "06_", f"_GNDVImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+        tasks.append(exportarImagem(utm_ndwi, "06_", f"_NDWImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+        tasks.append(exportarImagem(utm_ndmi, "06_", f"_NDMImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+        tasks.append(exportarImagem(utm_mapbiomas, "06_", "_MapBiomas_col9_2023", 30, bacia, "zap"))
+        tasks.append(exportarImagem(utm_pasture_quality, "06_", "_Pastagem_col9_2023", 30, bacia, "zap"))
+        tasks.append(exportarImagem(utm_sentinel2, "06_", f"_S2_B2B3B4B8_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+        tasks.append(exportarImagem(utm_puc_ufv, "02_", "_puc_ufv", 30, bacia, "zap"))
+        tasks.append(exportarImagem(utm_puc_ibge, "02_", "_puc_ibge", 30, bacia, "zap"))
+        tasks.append(exportarImagem(utm_puc_embrapa, "02_", "_puc_embrapa", 30, bacia, "zap"))
+        tasks.append(exportarImagem(utm_landforms, "06_", "_landforms", 30, bacia, "zap"))
 
         return tasks
     except Exception as e:
@@ -278,15 +297,86 @@ else:
                 nome_bacia_export = st.text_input("Digite o nome para exportação (sem espaços ou caracteres especiais):")
                 
                 if st.button("Processar Dados") and nome_bacia_export:
+                    # Processar os dados
                     tasks = process_data(geometry, crs, nome_bacia_export=nome_bacia_export)
                     if tasks:
                         st.session_state["tasks"] = tasks
-                        st.success("Todas as tarefas de exportação foram iniciadas.")
-                    
-                    if st.session_state.get("tasks"):
-                        st.write("Verificando status das tarefas...")
-                        while True:
-                            for task in st.session_state["tasks"]:
-                                check_task_status(task)
-                            time.sleep(60)  # Verificar a cada 60 segundos
-                            st.rerun()  # Atualizar a interface
+                        st.success("Dados processados com sucesso!")
+
+                        # Interface de seleção de produtos
+                        st.write("Selecione os produtos que deseja exportar:")
+                        exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=True)
+                        exportar_declividade = st.checkbox("Declividade (30m)", value=True)
+                        exportar_ndvi = st.checkbox("NDVI (10m)", value=True)
+                        exportar_gndvi = st.checkbox("GNDVI (10m)", value=True)
+                        exportar_ndwi = st.checkbox("NDWI (10m)", value=True)
+                        exportar_ndmi = st.checkbox("NDMI (10m)", value=True)
+                        exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=True)
+                        exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=True)
+                        exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=True)
+                        exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=True)
+                        exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=True)
+                        exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=True)
+                        exportar_landforms = st.checkbox("Landforms (30m)", value=True)
+
+                        # Botão para iniciar a exportação
+                        if st.button("Exportar Produtos Selecionados"):
+                            tasks_selecionadas = []
+                            if exportar_srtm_mde:
+                                tasks_selecionadas.append(exportarImagem(utm_elevation, "06_", "_SRTM_MDE", 30, bacia, "zap"))
+                            if exportar_declividade:
+                                tasks_selecionadas.append(exportarImagem(utm_declividade, "02_", "_declividade", 30, bacia, "zap"))
+                            if exportar_ndvi:
+                                tasks_selecionadas.append(exportarImagem(utm_ndvi, "06_", f"_NDVImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+                            if exportar_gndvi:
+                                tasks_selecionadas.append(exportarImagem(utm_gndvi, "06_", f"_GNDVImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+                            if exportar_ndwi:
+                                tasks_selecionadas.append(exportarImagem(utm_ndwi, "06_", f"_NDWImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+                            if exportar_ndmi:
+                                tasks_selecionadas.append(exportarImagem(utm_ndmi, "06_", f"_NDMImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+                            if exportar_mapbiomas:
+                                tasks_selecionadas.append(exportarImagem(utm_mapbiomas, "06_", "_MapBiomas_col9_2023", 30, bacia, "zap"))
+                            if exportar_pasture_quality:
+                                tasks_selecionadas.append(exportarImagem(utm_pasture_quality, "06_", "_Pastagem_col9_2023", 30, bacia, "zap"))
+                            if exportar_sentinel_composite:
+                                tasks_selecionadas.append(exportarImagem(utm_sentinel2, "06_", f"_S2_B2B3B4B8_{mes_formatado}{ano_anterior}-{ano_atual}", 10, bacia, "zap"))
+                            if exportar_puc_ufv:
+                                tasks_selecionadas.append(exportarImagem(utm_puc_ufv, "02_", "_puc_ufv", 30, bacia, "zap"))
+                            if exportar_puc_ibge:
+                                tasks_selecionadas.append(exportarImagem(utm_puc_ibge, "02_", "_puc_ibge", 30, bacia, "zap"))
+                            if exportar_puc_embrapa:
+                                tasks_selecionadas.append(exportarImagem(utm_puc_embrapa, "02_", "_puc_embrapa", 30, bacia, "zap"))
+                            if exportar_landforms:
+                                tasks_selecionadas.append(exportarImagem(utm_landforms, "06_", "_landforms", 30, bacia, "zap"))
+
+                            if tasks_selecionadas:
+                                st.session_state["tasks"] = tasks_selecionadas
+                                st.success("Exportação dos produtos selecionados iniciada.")
+                            else:
+                                st.warning("Nenhum produto selecionado para exportação.")
+                        
+                        # Verificar status das tarefas
+                        if st.session_state.get("tasks"):
+                            st.write("Verificando status das tarefas...")
+                            
+                            # Criar um espaço reservado (placeholder) para exibir o status
+                            status_placeholder = st.empty()
+
+                            while True:
+                                # Limpar o conteúdo anterior do placeholder
+                                status_placeholder.empty()
+
+                                # Verificar o status de cada tarefa
+                                todas_concluidas = True
+                                for task in st.session_state["tasks"]:
+                                    state = check_task_status(task)
+                                    if state != "COMPLETED":
+                                        todas_concluidas = False
+
+                                # Se todas as tarefas foram concluídas, sair do loop
+                                if todas_concluidas:
+                                    status_placeholder.success("Todas as tarefas foram concluídas com sucesso!")
+                                    break
+
+                                # Aguardar 60 segundos antes de verificar novamente
+                                time.sleep(60)

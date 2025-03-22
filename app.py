@@ -309,55 +309,57 @@ else:
 
                         # Interface de seleção de produtos
                         st.write("Selecione os produtos que deseja exportar:")
-                        exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=True)
-                        exportar_declividade = st.checkbox("Declividade (30m)", value=True)
-                        exportar_ndvi = st.checkbox("NDVI (10m)", value=True)
-                        exportar_gndvi = st.checkbox("GNDVI (10m)", value=True)
-                        exportar_ndwi = st.checkbox("NDWI (10m)", value=True)
-                        exportar_ndmi = st.checkbox("NDMI (10m)", value=True)
-                        exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=True)
-                        exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=True)
-                        exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=True)
-                        exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=True)
-                        exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=True)
-                        exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=True)
-                        exportar_landforms = st.checkbox("Landforms (30m)", value=True)
+                        with st.form(key='export_form'):
+                            exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=True)
+                            exportar_declividade = st.checkbox("Declividade (30m)", value=True)
+                            exportar_ndvi = st.checkbox("NDVI (10m)", value=True)
+                            exportar_gndvi = st.checkbox("GNDVI (10m)", value=True)
+                            exportar_ndwi = st.checkbox("NDWI (10m)", value=True)
+                            exportar_ndmi = st.checkbox("NDMI (10m)", value=True)
+                            exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=True)
+                            exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=True)
+                            exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=True)
+                            exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=True)
+                            exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=True)
+                            exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=True)
+                            exportar_landforms = st.checkbox("Landforms (30m)", value=True)
 
-                        # Botão para iniciar a exportação
-                        if st.button("Exportar Produtos Selecionados"):
-                            tasks_selecionadas = []
-                            if exportar_srtm_mde:
-                                tasks_selecionadas.append(exportarImagem(resultados["utm_elevation"], "06_", "_SRTM_MDE", 30, geometry, nome_bacia_export, "zap"))
-                            if exportar_declividade:
-                                tasks_selecionadas.append(exportarImagem(resultados["utm_declividade"], "02_", "_declividade", 30, geometry, nome_bacia_export, "zap"))
-                            if exportar_ndvi:
-                                tasks_selecionadas.append(exportarImagem(resultados["utm_ndvi"], "06_", f"_NDVImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
-                            if exportar_gndvi:
-                                tasks_selecionadas.append(exportarImagem(resultados["utm_gndvi"], "06_", f"_GNDVImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
-                            if exportar_ndwi:
-                                tasks_selecionadas.append(exportarImagem(resultados["utm_ndwi"], "06_", f"_NDWImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
-                            if exportar_ndmi:
-                                tasks_selecionadas.append(exportarImagem(resultados["utm_ndmi"], "06_", f"_NDMImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
-                            if exportar_mapbiomas:
-                                tasks_selecionadas.append(exportarImagem(resultados["utm_mapbiomas"], "06_", "_MapBiomas_col9_2023", 30, geometry, nome_bacia_export, "zap"))
-                            if exportar_pasture_quality:
-                                tasks_selecionadas.append(exportarImagem(resultados["utm_pasture_quality"], "06_", "_Pastagem_col9_2023", 30, geometry, nome_bacia_export, "zap"))
-                            if exportar_sentinel_composite:
-                                tasks_selecionadas.append(exportarImagem(resultados["utm_sentinel2"], "06_", f"_S2_B2B3B4B8_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
-                            if exportar_puc_ufv:
-                                tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ufv"], "02_", "_puc_ufv", 30, geometry, nome_bacia_export, "zap"))
-                            if exportar_puc_ibge:
-                                tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ibge"], "02_", "_puc_ibge", 30, geometry, nome_bacia_export, "zap"))
-                            if exportar_puc_embrapa:
-                                tasks_selecionadas.append(exportarImagem(resultados["utm_puc_embrapa"], "02_", "_puc_embrapa", 30, geometry, nome_bacia_export, "zap"))
-                            if exportar_landforms:
-                                tasks_selecionadas.append(exportarImagem(resultados["utm_landforms"], "06_", "_landforms", 30, geometry, nome_bacia_export, "zap"))
+                            submit_button = st.form_submit_button(label='Exportar Produtos Selecionados')
 
-                            if tasks_selecionadas:
-                                st.session_state["tasks"] = tasks_selecionadas
-                                st.success("Exportação dos produtos selecionados iniciada.")
-                            else:
-                                st.warning("Nenhum produto selecionado para exportação.")
+                            if submit_button:
+                                tasks_selecionadas = []
+                                if exportar_srtm_mde:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_elevation"], "06_", "_SRTM_MDE", 30, geometry, nome_bacia_export, "zap"))
+                                if exportar_declividade:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_declividade"], "02_", "_declividade", 30, geometry, nome_bacia_export, "zap"))
+                                if exportar_ndvi:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_ndvi"], "06_", f"_NDVImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
+                                if exportar_gndvi:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_gndvi"], "06_", f"_GNDVImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
+                                if exportar_ndwi:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_ndwi"], "06_", f"_NDWImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
+                                if exportar_ndmi:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_ndmi"], "06_", f"_NDMImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
+                                if exportar_mapbiomas:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_mapbiomas"], "06_", "_MapBiomas_col9_2023", 30, geometry, nome_bacia_export, "zap"))
+                                if exportar_pasture_quality:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_pasture_quality"], "06_", "_Pastagem_col9_2023", 30, geometry, nome_bacia_export, "zap"))
+                                if exportar_sentinel_composite:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_sentinel2"], "06_", f"_S2_B2B3B4B8_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export, "zap"))
+                                if exportar_puc_ufv:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ufv"], "02_", "_puc_ufv", 30, geometry, nome_bacia_export, "zap"))
+                                if exportar_puc_ibge:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ibge"], "02_", "_puc_ibge", 30, geometry, nome_bacia_export, "zap"))
+                                if exportar_puc_embrapa:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_puc_embrapa"], "02_", "_puc_embrapa", 30, geometry, nome_bacia_export, "zap"))
+                                if exportar_landforms:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_landforms"], "06_", "_landforms", 30, geometry, nome_bacia_export, "zap"))
+
+                                if tasks_selecionadas:
+                                    st.session_state["tasks"] = tasks_selecionadas
+                                    st.success("Exportação dos produtos selecionados iniciada.")
+                                else:
+                                    st.warning("Nenhum produto selecionado para exportação.")
                         
                         # Verificar status das tarefas
                         if st.session_state.get("tasks"):

@@ -26,6 +26,8 @@ if "tasks" not in st.session_state:
 if "selected_project" not in st.session_state:
     st.session_state["selected_project"] = None
 
+from streamlit_oauth import OAuth2Component
+
 # Configuração do OAuth2
 CLIENT_ID = st.secrets["google_oauth"]["client_id"]
 CLIENT_SECRET = st.secrets["google_oauth"]["client_secret"]
@@ -46,23 +48,26 @@ oauth2 = OAuth2Component(
     revoke_token_url="https://oauth2.googleapis.com/revoke",
 )
 
-# Função para trocar o código de autorização por um token de acesso
-def exchange_code_for_token(auth_code):
-    try:
-        token_url = "https://oauth2.googleapis.com/token"
-        data = {
-            "code": auth_code,
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET,
-            "redirect_uri": REDIRECT_URI,
-            "grant_type": "authorization_code",
-        }
-        response = requests.post(token_url, data=data)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        st.error(f"Erro ao trocar código por token: {e}")
-        return None
+# Botão de login integrado
+result = oauth2.authorize_button(
+    "Autenticar no Google Drive e Earth Engine",
+    redirect_uri=REDIRECT_URI,
+    scope=SCOPES,
+)
+
+# Após o login
+if result:
+    token = result["token"]
+    st.session_state["creds"] = {
+        "token": token["access_token"],
+        "refresh_token": token.get("refresh_token"),
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "scopes": SCOPES,
+    }
+    st.session_state["drive_authenticated"] = True
+    st.success("Autenticação no Google Drive e Earth Engine realizada com sucesso!")
 
 # Função para listar projetos do Google Cloud
 def list_google_cloud_projects():

@@ -22,6 +22,8 @@ if "export_started" not in st.session_state:
     st.session_state["export_started"] = False
 if "tasks" not in st.session_state:
     st.session_state["tasks"] = []
+if "selected_project" not in st.session_state:
+    st.session_state["selected_project"] = None
 
 # Configuração do OAuth2
 CLIENT_ID = st.secrets["google_oauth"]["client_id"]
@@ -30,6 +32,7 @@ REDIRECT_URI = st.secrets["google_oauth"]["redirect_uris"]
 SCOPES = [
     "https://www.googleapis.com/auth/earthengine",  # Acesso ao Earth Engine
     "https://www.googleapis.com/auth/drive",        # Acesso ao Google Drive
+    "https://www.googleapis.com/auth/cloud-platform",  # Acesso ao Google Cloud
 ]
 
 # Função para gerar o link de autenticação
@@ -63,21 +66,46 @@ def exchange_code_for_token(auth_code):
         st.error(f"Erro ao trocar código por token: {e}")
         return None
 
-# Função para inicializar o Earth Engine com o token do usuário
-def initialize_ee_with_user_token():
+# Função para listar projetos do Google Cloud
+def list_google_cloud_projects():
     try:
-        # Verifica se o token de acesso está disponível
+        # Verifica se as credenciais estão disponíveis
         if "creds" not in st.session_state:
-            st.error("Erro: Token de acesso não encontrado. Faça a autenticação no Google Drive.")
-            return False
+            st.error("Erro: Credenciais de autenticação não encontradas.")
+            return None
 
-        # Extrai o token de acesso
-        access_token = st.session_state["creds"]["token"]
+        # Cria as credenciais a partir do token armazenado
+        creds = Credentials(
+            token=st.session_state["creds"]["token"],
+            refresh_token=st.session_state["creds"]["refresh_token"],
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=CLIENT_ID,
+            client_secret=CLIENT_SECRET,
+            scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        )
 
-        # Inicializa o Earth Engine com o token do usuário
-        ee.Initialize(credentials=access_token)
+        # Cria o serviço do Google Cloud Resource Manager
+        service = build("cloudresourcemanager", "v1", credentials=creds)
+
+        # Lista os projetos
+        projects = service.projects().list().execute()
+        if "projects" in projects:
+            return [project["projectId"] for project in projects["projects"]]
+        else:
+            st.warning("Nenhum projeto encontrado no Google Cloud.")
+            return None
+    except Exception as e:
+        st.error(f"Erro ao listar projetos do Google Cloud: {e}")
+        return None
+
+# Função para inicializar o Earth Engine com o projeto selecionado
+def initialize_ee_with_project(project_id):
+    try:
+        # Inicializa o Earth Engine com o projeto
+        ee.Initialize(credentials=st.session_state["creds"]["token"], project=project_id)
         st.session_state["ee_initialized"] = True
-        st.success("Earth Engine inicializado com sucesso!")
+        st.session_state["selected_project"] = project_id
+        st.success(f"Earth Engine inicializado com sucesso no projeto: {project_id}")
         return True
     except Exception as e:
         st.error(f"Erro ao inicializar o Earth Engine: {e}")
@@ -219,8 +247,21 @@ if not st.session_state.get("ee_initialized"):
             st.session_state["drive_authenticated"] = True
             st.success("Autenticação no Google Drive e Earth Engine realizada com sucesso!")
 
-            # Inicializa o Earth Engine com o token do usuário
-            initialize_ee_with_user_token()
+            # Lista os projetos disponíveis
+            projects = list_google_cloud_projects()
+            if projects:
+                selected_project = st.selectbox("Escolha um projeto:", projects)
+                if st.button("Usar este projeto"):
+                    if initialize_ee_with_project(selected_project):
+                        st.session_state["selected_project"] = selected_project
+            else:
+                st.error("""
+                    Nenhum projeto encontrado no Google Cloud. 
+                    Para usar o Earth Engine, você precisa criar um projeto no Google Cloud Platform:
+                    1. Acesse o [Google Cloud Console](https://console.cloud.google.com/).
+                    2. Crie um novo projeto.
+                    3. Volte aqui e recarregue a página.
+                """)
 
 if st.session_state.get("ee_initialized"):
     uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])

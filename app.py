@@ -174,6 +174,7 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
         # Calcular a declividade em porcentagem
         declividade_graus = ee.Terrain.slope(elevation)
         declividade = declividade_graus.divide(180).multiply(3.14159).tan().multiply(100)
+        declividade = declividade.unmask(0)  # Substitui NaN por 0
         declividade_mascara = declividade.updateMask(declividade)
         declividade_reclass = declividade_mascara.expression(
             "b(0) == 0 ? 1 : " +  # Inclui declividade = 0 no valor 1

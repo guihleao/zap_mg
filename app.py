@@ -34,14 +34,9 @@ TOKEN_URL = "https://oauth2.googleapis.com/token"
 REFRESH_TOKEN_URL = "https://oauth2.googleapis.com/token"
 REVOKE_TOKEN_URL = "https://oauth2.googleapis.com/revoke"
 REDIRECT_URI = st.secrets["google_oauth"]["redirect_uris"]
-SCOPES = [
-    "https://www.googleapis.com/auth/earthengine",  # Acesso ao Earth Engine
-    "https://www.googleapis.com/auth/drive",        # Acesso ao Google Drive
-    "https://www.googleapis.com/auth/cloud-platform",  # Acesso ao Google Cloud
-]
 
-# Converte a lista de escopos para uma string separada por espaços
-SCOPES_STR = " ".join(SCOPES)
+# Escopos como uma string separada por espaços
+SCOPES = "https://www.googleapis.com/auth/earthengine https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/cloud-platform"
 
 # Cria a instância do OAuth2Component
 oauth2 = OAuth2Component(
@@ -59,7 +54,7 @@ if "token" not in st.session_state:
     result = oauth2.authorize_button(
         name="Autenticar no Google Drive e Earth Engine",
         redirect_uri=REDIRECT_URI,
-        scope=SCOPES_STR,  # Passa a string de escopos
+        scope=SCOPES,  # Passa a string de escopos
     )
     if result and "token" in result:
         # Se a autorização for bem-sucedida, salva o token na session_state
@@ -70,7 +65,7 @@ if "token" not in st.session_state:
             "token_uri": "https://oauth2.googleapis.com/token",
             "client_id": CLIENT_ID,
             "client_secret": CLIENT_SECRET,
-            "scopes": SCOPES,
+            "scopes": SCOPES.split(),  # Converte a string de escopos de volta para lista
         }
         st.session_state["drive_authenticated"] = True
         st.rerun()  # Recarrega a página para atualizar o estado
@@ -262,7 +257,7 @@ if not st.session_state.get("ee_initialized"):
             "token_uri": "https://oauth2.googleapis.com/token",
             "client_id": CLIENT_ID,
             "client_secret": CLIENT_SECRET,
-            "scopes": SCOPES,
+            "scopes": SCOPES.split(),  # Converte a string de escopos de volta para lista
         }
         st.session_state["drive_authenticated"] = True
         st.success("Autenticação no Google Drive e Earth Engine realizada com sucesso!")

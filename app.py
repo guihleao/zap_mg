@@ -3,7 +3,6 @@ import streamlit as st
 import geopandas as gpd
 import tempfile
 from google.oauth2 import service_account
-from google.cloud import storage
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -39,37 +38,45 @@ if not st.session_state["ee_initialized"]:
 
 # Função para carregar o GeoPackage
 def load_geopackage(file_path):
-    gdf = gpd.read_file(file_path)
-    return ee.Geometry(gdf.geometry.iloc[0].__geo_interface__)
+    try:
+        gdf = gpd.read_file(file_path)
+        return ee.Geometry(gdf.geometry.iloc[0].__geo_interface__)
+    except Exception as e:
+        st.error(f"Erro ao carregar o GeoPackage: {e}")
+        return None
 
 # Função principal para processar os dados
 def process_data(geometry, epsg, buffer_km=1):
-    bacia = geometry.buffer(buffer_km * 1000)  # Buffer em metros
+    try:
+        bacia = geometry.buffer(buffer_km * 1000)  # Buffer em metros
 
-    # Filtrar imagens Sentinel-2
-    periodo_fim = ee.Date("2023-12-31")  
-    periodo_inicio = periodo_fim.advance(-365, 'day')
+        # Filtrar imagens Sentinel-2 Harmonized
+        periodo_fim = ee.Date("2023-12-31")  
+        periodo_inicio = periodo_fim.advance(-365, 'day')
 
-    sentinel = ee.ImageCollection("COPERNICUS/S2_SR") \
-        .select(['B4', 'B3', 'B8', 'B11']) \
-        .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 10) \
-        .filterBounds(bacia) \
-        .filterDate(periodo_inicio, periodo_fim)
+        sentinel = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
+            .select(['B4', 'B3', 'B8', 'B11']) \
+            .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 10) \
+            .filterBounds(bacia) \
+            .filterDate(periodo_inicio, periodo_fim)
 
-    if sentinel.size().getInfo() == 0:
-        st.error("Nenhuma imagem foi encontrada para o período especificado.")
+        if sentinel.size().getInfo() == 0:
+            st.error("Nenhuma imagem foi encontrada para o período especificado.")
+            return None
+
+        sentinel_median = sentinel.median().clip(bacia)
+        
+        indices = {
+            "NDVI": sentinel_median.normalizedDifference(['B8', 'B4']),
+            "GNDVI": sentinel_median.normalizedDifference(['B8', 'B3']),
+            "NDWI": sentinel_median.normalizedDifference(['B3', 'B8']),
+            "NDMI": sentinel_median.normalizedDifference(['B8', 'B11']),
+        }
+
+        return {name: img.reproject(crs=epsg, scale=10) for name, img in indices.items()}
+    except Exception as e:
+        st.error(f"Erro ao processar os dados: {e}")
         return None
-
-    sentinel_median = sentinel.median().clip(bacia)
-    
-    indices = {
-        "NDVI": sentinel_median.normalizedDifference(['B8', 'B4']),
-        "GNDVI": sentinel_median.normalizedDifference(['B8', 'B3']),
-        "NDWI": sentinel_median.normalizedDifference(['B3', 'B8']),
-        "NDMI": sentinel_median.normalizedDifference(['B8', 'B11']),
-    }
-
-    return {name: img.reproject(crs=epsg, scale=10) for name, img in indices.items()}
 
 # Interface de upload e processamento
 if st.session_state["ee_initialized"]:
@@ -83,9 +90,10 @@ if st.session_state["ee_initialized"]:
             tmp_file_path = tmp_file.name
 
         geometry = load_geopackage(tmp_file_path)
-        resultados = process_data(geometry, epsg_options[epsg_selected])
+        if geometry:
+            resultados = process_data(geometry, epsg_options[epsg_selected])
 
-        if resultados:
-            st.write("Índices processados:")
-            for key in resultados:
-                st.write(f"- {key}")
+            if resultados:
+                st.write("Índices processados:")
+                for key in resultados:
+                    st.write(f"- {key}")

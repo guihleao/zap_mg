@@ -7,7 +7,7 @@ from streamlit_folium import st_folium
 import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from streamlit_oauth import OAuth2Component  # Substituído aqui
+from streamlit_oauth import OAuth2Component
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -42,7 +42,7 @@ SCOPES = [
 oauth2 = OAuth2Component(
     client_id=CLIENT_ID,
     client_secret=CLIENT_SECRET,
-    authorize_url="https://accounts.google.com/o/oauth2/auth",
+    auth_url="https://accounts.google.com/o/oauth2/auth",  # Corrigido para auth_url
     token_url="https://oauth2.googleapis.com/token",
     refresh_token_url="https://oauth2.googleapis.com/token",
     revoke_token_url="https://oauth2.googleapis.com/revoke",

@@ -37,6 +37,113 @@ SCOPE = " ".join(SCOPES)  # Juntar os scopes em uma única string
 # Inicializar OAuth2Component
 oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL, REFRESH_TOKEN_URL, REVOKE_TOKEN_URL)
 
+# Função para carregar o GeoJSON e visualizar o polígono
+def load_geojson(file):
+    try:
+        gdf = gpd.read_file(file)
+        if gdf.geometry.is_empty.any():
+            st.error("O arquivo GeoJSON contém geometrias vazias.")
+            return None, None
+        if not all(gdf.geometry.geom_type.isin(['Polygon', 'MultiPolygon'])):
+            st.error("O arquivo deve conter apenas polígonos ou multipolígonos.")
+            return None, None
+        gdf['geometry'] = gdf['geometry'].buffer(0)
+        crs = gdf.crs if gdf.crs is not None else "EPSG:4326"
+        st.write(f"CRS do arquivo GeoJSON: {crs}")
+        centroid = gdf.geometry.centroid
+        m = folium.Map(location=[centroid.y.mean(), centroid.x.mean()], zoom_start=10)
+        for _, row in gdf.iterrows():
+            folium.GeoJson(row['geometry']).add_to(m)
+        st_folium(m, returned_objects=[])
+        return ee.Geometry(gdf.geometry.iloc[0].__geo_interface__), crs
+    except Exception as e:
+        st.error(f"Erro ao carregar o GeoJSON: {e}")
+        return None, None
+
+# Função para processar os dados
+def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
+    try:
+        bacia = geometry.buffer(buffer_km * 1000)
+        data_atual = datetime.datetime.now().strftime("%Y-%m-%d")
+        periodo_fim = ee.Date(data_atual)
+        periodo_inicio = periodo_fim.advance(-365, 'day')
+        sentinel = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
+            .select(['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12']) \
+            .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 10) \
+            .filterBounds(bacia) \
+            .filterDate(periodo_inicio, periodo_fim)
+        if sentinel.size().getInfo() == 0:
+            st.error("Nenhuma imagem foi encontrada para o período especificado.")
+            return None
+        sentinel_median = sentinel.median().clip(bacia)
+        indices = {
+            "NDVI": sentinel_median.normalizedDifference(['B8', 'B4']),
+            "GNDVI": sentinel_median.normalizedDifference(['B8', 'B3']),
+            "NDWI": sentinel_median.normalizedDifference(['B3', 'B8']),
+            "NDMI": sentinel_median.normalizedDifference(['B8', 'B11']),
+        }
+        mde = ee.ImageCollection("JAXA/ALOS/AW3D30/V3_2") \
+            .filterBounds(bacia) \
+            .mosaic() \
+            .clip(bacia)
+        declividade = ee.Terrain.slope(mde.select('DSM'))
+        mapbiomas = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_integration_v1") \
+            .clip(bacia)
+        pasture_quality = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_pasture_quality_v1") \
+            .select('pasture_quality_2023') \
+            .clip(bacia)
+        return {
+            "sentinel_median": sentinel_median,
+            "indices": indices,
+            "mde": mde,
+            "declividade": declividade,
+            "mapbiomas": mapbiomas,
+            "pasture_quality": pasture_quality,
+            "nome_bacia_export": nome_bacia_export,
+        }
+    except Exception as e:
+        st.error(f"Erro ao processar os dados: {e}")
+        return None
+
+# Função para exportar para o Google Drive
+def export_to_drive(image, name, geometry, folder="zap"):
+    try:
+        # Exporta a imagem para o Drive
+        task = ee.batch.Export.image.toDrive(
+            image=image,
+            description=name,
+            folder=folder,
+            fileNamePrefix=name,
+            scale=10,
+            region=geometry,
+            fileFormat='GeoTIFF',
+            maxPixels=1e13,  # Ajuste conforme necessário
+        )
+        task.start()
+        st.success(f"Exportação {name} iniciada. Verifique seu Google Drive na pasta '{folder}'.")
+        return task
+    except Exception as e:
+        st.error(f"Erro ao exportar {name} para o Google Drive: {e}")
+        return None
+
+# Função para verificar o status das tarefas
+def check_task_status(task):
+    try:
+        status = task.status()
+        state = status["state"]
+        if state == "COMPLETED":
+            st.success(f"Tarefa {task.id} concluída com sucesso!")
+        elif state == "RUNNING":
+            st.warning(f"Tarefa {task.id} ainda está em execução.")
+        elif state == "FAILED":
+            st.error(f"Tarefa {task.id} falhou. Motivo: {status['error_message']}")
+        else:
+            st.info(f"Status da tarefa {task.id}: {state}")
+        return state
+    except Exception as e:
+        st.error(f"Erro ao verificar o status da tarefa: {e}")
+        return None
+
 # Verificar se o token está na session state
 if 'token' not in st.session_state:
     # Se não estiver, mostrar o botão de autorização

@@ -134,8 +134,8 @@ def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
         bacia = geometry.buffer(buffer_km * 1000)  # Converte km para metros
 
         # Define o período de análise
-        periodo_fim = ee.Date.now()
-        periodo_inicio = periodo_fim.advance(-365, 'day')
+        periodo_fim = ee.Date()  # Data atual
+        periodo_inicio = periodo_fim.advance(-365, 'day')  # Um ano antes
 
         # Filtra as imagens Sentinel-2
         sentinel = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \

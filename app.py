@@ -26,48 +26,38 @@ if "tasks" not in st.session_state:
 if "selected_project" not in st.session_state:
     st.session_state["selected_project"] = None
 
-from streamlit_oauth import OAuth2Component
-
-# Configuração do OAuth2
-CLIENT_ID = st.secrets["google_oauth"]["client_id"]
-CLIENT_SECRET = st.secrets["google_oauth"]["client_secret"]
-REDIRECT_URI = st.secrets["google_oauth"]["redirect_uris"]
-SCOPES = [
-    "https://www.googleapis.com/auth/earthengine",  # Acesso ao Earth Engine
-    "https://www.googleapis.com/auth/drive",        # Acesso ao Google Drive
-    "https://www.googleapis.com/auth/cloud-platform",  # Acesso ao Google Cloud
-]
-
-# Inicializa o componente OAuth2
+# Cria a instância do OAuth2Component
 oauth2 = OAuth2Component(
     client_id=CLIENT_ID,
     client_secret=CLIENT_SECRET,
-    auth_url="https://accounts.google.com/o/oauth2/auth",  # Corrigido para auth_url
-    token_url="https://oauth2.googleapis.com/token",
-    refresh_token_url="https://oauth2.googleapis.com/token",
-    revoke_token_url="https://oauth2.googleapis.com/revoke",
+    authorize_endpoint=AUTHORIZE_URL,  # Corrigido para authorize_endpoint
+    token_endpoint=TOKEN_URL,
+    refresh_token_endpoint=REFRESH_TOKEN_URL,
+    revoke_token_endpoint=REVOKE_TOKEN_URL,
 )
 
-# Botão de login integrado
-result = oauth2.authorize_button(
-    "Autenticar no Google Drive e Earth Engine",
-    redirect_uri=REDIRECT_URI,
-    scope=SCOPES,
-)
+# Verifica se o token já está na session_state
+if "token" not in st.session_state:
+    # Se não estiver, exibe o botão de autorização
+    result = oauth2.authorize_button(
+        name="Autenticar no Google Drive e Earth Engine",
+        redirect_uri=REDIRECT_URI,
+        scope=" ".join(SCOPES),  # Escopos devem ser uma string separada por espaços
+    )
+    if result and "token" in result:
+        # Se a autorização for bem-sucedida, salva o token na session_state
+        st.session_state["token"] = result["token"]
+        st.rerun()  # Recarrega a página para atualizar o estado
+else:
+    # Se o token já estiver na session_state, exibe o token
+    token = st.session_state["token"]
+    st.json(token)  # Exibe o token em formato JSON (apenas para depuração)
 
-# Após o login
-if result:
-    token = result["token"]
-    st.session_state["creds"] = {
-        "token": token["access_token"],
-        "refresh_token": token.get("refresh_token"),
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-        "scopes": SCOPES,
-    }
-    st.session_state["drive_authenticated"] = True
-    st.success("Autenticação no Google Drive e Earth Engine realizada com sucesso!")
+    # Botão para atualizar o token
+    if st.button("Atualizar Token"):
+        token = oauth2.refresh_token(token)
+        st.session_state["token"] = token
+        st.rerun()  # Recarrega a página para atualizar o estado
 
 # Função para listar projetos do Google Cloud
 def list_google_cloud_projects():

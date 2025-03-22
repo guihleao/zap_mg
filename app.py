@@ -141,18 +141,30 @@ def process_data(geometry, crs, buffer_km=1, nome_bacia_export="bacia"):
 # Função para exportar para o Google Drive
 def export_to_drive(image, name, geometry, folder="zap"):
     try:
+        # Verifica se o token de acesso está disponível
+        if "token" not in st.session_state:
+            st.error("Erro: Token de acesso não encontrado. Faça a autenticação no Google Drive.")
+            return None
+
+        # Extrai o token de acesso
+        access_token = st.session_state["token"].get("access_token")
+        if not access_token:
+            st.error("Erro: Token de acesso inválido ou expirado.")
+            return None
+
         # Configura as credenciais OAuth do usuário
         creds = Credentials(
-            token=st.session_state["token"]["access_token"],
+            token=access_token,
             refresh_token=st.session_state["token"].get("refresh_token"),
             token_uri=TOKEN_URL,
             client_id=CLIENT_ID,
             client_secret=CLIENT_SECRET,
             scopes=[SCOPES],
         )
+
         # Inicializa o serviço do Drive
         drive_service = build("drive", "v3", credentials=creds)
-        
+
         # Exporta a imagem para o Drive
         task = ee.batch.Export.image.toDrive(
             image=image,

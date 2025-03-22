@@ -7,7 +7,7 @@ from streamlit_folium import st_folium
 import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from streamlit_oauth2_component import OAuth2Component  # Importe a biblioteca
+from streamlit_oauth import OAuth2Component  # Substituído aqui
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -37,7 +37,14 @@ SCOPES = [
 ]
 
 # Inicializa o componente OAuth2
-oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL="https://accounts.google.com/o/oauth2/auth", TOKEN_URL="https://oauth2.googleapis.com/token")
+oauth2 = OAuth2Component(
+    client_id=CLIENT_ID,
+    client_secret=CLIENT_SECRET,
+    authorize_url="https://accounts.google.com/o/oauth2/auth",
+    token_url="https://oauth2.googleapis.com/token",
+    refresh_token_url="https://oauth2.googleapis.com/token",
+    revoke_token_url="https://oauth2.googleapis.com/revoke",
+)
 
 # Função para trocar o código de autorização por um token de acesso
 def exchange_code_for_token(auth_code):

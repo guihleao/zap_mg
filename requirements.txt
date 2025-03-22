@@ -1,5 +1,5 @@
 streamlit
-streamlit-oauth
+streamlit-oauth2  # Adicionado para autenticação OAuth2
 earthengine-api
 geopandas
 google-auth

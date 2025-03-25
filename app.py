@@ -81,16 +81,16 @@ DICIONARIO_PRODUTOS = {
 
 # 3. URLs das tabelas (convertidas para links diretos do Google Drive)
 TABELAS_AGRO = {
-    'PAM_Quantidade_produzida_14-23': 'https://drive.google.com/uc?id=10uwm4SgvYKDzTpi2jlPirjzPcL_5PTCB',
-    'PAM_Valor_da_producao_14-23': 'https://drive.google.com/uc?id=16VeRUfYvGgj2_swg_g671uJ_5I2QPpo2',
-    'PPM_Efetivo_dos_rebanhos_14-23': 'https://drive.google.com/uc?id=18I1Yr7qsICf8hBtBawkmG9Wes5Hd2hBz',
-    'PPM_Prod_origem_animal_14-23': 'https://drive.google.com/uc?id=19-yrafwVj0ZOPiqbwhqX1Ho3Gwr1GoIA',
-    'PPM_Valor_da_producao_prod_animal_14-23': 'https://drive.google.com/uc?id=19BaNA96nXA4gtkmF_nwSQFdxA5UEBmmx',
-    'PPM_Producao_aquicultura_14-23': 'https://drive.google.com/uc?id=1A9o-eEiXpPMWOyCtE4m2jwYaovRy9bv9',
-    'PPM_Valor_producao_aquicultura_14-23': 'https://drive.google.com/uc?id=1BzPQy5pFNrqgC_9gHCUDO7Sy4O-t6nrA',
-    'PEVS_Area_silv_14-23': 'https://drive.google.com/uc?id=1VTNqLYXi5AjiWCZDu2cUfbmVzwYjbLrY',
+    'PAM_Quantidade_produzida_14-23': 'https://drive.google.com/uc?id=19BaNA96nXA4gtkmF_nwSQFdxA5UEBmmx',
+    'PAM_Valor_da_producao_14-23': 'https://drive.google.com/uc?id=1A9o-eEiXpPMWOyCtE4m2jwYaovRy9bv9',
+    'PPM_Efetivo_dos_rebanhos_14-23': 'https://drive.google.com/uc?id=1VTNqLYXi5AjiWCZDu2cUfbmVzwYjbLrY',
+    'PPM_Prod_origem_animal_14-23': 'https://drive.google.com/uc?id=18I1Yr7qsICf8hBtBawkmG9Wes5Hd2hBz',
+    'PPM_Valor_da_producao_prod_animal_14-23': 'https://drive.google.com/uc?id=1s-9uSiVOxZJLgIKVP8ZI8rCo99DgiEIf',
+    'PPM_Producao_aquicultura_14-23': 'https://drive.google.com/uc?id=16VeRUfYvGgj2_swg_g671uJ_5I2QPpo2',
+    'PPM_Valor_producao_aquicultura_14-23': 'https://drive.google.com/uc?id=19-yrafwVj0ZOPiqbwhqX1Ho3Gwr1GoIA',
+    'PEVS_Area_silv_14-23': 'https://drive.google.com/uc?id=10uwm4SgvYKDzTpi2jlPirjzPcL_5PTCB',
     'PEVS_Qnt_prod_silv_14-23': 'https://drive.google.com/uc?id=1qIHRhddxGV8WtEEt0lJcaxnUpKjF1MBK',
-    'PEVS_Valor_prod_silv_14-23': 'https://drive.google.com/uc?id=1s-9uSiVOxZJLgIKVP8ZI8rCo99DgiEIf',
+    'PEVS_Valor_prod_silv_14-23': 'https://drive.google.com/uc?id=1BzPQy5pFNrqgC_9gHCUDO7Sy4O-t6nrA',
     'IBGE_Municipios_ZAP': 'https://drive.google.com/uc?id=1skVkA0cN3TVlJThvqsilWwO2SGLY-joi'
 }
 
@@ -247,13 +247,28 @@ def baixar_tabela(url):
 def processar_tabelas_agro(geocodigos):
     resultados = {}
     
+    # Primeiro processamos a tabela IBGE separadamente
+    df_ibge = baixar_tabela(TABELAS_AGRO['IBGE_Municipios_ZAP'])
+    if df_ibge is not None:
+        df_ibge['geocodigo'] = df_ibge['geocodigo'].astype(int)
+        df_ibge_filtrado = df_ibge[df_ibge['geocodigo'].isin(geocodigos)]
+        
+        # Remover colunas indesejadas
+        if '.geo' in df_ibge_filtrado.columns:
+            df_ibge_filtrado = df_ibge_filtrado.drop(columns=['.geo', 'system:index'])
+        
+        # Transpor a tabela para o formato desejado
+        df_ibge_final = df_ibge_filtrado.set_index('nome').T
+        df_ibge_final.index.name = 'Indicador'
+        resultados['IBGE_Municipios_ZAP'] = df_ibge_final
+    
+    # Processar as outras tabelas
     for nome_tabela, url in TABELAS_AGRO.items():
         if nome_tabela == 'IBGE_Municipios_ZAP':
-            continue  # Processamos separadamente
+            continue
             
         df = baixar_tabela(url)
         if df is None:
-            resultados[nome_tabela] = None
             continue
             
         # Converter geocodigo para inteiro
@@ -263,43 +278,49 @@ def processar_tabelas_agro(geocodigos):
         df_filtrado = df[df['geocodigo'].isin(geocodigos)]
         
         if df_filtrado.empty:
-            resultados[nome_tabela] = None
             continue
             
-        # Para tabelas de produção, identificar top 10 produtos de 2023
-        if nome_tabela.startswith(('PAM', 'PPM', 'PEVS')):
-            colunas_2023 = [col for col in df_filtrado.columns if col.endswith('23') and col not in ['geocodigo', 'nome']]
+        # Para cada município, criar uma planilha com seus top 10 produtos
+        municipios_dfs = {}
+        for _, row in df_filtrado.iterrows():
+            municipio = row['nome']
+            geocodigo = row['geocodigo']
             
-            if colunas_2023:
-                # Somar valores por produto
-                soma_produtos = df_filtrado[colunas_2023].sum().sort_values(ascending=False)
-                top_10 = soma_produtos.head(10).index.tolist()
+            # Identificar colunas de anos (terminadas com 2 dígitos)
+            colunas_ano = [col for col in row.index if col[-2:].isdigit() and col not in ['geocodigo', 'nome']]
+            
+            # Agrupar por produto (prefixo antes do ano)
+            produtos = {}
+            for col in colunas_ano:
+                produto = col[:-2]
+                ano = col[-2:]
+                valor = row[col]
                 
-                # Selecionar colunas relevantes
-                colunas_selecionadas = ['geocodigo', 'nome']
-                for produto in top_10:
-                    base = produto[:-2]
-                    cols_produto = [col for col in df_filtrado.columns if col.startswith(base)]
-                    colunas_selecionadas.extend(cols_produto)
-                
-                df_resultado = df_filtrado[colunas_selecionadas]
-                
-                # Traduzir nomes das colunas
-                novo_nomes = {}
-                for col in df_resultado.columns:
-                    if col not in ['geocodigo', 'nome']:
-                        base = col[:-2] if col[-2:].isdigit() else col
-                        novo_nome = DICIONARIO_PRODUTOS.get(base, base)
-                        novo_nomes[col] = f"{novo_nome}_{col[-2:]}" if col[-2:].isdigit() else novo_nome
-                    else:
-                        novo_nomes[col] = col
-                
-                df_resultado = df_resultado.rename(columns=novo_nomes)
-                resultados[nome_tabela] = df_resultado
+                if produto not in produtos:
+                    produtos[produto] = {}
+                produtos[produto][ano] = valor
+            
+            # Converter para DataFrame e pegar top 10 produtos com maior valor em 2023
+            df_produtos = pd.DataFrame.from_dict(produtos, orient='index')
+            
+            # Ordenar por 2023 (se existir) ou pelo último ano disponível
+            if '23' in df_produtos.columns:
+                df_produtos = df_produtos.sort_values('23', ascending=False)
             else:
-                resultados[nome_tabela] = df_filtrado
-        else:
-            resultados[nome_tabela] = df_filtrado
+                ultimo_ano = sorted(df_produtos.columns)[-1]
+                df_produtos = df_produtos.sort_values(ultimo_ano, ascending=False)
+            
+            # Pegar top 10 e traduzir nomes
+            top_10 = df_produtos.head(10)
+            top_10.index = [DICIONARIO_PRODUTOS.get(p, p) for p in top_10.index]
+            
+            # Adicionar município como coluna
+            top_10 = top_10.reset_index()
+            top_10.columns = ['Produto'] + [f'20{ano}' for ano in top_10.columns[1:]]
+            
+            municipios_dfs[municipio] = top_10
+        
+        resultados[nome_tabela] = municipios_dfs
     
     return resultados
 
@@ -307,9 +328,31 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
     try:
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            for nome_tabela, df in dados_agro.items():
-                if df is not None:
-                    df.to_excel(writer, sheet_name=nome_tabela[:31], index=False)
+            # Escrever tabela IBGE primeiro
+            if 'IBGE_Municipios_ZAP' in dados_agro and dados_agro['IBGE_Municipios_ZAP'] is not None:
+                dados_agro['IBGE_Municipios_ZAP'].to_excel(
+                    writer, 
+                    sheet_name='IBGE_Municipios', 
+                    index=True
+                )
+            
+            # Escrever as outras tabelas (uma planilha por município)
+            for nome_tabela, municipios_data in dados_agro.items():
+                if nome_tabela == 'IBGE_Municipios_ZAP':
+                    continue
+                
+                if isinstance(municipios_data, dict):  # Dados por município
+                    for municipio, df in municipios_data.items():
+                        # Limitar nome da planilha a 31 caracteres e remover caracteres inválidos
+                        sheet_name = f"{nome_tabela[:15]}_{municipio[:10]}"
+                        sheet_name = ''.join(c for c in sheet_name if c.isalnum() or c in ('_', ' '))
+                        sheet_name = sheet_name[:31]
+                        
+                        df.to_excel(
+                            writer, 
+                            sheet_name=sheet_name, 
+                            index=False
+                        )
         
         output.seek(0)
         return output
@@ -582,6 +625,8 @@ else:
                     st.caption("Municípios com representatividade >20% na bacia hidrográfica")
                     exportar_dados_agro = st.checkbox("Ativar processamento de dados do IBGE", value=False)
                     
+                    # Divisão visual
+                    st.markdown("---")                    
                     submit_button = st.form_submit_button(label='✅ Confirmar Seleção')
 
                 if submit_button:

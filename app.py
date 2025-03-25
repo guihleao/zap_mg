@@ -245,82 +245,174 @@ def baixar_tabela(url):
         return None
 
 def processar_tabelas_agro(geocodigos):
+    # Ordem específica dos indicadores que você deseja
+    ORDEM_INDICADORES = [
+        'geocodigo',
+        'Gentílico',
+        'Bioma predominante',
+        'Área (km²)',
+        'População no último censo',
+        'População ocupada',
+        'Densidade demográfica',
+        'PIB per capita',
+        'Salário médio mensal dos trabalhadores formais',
+        'Receitas',
+        'Despesas',
+        'Esgotamento sanitário adequado',
+        'Estabelecimentos de Saúde SUS',
+        'Mortalidade Infantil',
+        'Taxa de escolarização de 6 a 14 anos de idade',
+        'Urbanização de vias públicas',
+        'Arborização de vias públicas',
+        'Índice de Desenvolvimento Humano Municipal (IDHM)'
+    ]
+    
     resultados = {}
     
-    # Primeiro processamos a tabela IBGE separadamente
+    # Processar tabela IBGE
     df_ibge = baixar_tabela(TABELAS_AGRO['IBGE_Municipios_ZAP'])
     if df_ibge is not None:
-        df_ibge['geocodigo'] = df_ibge['geocodigo'].astype(int)
-        df_ibge_filtrado = df_ibge[df_ibge['geocodigo'].isin(geocodigos)]
-        
-        # Remover colunas indesejadas
-        if '.geo' in df_ibge_filtrado.columns:
-            df_ibge_filtrado = df_ibge_filtrado.drop(columns=['.geo', 'system:index'])
-        
-        # Transpor a tabela para o formato desejado
-        df_ibge_final = df_ibge_filtrado.set_index('Municípios').T
-        df_ibge_final.index.name = 'Indicador'
-        resultados['IBGE_Municipios_ZAP'] = df_ibge_final
+        try:
+            # Verificar se a coluna geocodigo existe
+            if 'geocodigo' not in df_ibge.columns:
+                raise ValueError("Coluna 'geocodigo' não encontrada na tabela IBGE")
+                
+            df_ibge['geocodigo'] = df_ibge['geocodigo'].astype(int)
+            df_ibge_filtrado = df_ibge[df_ibge['geocodigo'].isin(geocodigos)]
+            
+            if df_ibge_filtrado.empty:
+                st.warning("Nenhum município encontrado na tabela IBGE com os geocódigos fornecidos")
+                return resultados
+            
+            # Verificar e renomear coluna de municípios
+            nome_col = next((col for col in df_ibge_filtrado.columns 
+                           if col.lower() in ['municípios', 'municipio', 'nome']), None)
+            if not nome_col:
+                raise ValueError("Coluna de municípios não encontrada na tabela IBGE")
+                
+            df_ibge_filtrado = df_ibge_filtrado.rename(columns={nome_col: 'Municípios'})
+
+            # Remover colunas indesejadas
+            cols_remover = [col for col in ['.geo', 'system:index', 'geocodigo'] 
+                          if col in df_ibge_filtrado.columns]
+            if cols_remover:
+                df_ibge_filtrado = df_ibge_filtrado.drop(columns=cols_remover)
+
+            # Transpor e ordenar
+            df_ibge_final = df_ibge_filtrado.set_index('Municípios').T
+            df_ibge_final.index.name = 'Indicador'
+            
+            # Adicionar geocodigo como primeiro indicador
+            geocodigos_series = pd.Series({municipio: geocodigo 
+                                         for municipio, geocodigo in zip(df_ibge_filtrado['Municípios'], geocodigos)},
+                                       name='geocodigo')
+            df_ibge_final = pd.concat([geocodigos_series.to_frame().T, df_ibge_final])
+            
+            # Filtrar e ordenar conforme a lista especificada
+            indicadores_presentes = [ind for ind in ORDEM_INDICADORES if ind in df_ibge_final.index]
+            df_ibge_final = df_ibge_final.loc[indicadores_presentes]
+            
+            # Formatar valores
+            formatacoes = {
+                'PIB per capita': lambda x: f" R$ {float(x):,.2f} ",
+                'Receitas': lambda x: f" R$ {float(x):,.2f} ",
+                'Despesas': lambda x: f" R$ {float(x):,.2f} ",
+                'Área (km²)': lambda x: f"{float(x):,.3f}".replace('.', 'X').replace(',', '.').replace('X', ','),
+                'População no último censo': lambda x: f"{int(x):,}".replace(",", "."),
+                'Densidade demográfica': lambda x: f"{float(x):,.2f}".replace('.', 'X').replace(',', '.').replace('X', ','),
+            }
+            
+            for indicador, fmt in formatacoes.items():
+                if indicador in df_ibge_final.index:
+                    df_ibge_final.loc[indicador] = df_ibge_final.loc[indicador].apply(
+                        lambda x: fmt(x) if pd.notnull(x) and str(x).strip() else "-"
+                    )
+            
+            resultados['IBGE_Municipios_ZAP'] = df_ibge_final
+            
+        except Exception as e:
+            st.error(f"Erro ao processar tabela IBGE: {str(e)}")
+            st.error(traceback.format_exc())  # Log detalhado do erro
     
     # Processar as outras tabelas
     for nome_tabela, url in TABELAS_AGRO.items():
         if nome_tabela == 'IBGE_Municipios_ZAP':
             continue
             
-        df = baixar_tabela(url)
-        if df is None:
-            continue
-            
-        # Converter geocodigo para inteiro
-        df['geocodigo'] = df['geocodigo'].astype(int)
-        
-        # Filtrar municípios selecionados
-        df_filtrado = df[df['geocodigo'].isin(geocodigos)]
-        
-        if df_filtrado.empty:
-            continue
-            
-        # Para cada município, criar uma planilha com seus top 10 produtos
-        municipios_dfs = {}
-        for _, row in df_filtrado.iterrows():
-            municipio = row['nome']
-            geocodigo = row['geocodigo']
-            
-            # Identificar colunas de anos (terminadas com 2 dígitos)
-            colunas_ano = [col for col in row.index if col[-2:].isdigit() and col not in ['geocodigo', 'nome']]
-            
-            # Agrupar por produto (prefixo antes do ano)
-            produtos = {}
-            for col in colunas_ano:
-                produto = col[:-2]
-                ano = col[-2:]
-                valor = row[col]
+        try:
+            df = baixar_tabela(url)
+            if df is None:
+                st.warning(f"Falha ao baixar tabela {nome_tabela}")
+                continue
                 
-                if produto not in produtos:
-                    produtos[produto] = {}
-                produtos[produto][ano] = valor
+            # Verificar colunas obrigatórias
+            if 'geocodigo' not in df.columns or 'nome' not in df.columns:
+                st.warning(f"Tabela {nome_tabela} não possui colunas obrigatórias ('geocodigo' e 'nome')")
+                continue
+                
+            # Converter geocodigo para inteiro
+            df['geocodigo'] = df['geocodigo'].astype(int)
             
-            # Converter para DataFrame e pegar top 10 produtos com maior valor em 2023
-            df_produtos = pd.DataFrame.from_dict(produtos, orient='index')
+            # Filtrar municípios selecionados
+            df_filtrado = df[df['geocodigo'].isin(geocodigos)]
             
-            # Ordenar por 2023 (se existir) ou pelo último ano disponível
-            if '23' in df_produtos.columns:
-                df_produtos = df_produtos.sort_values('23', ascending=False)
-            else:
-                ultimo_ano = sorted(df_produtos.columns)[-1]
-                df_produtos = df_produtos.sort_values(ultimo_ano, ascending=False)
+            if df_filtrado.empty:
+                st.warning(f"Nenhum município encontrado na tabela {nome_tabela}")
+                continue
+                
+            # Para cada município, criar uma planilha com seus top 10 produtos
+            municipios_dfs = {}
+            for _, row in df_filtrado.iterrows():
+                municipio = row['nome']
+                geocodigo = row['geocodigo']
+                
+                # Identificar colunas de anos (terminadas com 2 dígitos)
+                colunas_ano = [col for col in row.index 
+                             if col[-2:].isdigit() and col not in ['geocodigo', 'nome'] and not col.startswith(('Unnamed', '.geo'))]
+                
+                # Agrupar por produto (prefixo antes do ano)
+                produtos = {}
+                for col in colunas_ano:
+                    produto = col[:-2]
+                    ano = col[-2:]
+                    valor = row[col]
+                    
+                    if pd.notnull(valor):
+                        if produto not in produtos:
+                            produtos[produto] = {}
+                        produtos[produto][ano] = valor
+                
+                # Converter para DataFrame
+                df_produtos = pd.DataFrame.from_dict(produtos, orient='index')
+                
+                # Ordenar por 2023 (se existir) ou pelo último ano disponível
+                if not df_produtos.empty:
+                    if '23' in df_produtos.columns:
+                        df_produtos = df_produtos.sort_values('23', ascending=False)
+                    else:
+                        ultimo_ano = sorted(df_produtos.columns)[-1]
+                        df_produtos = df_produtos.sort_values(ultimo_ano, ascending=False)
+                    
+                    # Pegar top 10 e traduzir nomes
+                    top_10 = df_produtos.head(10)
+                    top_10.index = [DICIONARIO_PRODUTOS.get(p, p) for p in top_10.index]
+                    
+                    # Formatar valores numéricos
+                    top_10 = top_10.applymap(lambda x: f"{int(x):,}".replace(",", ".") if pd.notnull(x) and float(x).is_integer() else
+                                           f"{float(x):,.2f}".replace('.', 'X').replace(',', '.').replace('X', ',') if pd.notnull(x) else "-")
+                    
+                    # Adicionar município como coluna
+                    top_10 = top_10.reset_index()
+                    top_10.columns = ['Produto'] + [f'20{ano}' for ano in top_10.columns[1:]]
+                    
+                    municipios_dfs[municipio] = top_10
             
-            # Pegar top 10 e traduzir nomes
-            top_10 = df_produtos.head(10)
-            top_10.index = [DICIONARIO_PRODUTOS.get(p, p) for p in top_10.index]
-            
-            # Adicionar município como coluna
-            top_10 = top_10.reset_index()
-            top_10.columns = ['Produto'] + [f'20{ano}' for ano in top_10.columns[1:]]
-            
-            municipios_dfs[municipio] = top_10
-        
-        resultados[nome_tabela] = municipios_dfs
+            if municipios_dfs:
+                resultados[nome_tabela] = municipios_dfs
+                
+        except Exception as e:
+            st.error(f"Erro ao processar tabela {nome_tabela}: {str(e)}")
+            continue
     
     return resultados
 

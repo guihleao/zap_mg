@@ -245,53 +245,28 @@ def baixar_tabela(url):
         return None
 
 def processar_tabelas_agro(geocodigos):
-    # Ordem específica dos indicadores
-    ORDEM_INDICADORES = [
-        'geocodigo',
-        'Gentílico',
-        'Bioma predominante',
-        'Área (km²)',
-        'População no último censo',
-        'População ocupada {%}',
-        'Densidade demográfica (hab/km²)',
-        'PIB per capita',
-        'Salário médio mensal dos trabalhadores formais',
-        'Receitas',
-        'Despesas',
-        'Esgotamento sanitário adequado {%}',
-        'Estabelecimentos de Saúde SUS',
-        'Mortalidade Infantil {%}',
-        'Taxa de escolarização de 6 a 14 anos de idade {%}',
-        'Urbanização de vias públicas {%}',
-        'Arborização de vias públicas {%}',
-        'Índice de Desenvolvimento Humano Municipal (IDHM)'
-    ]
-    
     resultados = {}
     
-    # Processar tabela IBGE
-    df_ibge = baixar_tabela(TABELAS_AGRO['IBGE_Municipios_ZAP'])
-    if df_ibge is not None:
-        try:
-            # Pré-processamento: converter vírgulas para pontos em colunas numéricas
-            for col in df_ibge.columns:
-                if df_ibge[col].dtype == object:
-                    df_ibge[col] = df_ibge[col].str.replace('.', '', regex=False)  # Remove pontos de milhar
-                    df_ibge[col] = df_ibge[col].str.replace(',', '.', regex=False)  # Converte vírgula para ponto
-            
-            df_ibge['geocodigo'] = df_ibge['geocodigo'].astype(str).str.strip()
-            geocodigos_str = [str(g).strip() for g in geocodigos]
+    # Processar tabela IBGE (apenas uma planilha)
+    if 'IBGE_Municipios_ZAP' in TABELAS_AGRO:
+        df_ibge = baixar_tabela(TABELAS_AGRO['IBGE_Municipios_ZAP'])
+        if df_ibge is not None:
+            try:
+                
+            # Converter geocodigo para string e limpar
+            df_ibge['geocodigo'] = df_ibge['geocodigo'].astype(str).str.strip().str.replace('.', '')
+            geocodigos_str = [str(g).strip().replace('.', '') for g in geocodigos]
             df_ibge_filtrado = df_ibge[df_ibge['geocodigo'].isin(geocodigos_str)]
             
             if df_ibge_filtrado.empty:
-                st.warning("Nenhum município encontrado na tabela IBGE com os geocódigos fornecidos")
+                st.warning("Nenhum município encontrado na tabela IBGE")
                 return resultados
             
-            # Verificar e renomear coluna de municípios
+            # Renomear coluna de municípios
             nome_col = next((col for col in df_ibge_filtrado.columns 
-                           if col.lower() in ['municípios', 'municipio', 'nome']), None)
+                          if col.lower() in ['municípios', 'municipio', 'nome']), None)
             if not nome_col:
-                raise ValueError("Coluna de municípios não encontrada na tabela IBGE")
+                raise ValueError("Coluna de municípios não encontrada")
                 
             df_ibge_filtrado = df_ibge_filtrado.rename(columns={nome_col: 'Municípios'})
 
@@ -301,61 +276,73 @@ def processar_tabelas_agro(geocodigos):
             if cols_remover:
                 df_ibge_filtrado = df_ibge_filtrado.drop(columns=cols_remover)
 
-            # Transpor e ordenar
+            # Transpor e formatar
             df_ibge_final = df_ibge_filtrado.set_index('Municípios').T
             df_ibge_final.index.name = 'Indicador'
             
-            # Adicionar geocodigo como primeiro indicador
-            geocodigos_dict = dict(zip(df_ibge_filtrado['Municípios'], df_ibge_filtrado['geocodigo']))
-            geocodigos_series = pd.Series(geocodigos_dict, name='geocodigo')
-            df_ibge_final = pd.concat([geocodigos_series.to_frame().T, df_ibge_final])
+            # Remover duplicatas e manter apenas geocodigo uma vez
+            if 'geocodigo' in df_ibge_final.index:
+                df_ibge_final = df_ibge_final[~df_ibge_final.index.duplicated(keep='first')]
             
-            # Filtrar e ordenar conforme a lista especificada
-            indicadores_presentes = [ind for ind in ORDEM_INDICADORES if ind in df_ibge_final.index]
+            # Ordem específica dos indicadores
+            ordem = [
+                'geocodigo',
+                'Gentílico',
+                'Bioma predominante',
+                'Área (km²)',
+                'População no último censo',
+                'População ocupada {%}',
+                'Densidade demográfica (hab/km²)',
+                'PIB per capita',
+                'Salário médio mensal dos trabalhadores formais',
+                'Receitas',
+                'Despesas',
+                'Esgotamento sanitário adequado {%}',
+                'Estabelecimentos de Saúde SUS',
+                'Mortalidade Infantil {%}',
+                'Taxa de escolarização de 6 a 14 anos de idade {%}',
+                'Urbanização de vias públicas {%}',
+                'Arborização de vias públicas {%}',
+                'Índice de Desenvolvimento Humano Municipal (IDHM)'
+            ]
+            
+            # Filtrar e ordenar
+            indicadores_presentes = [ind for ind in ordem if ind in df_ibge_final.index]
             df_ibge_final = df_ibge_final.loc[indicadores_presentes]
             
-            # Função para formatar valores brasileiros
-            def formatar_br(valor):
-                try:
-                    num = float(valor)
-                    if num.is_integer():
-                        return f"{int(num):,}".replace(",", ".")
-                    else:
-                        return f"{num:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                except (ValueError, TypeError):
-                    return str(valor) if pd.notnull(valor) else "-"
-            
-            # Aplicar formatação brasileira
+            # Formatar valores
             for col in df_ibge_final.columns:
-                df_ibge_final[col] = df_ibge_final[col].apply(formatar_br)
+                df_ibge_final[col] = df_ibge_final[col].apply(lambda x: str(x).replace('.', '') if pd.notnull(x) else '-')
             
-            # Formatação especial para valores monetários
-            for indicador in ['PIB per capita', 'Receitas', 'Despesas']:
-                if indicador in df_ibge_final.index:
-                    df_ibge_final.loc[indicador] = df_ibge_final.loc[indicador].apply(
-                        lambda x: f"R$ {x}" if x != "-" else "-"
-                    )
-            
-            resultados['IBGE_Municipios_ZAP'] = df_ibge_final
-            
-        except Exception as e:
-            st.error(f"Erro ao processar tabela IBGE: {str(e)}")
-            st.error(traceback.format_exc())
-    
-    # Processar as outras tabelas
-    for nome_tabela, url in TABELAS_AGRO.items():
-        if nome_tabela == 'IBGE_Municipios_ZAP':
+                resultados['IBGE'] = df_ibge_final
+            except Exception as e:
+                st.error(f"Erro ao processar tabela IBGE: {str(e)}")
+
+    # Dicionário para simplificar nomes das tabelas
+    NOMES_SIMPLIFICADOS = {
+        'PAM_Quantidade_produzida_14-23': 'PAM_Quantidade',
+        'PAM_Valor_da_producao_14-23': 'PAM_Valor',
+        'PPM_Efetivo_dos_rebanhos_14-23': 'PPM_Efetivo',
+        'PPM_Prod_origem_animal_14-23': 'PPM_Producao',
+        'PPM_Valor_da_producao_prod_animal_14-23': 'PPM_Valor',
+        'PPM_Producao_aquicultura_14-23': 'PPM_Aquicultura',
+        'PPM_Valor_producao_aquicultura_14-23': 'PPM_ValorAquicultura',
+        'PEVS_Area_silv_14-23': 'PEVS_Area',
+        'PEVS_Qnt_prod_silv_14-23': 'PEVS_Quantidade',
+        'PEVS_Valor_prod_silv_14-23': 'PEVS_Valor'
+    }
+
+    # Processar as 10 tabelas separadamente
+    for nome_original, url in TABELAS_AGRO.items():
+        if nome_original == 'IBGE_Municipios_ZAP':
             continue
             
         try:
+            nome_simplificado = NOMES_SIMPLIFICADOS.get(nome_original, nome_original.split('_')[0])
             df = baixar_tabela(url)
+            
             if df is None:
-                st.warning(f"Falha ao baixar tabela {nome_tabela}")
-                continue
-                
-            # Verificar colunas obrigatórias
-            if 'geocodigo' not in df.columns or 'nome' not in df.columns:
-                st.warning(f"Tabela {nome_tabela} não possui colunas obrigatórias ('geocodigo' e 'nome')")
+                st.warning(f"Falha ao baixar tabela {nome_original}")
                 continue
                 
             # Converter geocodigo para string
@@ -364,26 +351,22 @@ def processar_tabelas_agro(geocodigos):
             df_filtrado = df[df['geocodigo'].isin(geocodigos_str)]
             
             if df_filtrado.empty:
-                st.warning(f"Nenhum município encontrado na tabela {nome_tabela}")
+                st.warning(f"Nenhum município encontrado na tabela {nome_original}")
                 continue
                 
-            # Dicionário para armazenar dados
-            tabela_dfs = {}
-            
+            # Processar cada município
             for _, row in df_filtrado.iterrows():
-                municipio = str(row['nome'])  # Garantir que é string
-                geocodigo = str(row['geocodigo'])
+                municipio = row['nome']
                 
                 # Identificar colunas de anos
                 colunas_ano = [col for col in row.index 
-                             if str(col)[-2:].isdigit() and col not in ['geocodigo', 'nome'] 
-                             and not str(col).startswith(('Unnamed', '.geo'))]
+                             if str(col)[-2:].isdigit() and col not in ['geocodigo', 'nome']]
                 
                 # Agrupar por produto
                 produtos = {}
                 for col in colunas_ano:
                     produto = str(col)[:-2]
-                    ano = '20' + str(col)[-2:]  # Formato 2014, 2015, etc.
+                    ano = '20' + str(col)[-2:]
                     valor = row[col]
                     
                     if pd.notnull(valor):
@@ -394,46 +377,39 @@ def processar_tabelas_agro(geocodigos):
                 # Converter para DataFrame
                 df_produtos = pd.DataFrame.from_dict(produtos, orient='index')
                 
-                # Ordenar anos corretamente (como inteiros)
-                if not df_produtos.empty:
-                    anos_ordenados = sorted(df_produtos.columns, key=lambda x: int(x))
-                    df_produtos = df_produtos[anos_ordenados]
-                    
-                    # Ordenar por 2023 ou último ano
-                    sort_col = '2023' if '2023' in df_produtos.columns else anos_ordenados[-1]
-                    df_produtos = df_produtos.sort_values(sort_col, ascending=False)
-                    
-                    # Pegar top 10 e traduzir nomes
-                    top_10 = df_produtos.head(10)
-                    top_10.index = [str(DICIONARIO_PRODUTOS.get(p, p)) for p in top_10.index]
-                    
-                    # Formatar valores (garantindo conversão para string)
-                    def formatar_valor(x):
-                        try:
-                            x = float(x)
-                            if x.is_integer():
-                                return f"{int(x):,}".replace(",", ".")
-                            return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                        except:
-                            return str(x) if pd.notnull(x) else "-"
-                    
-                    top_10 = top_10.applymap(formatar_valor)
-                    
-                    # Adicionar linha com município (como string)
-                    linha_municipio = pd.DataFrame([["Município: " + municipio] + [""]*(len(top_10.columns)-1)], 
-                                                 columns=top_10.columns, index=["0"])
-                    top_10 = pd.concat([linha_municipio, top_10])
-                    
-                    tabela_dfs[municipio] = top_10
-            
-            if tabela_dfs:
-                # Criar nome curto seguro para a planilha
-                nome_curto = ''.join(c for c in nome_tabela.split('_')[0] if c.isalnum())[:20]
-                resultados[nome_curto] = tabela_dfs
+                # Ordenar anos corretamente
+                anos_ordenados = sorted(df_produtos.columns, key=lambda x: int(x))
+                df_produtos = df_produtos[anos_ordenados]
+                
+                # Ordenar por 2023 ou último ano
+                sort_col = '2023' if '2023' in df_produtos.columns else anos_ordenados[-1]
+                df_produtos = df_produtos.sort_values(sort_col, ascending=False)
+                
+                # Pegar top 10 e traduzir nomes
+                top_10 = df_produtos.head(10)
+                top_10.index = [DICIONARIO_PRODUTOS.get(p, p) for p in top_10.index]
+                
+                # Formatar valores
+                top_10 = top_10.applymap(
+                    lambda x: f"{int(x):,}".replace(",", ".") if pd.notnull(x) and float(x).is_integer() else
+                    f"{float(x):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "-"
+                )
+                
+                # Adicionar linha com nome do município
+                top_10.loc[-1] = [f"Município: {municipio}"] + [""]*(len(top_10.columns)-1)
+                top_10.index = top_10.index + 1
+                top_10 = top_10.sort_index()
+                
+                # Adicionar coluna de Produto
+                top_10.reset_index(inplace=True)
+                top_10.rename(columns={'index':'Produto'}, inplace=True)
+                
+                # Nome único para cada planilha (tabela + município)
+                chave = f"{nome_simplificado}_{municipio}"
+                resultados[chave] = top_10
                 
         except Exception as e:
-            st.error(f"Erro ao processar tabela {nome_tabela}: {str(e)}")
-            continue
+            st.error(f"Erro ao processar {nome_original}: {str(e)}")
     
     return resultados
 
@@ -441,33 +417,20 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
     try:
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            # Escrever tabela IBGE primeiro
-            if 'IBGE_Municipios_ZAP' in dados_agro and dados_agro['IBGE_Municipios_ZAP'] is not None:
-                dados_agro['IBGE_Municipios_ZAP'].to_excel(
-                    writer, 
-                    sheet_name='IBGE_Municipios', 
-                    index=True
-                )
-            
-            # Escrever as outras tabelas
-            for nome_tabela, municipios_data in dados_agro.items():
-                if nome_tabela == 'IBGE_Municipios_ZAP':
-                    continue
+            # Escrever cada planilha
+            for nome_completo, df in dados_agro.items():
+                # Simplificar nome da planilha (remover município)
+                nome_base = nome_completo.split('_')[0]
                 
-                if isinstance(municipios_data, dict):  # Dados por município
-                    # Criar uma planilha por tabela (não por município)
-                    df_consolidado = pd.concat(municipios_data.values())
-                    
-                    # Nome da planilha (curto)
-                    sheet_name = nome_tabela[:31]  # Limite do Excel
-                    sheet_name = ''.join(c for c in sheet_name if c.isalnum() or c in ('_', ' '))
-                    
-                    df_consolidado.to_excel(
-                        writer, 
-                        sheet_name=sheet_name, 
-                        index=False,
-                        header=True
-                    )
+                # Criar nome seguro para a planilha (máx 31 caracteres)
+                sheet_name = nome_base[:31]
+                
+                # Escrever no Excel
+                df.to_excel(
+                    writer,
+                    sheet_name=sheet_name,
+                    index=False
+                )
         
         output.seek(0)
         return output

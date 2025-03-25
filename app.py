@@ -1,7 +1,6 @@
 import ee
 import streamlit as st
 import geopandas as gpd
-import pandas as pd
 import datetime
 import folium
 from streamlit_folium import st_folium
@@ -9,26 +8,9 @@ from streamlit_oauth import OAuth2Component
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import time
-from io import BytesIO
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
-
-# Dicionário de mapeamento de produtos
-DICIONARIO_PRODUTOS = {
-    'abacate23': 'Abacate',
-    'abacaxi23': 'Abacaxi',
-    'algodaa23': 'Algodão arbóreo (em caroço)',
-    # ... (complete com todos os itens do seu dicionário original)
-    'tucuna': 'Tucunaré'
-}
-
-# Configurações do Google Drive (substitua com seus IDs reais)
-TABELAS_CSV = {
-    "PAM_Quantidade_produzida_14-23": "10uwm4SgvYKDzTpi2jlPirjzPcL_5PTCB",
-    "PAM_Valor_da_producao_14-23": "16VeRUfYvGgj2_swg_g671uJ_5I2QPpo2",
-    # ... (adicione todas as tabelas)
-}
 
 # Carregar configurações do OAuth2 do secrets.toml
 if 'google_oauth' in st.secrets:
@@ -47,87 +29,14 @@ REVOKE_TOKEN_URL = "https://oauth2.googleapis.com/revoke"
 
 # Scopes necessários
 SCOPES = [
-    "https://www.googleapis.com/auth/earthengine",
-    "https://www.googleapis.com/auth/cloud-platform",
-    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/earthengine",  # Earth Engine
+    "https://www.googleapis.com/auth/cloud-platform",  # Cloud Platform
+    "https://www.googleapis.com/auth/drive",  # Google Drive
 ]
-SCOPE = " ".join(SCOPES)
+SCOPE = " ".join(SCOPES)  # Juntar os scopes em uma única string
 
 # Inicializar OAuth2Component
 oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL, REFRESH_TOKEN_URL, REVOKE_TOKEN_URL)
-
-# Funções auxiliares
-def carregar_csv_do_drive(file_id):
-    """Carrega um CSV do Google Drive usando a API."""
-    try:
-        service = build('drive', 'v3', credentials=Credentials(
-            token=st.session_state.token['access_token'],
-            refresh_token=st.session_state.token.get('refresh_token'),
-            token_uri=TOKEN_URL,
-            client_id=CLIENT_ID,
-            client_secret=CLIENT_SECRET,
-            scopes=SCOPES
-        ))
-        request = service.files().get_media(fileId=file_id)
-        fh = BytesIO(request.execute())
-        return pd.read_csv(fh)
-    except Exception as e:
-        st.error(f"Erro ao carregar arquivo: {e}")
-        return None
-
-def intersect_municipios(geometry, municipios_gdf):
-    """Calcula a interseção entre a bacia e os municípios."""
-    try:
-        bacia_gdf = gpd.GeoDataFrame(geometry=[geometry], crs="EPSG:4326")
-        area_bacia = bacia_gdf.geometry.area.sum() / 10000
-        
-        municipios_interseccao = gpd.overlay(municipios_gdf, bacia_gdf, how='intersection')
-        municipios_interseccao['area_ha'] = municipios_interseccao.geometry.area / 10000
-        municipios_interseccao['representatividade'] = (municipios_interseccao['area_ha'] / area_bacia) * 100
-        
-        return municipios_interseccao[municipios_interseccao['representatividade'] > 20]
-    except Exception as e:
-        st.error(f"Erro no cálculo de interseção: {e}")
-        return None
-
-def processar_tabelas_socioeconomicas(municipios_filtrados):
-    """Processa as tabelas de dados socioeconômicos e agropecuários."""
-    resultados = {}
-    geocodigos = municipios_filtrados['geocodigo'].astype(str).tolist()
-    
-    for nome_tabela, file_id in TABELAS_CSV.items():
-        try:
-            df = carregar_csv_do_drive(file_id)
-            if df is None:
-                continue
-                
-            df_filtrado = df[df['geocodigo'].astype(str).isin(geocodigos)]
-            
-            if df_filtrado.empty:
-                st.warning(f"Nenhum dado encontrado para {nome_tabela}")
-                continue
-                
-            colunas_produtos = [col for col in df_filtrado.columns if col.endswith(tuple(str(ano)[-2:] for ano in range(14,24)))]
-            
-            top10 = (df_filtrado[colunas_produtos]
-                     .sum()
-                     .sort_values(ascending=False)
-                     .head(10)
-                     .reset_index()
-                     .rename(columns={'index': 'produto', 0: 'valor'}))
-            
-            top10['produto_nome'] = top10['produto'].map(lambda x: DICIONARIO_PRODUTOS.get(x, x))
-            resultados[nome_tabela] = top10
-            
-            # Exportar para CSV
-            export_path = f"top10_{nome_tabela}.csv"
-            top10.to_csv(export_path, index=False)
-            st.success(f"Dados de {nome_tabela} processados e salvos em {export_path}")
-            
-        except Exception as e:
-            st.error(f"Erro ao processar {nome_tabela}: {e}")
-    
-    return resultados
 
 # Função para carregar o GeoJSON e visualizar o polígono
 def load_geojson(file):
@@ -157,8 +66,23 @@ def reprojetarImagem(imagem, epsg, escala):
     return imagem.reproject(crs=f"EPSG:{epsg}", scale=escala)
 
 def exportarImagem(imagem, nome_prefixo, nome_sufixo, escala, regiao, nome_bacia_export, pasta="zap"):
+    """
+    Exporta uma imagem para o Google Drive com um nome personalizado.
+
+    Parâmetros:
+        imagem (ee.Image): A imagem a ser exportada.
+        nome_prefixo (str): Texto fixo no início do nome do arquivo (ex: "02_").
+        nome_sufixo (str): Texto fixo no final do nome do arquivo (ex: "_puc_embrapa").
+        escala (int): Resolução da imagem (ex: 10, 30).
+        regiao (ee.Geometry): Região de interesse para exportação.
+        nome_bacia_export (str): Nome da bacia digitado pelo usuário.
+        pasta (str): Nome da pasta no Google Drive (padrão: "zap").
+    """
     try:
+        # Montar o nome do arquivo
         nome_arquivo = f"{nome_prefixo}{nome_bacia_export}{nome_sufixo}"
+
+        # Exportar a imagem
         task = ee.batch.Export.image.toDrive(
             image=imagem,
             description=nome_arquivo,
@@ -179,22 +103,27 @@ def exportarImagem(imagem, nome_prefixo, nome_sufixo, escala, regiao, nome_bacia
 # Função para processar os dados
 def process_data(geometry, crs, nome_bacia_export="bacia"):
     try:
+        # Calcular o bounding box da geometria
         bbox = geometry.bounds()
-        bacia = bbox.buffer(1000)
+        # Aplicar um buffer de 1 km ao bounding box
+        bacia = bbox.buffer(1000)  # 1000 metros = 1 km
         data_atual = datetime.datetime.now()
         periodo_fim = ee.Date(data_atual.strftime("%Y-%m-%d"))
         periodo_inicio = periodo_fim.advance(-365, 'day')
 
+        # Obter ano e mês formatados
         ano_atual = data_atual.year
         ano_anterior = ano_atual - 1
-        mes_formatado = data_atual.strftime("%b")
+        mes_formatado = data_atual.strftime("%b")  # Ex: "Jan"
 
+        # Carregar imagens Sentinel-2
         sentinel = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
             .select(['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12']) \
             .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 10) \
             .filterBounds(bacia) \
             .filterDate(periodo_inicio, periodo_fim)
 
+        # Verificar se há imagens para o período definido
         num_imagens = sentinel.size().getInfo()
         if num_imagens == 0:
             st.error("Nenhuma imagem foi encontrada para o período especificado.")
@@ -202,8 +131,10 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
         else:
             st.success(f"Imagens encontradas: {num_imagens}")
 
+            # Exportar a lista de imagens Sentinel-2 para um arquivo CSV (se selecionado)
             if st.session_state.get("exportar_sentinel_composite"):
                 try:
+                    # Criar uma FeatureCollection com as informações das imagens
                     sentinel_list = sentinel.toList(sentinel.size())
                     features = ee.FeatureCollection(sentinel_list.map(lambda img: ee.Feature(None, {
                         'id': ee.Image(img).id(),
@@ -211,6 +142,7 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
                         'cloud_cover': ee.Image(img).get('CLOUDY_PIXEL_PERCENTAGE')
                     })))
 
+                    # Exportar a lista de imagens para um arquivo CSV
                     export_task = ee.batch.Export.table.toDrive(
                         collection=features,
                         folder='zap',
@@ -218,13 +150,15 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
                         fileFormat='CSV'
                     )
                     export_task.start()
-                    st.success("Exportação da lista de imagens Sentinel-2 iniciada.")
+                    st.success("Exportação da lista de imagens Sentinel-2 iniciada. Verifique seu Google Drive na pasta 'export_zap'.")
                 except Exception as e:
                     st.error(f"Erro ao exportar a lista de imagens Sentinel-2: {e}")
 
+        # Gerar a mediana das imagens Sentinel-2
         sentinel_median = sentinel.median().clip(bacia)
         sentinel_composite = sentinel_median.select(['B2', 'B3', 'B4', 'B8']).rename(['B2', 'B3', 'B4', 'B8'])
 
+        # Gerar índices
         indices = {
             "NDVI": sentinel_median.normalizedDifference(['B8', 'B4']),
             "GNDVI": sentinel_median.normalizedDifference(['B8', 'B3']),
@@ -232,14 +166,16 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
             "NDMI": sentinel_median.normalizedDifference(['B8', 'B11']),
         }
 
+        # Carregar MDE e Declividade
         mde_proj = ee.ImageCollection("JAXA/ALOS/AW3D30/V3_2").filterBounds(bacia).first().select(0).projection()
         mde = ee.ImageCollection("JAXA/ALOS/AW3D30/V3_2").filterBounds(bacia).mosaic().clip(bacia).setDefaultProjection(mde_proj)
         elevation = mde.select('DSM')
 
+        # Calcular a declividade em porcentagem
         declividade_graus = ee.Terrain.slope(elevation)
         declividade = declividade_graus.divide(180).multiply(3.14159).tan().multiply(100)
         declividade_reclass = declividade.expression(
-            "b(0) == 0 ? 1 : " + 
+            "b(0) == 0 ? 1 : " +  # Inclui declividade = 0 no valor 1
             "b(0) <= 3 ? 1 : " + 
             "(b(0) > 3 && b(0) <= 8) ? 2 : " + 
             "(b(0) > 8 && b(0) <= 20) ? 3 : " + 
@@ -248,24 +184,30 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
             "(b(0) > 75) ? 6 : -1"
         )
 
+        # Carregar MapBiomas 2023
         mapbiomas = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_integration_v1") \
             .select('classification_2023') \
             .clip(bacia)
 
+        # Carregar Qualidade de Pastagens
         pasture_quality = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_pasture_quality_v1") \
             .select('pasture_quality_2023') \
             .clip(bacia)
 
+        # Carregar PUC (UFV, IBGE, Embrapa)
         puc_ufv = ee.ImageCollection('users/zap/puc_ufv').filterBounds(bacia).mosaic().clip(bacia)
         puc_ibge = ee.ImageCollection('users/zap/puc_ibge').filterBounds(bacia).mosaic().clip(bacia)
         puc_embrapa = ee.ImageCollection('users/zap/puc_embrapa').filterBounds(bacia).mosaic().clip(bacia)
 
+        # Carregar Landforms
         landforms = ee.Image('CSP/ERGo/1_0/Global/SRTM_landforms').clip(bacia)
 
+        # Determinar o EPSG com base no fuso
         fusos_mg = ee.FeatureCollection('users/zap/fusos_mg')
         fuso_maior_area = fusos_mg.filterBounds(bacia).map(lambda f: f.set('area', f.area())).sort('area', False).first()
         epsg = fuso_maior_area.get('epsg').getInfo()
 
+        # Reprojetar todas as imagens
         utm_elevation = reprojetarImagem(elevation, epsg, 30)
         utm_declividade = reprojetarImagem(declividade_reclass, epsg, 30).float()
         utm_ndvi = reprojetarImagem(indices["NDVI"], epsg, 10)
@@ -280,6 +222,7 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
         utm_puc_ibge = reprojetarImagem(puc_ibge, epsg, 30).float()
         utm_puc_embrapa = reprojetarImagem(puc_embrapa, epsg, 30).float()
 
+        # Retornar as imagens processadas
         return {
             "utm_elevation": utm_elevation,
             "utm_declividade": utm_declividade,
@@ -303,6 +246,7 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
         st.error(f"Erro ao processar os dados: {e}")
         return None
 
+# Função para verificar o status das tarefas
 def check_task_status(task):
     try:
         status = task.status()
@@ -322,17 +266,22 @@ def check_task_status(task):
 
 # Verificar se o token está na session state
 if 'token' not in st.session_state:
+    # Se não estiver, mostrar o botão de autorização
     st.write("Para começar, conecte-se à sua conta Google:")
     result = oauth2.authorize_button("Conectar à Conta Google", REDIRECT_URI, SCOPE)
     if result and 'token' in result:
+        # Se a autorização for bem-sucedida, salvar o token na session state
         st.session_state.token = result.get('token')
         st.rerun()
 else:
+    # Se o token estiver na session state, inicializar o Earth Engine automaticamente
     token = st.session_state['token']
     st.success("Você está conectado à sua conta Google!")
 
+    # Inicializar o Earth Engine
     if "ee_initialized" not in st.session_state:
         try:
+            # Criar credenciais a partir do token
             credentials = Credentials(
                 token=token['access_token'],
                 refresh_token=token.get('refresh_token'),
@@ -342,6 +291,7 @@ else:
                 scopes=SCOPES
             )
 
+            # Listar projetos disponíveis
             service = build('cloudresourcemanager', 'v1', credentials=credentials)
             projects = service.projects().list().execute().get('projects', [])
             project_ids = [project['projectId'] for project in projects]
@@ -349,21 +299,26 @@ else:
             if not project_ids:
                 st.warning("Nenhum projeto encontrado na sua conta do Google Cloud.")
                 if st.button("Criar um novo projeto"):
+                    # Lógica para criar um novo projeto (implemente conforme necessário)
                     st.info("Funcionalidade de criação de projetos ainda não implementada.")
                     st.stop()
             else:
+                # Permitir que o usuário selecione um projeto
                 selected_project = st.selectbox("Selecione um projeto:", project_ids)
                 st.session_state["selected_project"] = selected_project
 
+                # Inicializar o Earth Engine com o projeto selecionado
                 ee.Initialize(credentials, project=selected_project)
                 st.session_state["ee_initialized"] = True
-                st.session_state["tasks"] = []
+                st.session_state["tasks"] = []  # Inicializar a lista de tarefas
                 st.success(f"Earth Engine inicializado com sucesso no projeto: {selected_project}")
         except Exception as e:
             st.error(f"Erro ao inicializar o Earth Engine: {e}")
-            st.stop()
+            st.stop()  # Interrompe a execução se a inicialização falhar
 
+    # Restante do código (carregar GeoJSON, processar dados, exportar para o Drive)
     if st.session_state.get("ee_initialized"):
+        # Carregar GeoJSON
         uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])
         
         if uploaded_file is not None:
@@ -372,12 +327,7 @@ else:
                 st.write(f"CRS do arquivo GeoJSON: {crs}")
                 nome_bacia_export = st.text_input("Digite o nome para exportação (sem espaços ou caracteres especiais):")
                 
-                # Opção para processar dados socioeconômicos
-                processar_dados_extras = st.checkbox("Processar dados socioeconômicos e agropecuários")
-                
-                if processar_dados_extras:
-                    st.info("Os dados socioeconômicos serão processados junto com as imagens selecionadas")
-                
+                # Seleção de produtos (aparece apenas após o GeoJSON ser carregado)
                 st.write("Selecione os produtos que deseja exportar:")
                 with st.form(key='product_selection_form'):
                     exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=True)
@@ -394,8 +344,10 @@ else:
                     exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=True)
                     exportar_landforms = st.checkbox("Landforms (30m)", value=True)
 
+                    # Botão para confirmar seleção (aparece primeiro)
                     submit_button = st.form_submit_button(label='Confirmar Seleção')
 
+                # Salvar seleções na session state após confirmação
                 if submit_button:
                     st.session_state["exportar_srtm_mde"] = exportar_srtm_mde
                     st.session_state["exportar_declividade"] = exportar_declividade
@@ -410,18 +362,21 @@ else:
                     st.session_state["exportar_puc_ibge"] = exportar_puc_ibge
                     st.session_state["exportar_puc_embrapa"] = exportar_puc_embrapa
                     st.session_state["exportar_landforms"] = exportar_landforms
-                    st.session_state["processar_dados_extras"] = processar_dados_extras
                     st.success("Seleção de produtos confirmada!")
 
-                if st.session_state.get("exportar_srtm_mde") is not None:
+                # Botão "Processar Dados" (aparece após confirmar a seleção)
+                if st.session_state.get("exportar_srtm_mde") is not None:  # Verifica se a seleção foi confirmada
                     if st.button("Processar Dados") and nome_bacia_export:
+                        # Exibir mensagem de carregamento
                         with st.spinner("Processando dados, por favor aguarde..."):
+                            # Processar os dados
                             resultados = process_data(geometry, crs, nome_bacia_export=nome_bacia_export)
                             
                             if resultados:
                                 st.session_state["resultados"] = resultados
-                                st.success("Dados processados com sucesso, iniciando exportação!")
+                                st.success("Dados processados com sucesso, iniciando exportação de dados para Google Drive!")
 
+                                # Exportar automaticamente os produtos selecionados
                                 tasks_selecionadas = []
                                 if st.session_state.get("exportar_srtm_mde"):
                                     tasks_selecionadas.append(exportarImagem(resultados["utm_elevation"], "06_", "_SRTM_MDE", 30, geometry, nome_bacia_export, "zap"))
@@ -456,41 +411,28 @@ else:
                                 else:
                                     st.warning("Nenhum produto selecionado para exportação.")
                                 
-                                # Processar dados socioeconômicos se selecionado
-                                if st.session_state.get("processar_dados_extras"):
-                                    st.info("Processando dados socioeconômicos...")
-                                    
-                                    # Carregar municípios (substitua pelo seu arquivo)
-                                    municipios_gdf = gpd.read_file("https://drive.google.com/.../municipios.geojson") 
-                                    
-                                    municipios_filtrados = intersect_municipios(geometry, municipios_gdf)
-                                    
-                                    if municipios_filtrados is not None and not municipios_filtrados.empty:
-                                        st.write(f"Municípios com >20% de representatividade: {len(municipios_filtrados)}")
-                                        resultados_socio = processar_tabelas_socioeconomicas(municipios_filtrados)
-                                        
-                                        for tabela, dados in resultados_socio.items():
-                                            st.write(f"Top 10 produtos - {tabela}")
-                                            st.dataframe(dados)
-                                    else:
-                                        st.warning("Nenhum município com mais de 20% de representatividade encontrado.")
-
+                                # Verificar status das tarefas
                                 if st.session_state.get("tasks"):
-                                    st.write("Verificando status das tarefas... Por favor aguarde, dependendo do tamanho da bacia, pode levar até 20 minutos.")
+                                    st.write("Verificando status das tarefas... Por favor aguarde, dependendo do tamanho da bacia, pode levar até 20 minutos. Caso deseje, você pode sair dessa página, as tarefas estão sendo processadas na nuvem pela Earth Engine.")
                                     
+                                    # Criar um espaço reservado (placeholder) para exibir o status
                                     status_placeholder = st.empty()
 
                                     while True:
+                                        # Limpar o conteúdo anterior do placeholder
                                         status_placeholder.empty()
 
+                                        # Verificar o status de cada tarefa
                                         todas_concluidas = True
                                         for task in st.session_state["tasks"]:
                                             state = check_task_status(task)
                                             if state != "COMPLETED":
                                                 todas_concluidas = False
 
+                                        # Se todas as tarefas foram concluídas, sair do loop
                                         if todas_concluidas:
                                             status_placeholder.success("Todas as tarefas foram concluídas com sucesso!")
                                             break
 
+                                        # Aguardar 60 segundos antes de verificar novamente
                                         time.sleep(60)

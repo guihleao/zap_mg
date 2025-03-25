@@ -294,7 +294,18 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
 # 6. Processamento principal (modificado)
 def process_data(geometry, crs, nome_bacia_export="bacia"):
     try:
-        # ... (código existente de processamento de imagens)
+        data_atual = datetime.datetime.now()
+        mes_formatado = data_atual.strftime("%b")  # Ex: "Jan"
+        ano_atual = data_atual.year
+        ano_anterior = ano_atual - 1
+        
+        # Inicializar dicionário de resultados
+        resultados = {
+            "nome_bacia_export": nome_bacia_export,
+            "mes_formatado": mes_formatado,
+            "ano_atual": ano_atual,
+            "ano_anterior": ano_anterior,
+        }
         
         # Se selecionado, processar dados agro
         if st.session_state.get("exportar_dados_agro"):
@@ -309,14 +320,150 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
                 if df_ibge is not None:
                     df_ibge['geocodigo'] = df_ibge['geocodigo'].astype(int)
                     st.session_state["ibge_municipios"] = df_ibge[df_ibge['geocodigo'].isin(geocodigos)]
+            
+            # Retornar apenas os dados necessários para agro
+            return resultados
         
-        return {
-            # ... (resultados existentes)
-            "nome_bacia_export": nome_bacia_export,
-            "mes_formatado": mes_formatado,
-            "ano_atual": ano_atual,
-            "ano_anterior": ano_anterior,
-        }
+        # Se não for apenas agro, processar imagens
+        # Calcular o bounding box da geometria
+        bbox = geometry.bounds()
+        # Aplicar um buffer de 1 km ao bounding box
+        bacia = bbox.buffer(1000)  # 1000 metros = 1 km
+        periodo_fim = ee.Date(data_atual.strftime("%Y-%m-%d"))
+        periodo_inicio = periodo_fim.advance(-365, 'day')
+
+        # Carregar imagens Sentinel-2 se selecionado
+        if st.session_state.get("exportar_sentinel_composite"):
+            sentinel = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
+                .select(['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12']) \
+                .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 10) \
+                .filterBounds(bacia) \
+                .filterDate(periodo_inicio, periodo_fim)
+
+            # Verificar se há imagens para o período definido
+            num_imagens = sentinel.size().getInfo()
+            if num_imagens == 0:
+                st.error("Nenhuma imagem foi encontrada para o período especificado.")
+                return None
+            else:
+                st.success(f"Imagens encontradas: {num_imagens}")
+
+                # Exportar a lista de imagens Sentinel-2 para um arquivo CSV (se selecionado)
+                if st.session_state.get("exportar_sentinel_composite"):
+                    try:
+                        # Criar uma FeatureCollection com as informações das imagens
+                        sentinel_list = sentinel.toList(sentinel.size())
+                        features = ee.FeatureCollection(sentinel_list.map(lambda img: ee.Feature(None, {
+                            'id': ee.Image(img).id(),
+                            'date': ee.Image(img).date().format('YYYY-MM-dd'),
+                            'cloud_cover': ee.Image(img).get('CLOUDY_PIXEL_PERCENTAGE')
+                        }))
+
+                        # Exportar a lista de imagens para um arquivo CSV
+                        export_task = ee.batch.Export.table.toDrive(
+                            collection=features,
+                            folder='zap',
+                            description='lista_imagens_sentinel-2',
+                            fileFormat='CSV'
+                        )
+                        export_task.start()
+                        st.success("Exportação da lista de imagens Sentinel-2 iniciada. Verifique seu Google Drive na pasta 'export_zap'.")
+                    except Exception as e:
+                        st.error(f"Erro ao exportar a lista de imagens Sentinel-2: {e}")
+
+            # Gerar a mediana das imagens Sentinel-2
+            sentinel_median = sentinel.median().clip(bacia)
+            sentinel_composite = sentinel_median.select(['B2', 'B3', 'B4', 'B8']).rename(['B2', 'B3', 'B4', 'B8'])
+
+        # Gerar índices se selecionados
+        indices = {}
+        if st.session_state.get("exportar_ndvi"):
+            indices["NDVI"] = sentinel_median.normalizedDifference(['B8', 'B4'])
+        if st.session_state.get("exportar_gndvi"):
+            indices["GNDVI"] = sentinel_median.normalizedDifference(['B8', 'B3'])
+        if st.session_state.get("exportar_ndwi"):
+            indices["NDWI"] = sentinel_median.normalizedDifference(['B3', 'B8'])
+        if st.session_state.get("exportar_ndmi"):
+            indices["NDMI"] = sentinel_median.normalizedDifference(['B8', 'B11'])
+
+        # Carregar MDE e Declividade se selecionados
+        if st.session_state.get("exportar_srtm_mde") or st.session_state.get("exportar_declividade"):
+            mde_proj = ee.ImageCollection("JAXA/ALOS/AW3D30/V3_2").filterBounds(bacia).first().select(0).projection()
+            mde = ee.ImageCollection("JAXA/ALOS/AW3D30/V3_2").filterBounds(bacia).mosaic().clip(bacia).setDefaultProjection(mde_proj)
+            elevation = mde.select('DSM')
+
+            if st.session_state.get("exportar_declividade"):
+                # Calcular a declividade em porcentagem
+                declividade_graus = ee.Terrain.slope(elevation)
+                declividade = declividade_graus.divide(180).multiply(3.14159).tan().multiply(100)
+                declividade_reclass = declividade.expression(
+                    "b(0) == 0 ? 1 : " +  # Inclui declividade = 0 no valor 1
+                    "b(0) <= 3 ? 1 : " + 
+                    "(b(0) > 3 && b(0) <= 8) ? 2 : " + 
+                    "(b(0) > 8 && b(0) <= 20) ? 3 : " + 
+                    "(b(0) > 20 && b(0) <= 45) ? 4 : " + 
+                    "(b(0) > 45 && b(0) <= 75) ? 5 : " + 
+                    "(b(0) > 75) ? 6 : -1"
+                )
+
+        # Carregar MapBiomas 2023 se selecionado
+        if st.session_state.get("exportar_mapbiomas"):
+            mapbiomas = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_integration_v1") \
+                .select('classification_2023') \
+                .clip(bacia)
+
+        # Carregar Qualidade de Pastagens se selecionado
+        if st.session_state.get("exportar_pasture_quality"):
+            pasture_quality = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_pasture_quality_v1") \
+                .select('pasture_quality_2023') \
+                .clip(bacia)
+
+        # Carregar PUC (UFV, IBGE, Embrapa) se selecionados
+        if st.session_state.get("exportar_puc_ufv"):
+            puc_ufv = ee.ImageCollection('users/zap/puc_ufv').filterBounds(bacia).mosaic().clip(bacia)
+        if st.session_state.get("exportar_puc_ibge"):
+            puc_ibge = ee.ImageCollection('users/zap/puc_ibge').filterBounds(bacia).mosaic().clip(bacia)
+        if st.session_state.get("exportar_puc_embrapa"):
+            puc_embrapa = ee.ImageCollection('users/zap/puc_embrapa').filterBounds(bacia).mosaic().clip(bacia)
+
+        # Carregar Landforms se selecionado
+        if st.session_state.get("exportar_landforms"):
+            landforms = ee.Image('CSP/ERGo/1_0/Global/SRTM_landforms').clip(bacia)
+
+        # Determinar o EPSG com base no fuso
+        fusos_mg = ee.FeatureCollection('users/zap/fusos_mg')
+        fuso_maior_area = fusos_mg.filterBounds(bacia).map(lambda f: f.set('area', f.area())).sort('area', False).first()
+        epsg = fuso_maior_area.get('epsg').getInfo()
+
+        # Reprojetar todas as imagens selecionadas
+        if st.session_state.get("exportar_srtm_mde"):
+            resultados["utm_elevation"] = reprojetarImagem(elevation, epsg, 30)
+        if st.session_state.get("exportar_declividade"):
+            resultados["utm_declividade"] = reprojetarImagem(declividade_reclass, epsg, 30).float()
+        if st.session_state.get("exportar_ndvi"):
+            resultados["utm_ndvi"] = reprojetarImagem(indices["NDVI"], epsg, 10)
+        if st.session_state.get("exportar_gndvi"):
+            resultados["utm_gndvi"] = reprojetarImagem(indices["GNDVI"], epsg, 10)
+        if st.session_state.get("exportar_ndwi"):
+            resultados["utm_ndwi"] = reprojetarImagem(indices["NDWI"], epsg, 10)
+        if st.session_state.get("exportar_ndmi"):
+            resultados["utm_ndmi"] = reprojetarImagem(indices["NDMI"], epsg, 10)
+        if st.session_state.get("exportar_sentinel_composite"):
+            resultados["utm_sentinel2"] = reprojetarImagem(sentinel_composite, epsg, 10).float()
+        if st.session_state.get("exportar_mapbiomas"):
+            resultados["utm_mapbiomas"] = reprojetarImagem(mapbiomas, epsg, 30)
+        if st.session_state.get("exportar_pasture_quality"):
+            resultados["utm_pasture_quality"] = reprojetarImagem(pasture_quality, epsg, 30).float()
+        if st.session_state.get("exportar_landforms"):
+            resultados["utm_landforms"] = reprojetarImagem(landforms, epsg, 30)
+        if st.session_state.get("exportar_puc_ufv"):
+            resultados["utm_puc_ufv"] = reprojetarImagem(puc_ufv, epsg, 30).float()
+        if st.session_state.get("exportar_puc_ibge"):
+            resultados["utm_puc_ibge"] = reprojetarImagem(puc_ibge, epsg, 30).float()
+        if st.session_state.get("exportar_puc_embrapa"):
+            resultados["utm_puc_embrapa"] = reprojetarImagem(puc_embrapa, epsg, 30).float()
+        
+        return resultados
     except Exception as e:
         st.error(f"Erro ao processar dados: {e}")
         return None
@@ -373,20 +520,20 @@ else:
                 with st.form(key='product_selection_form'):
                     col1, col2 = st.columns(2)
                     with col1:
-                        exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=True)
-                        exportar_declividade = st.checkbox("Declividade (30m)", value=True)
-                        exportar_ndvi = st.checkbox("NDVI (10m)", value=True)
-                        exportar_gndvi = st.checkbox("GNDVI (10m)", value=True)
-                        exportar_ndwi = st.checkbox("NDWI (10m)", value=True)
-                        exportar_ndmi = st.checkbox("NDMI (10m)", value=True)
+                        exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=False)
+                        exportar_declividade = st.checkbox("Declividade (30m)", value=False)
+                        exportar_ndvi = st.checkbox("NDVI (10m)", value=False)
+                        exportar_gndvi = st.checkbox("GNDVI (10m)", value=False)
+                        exportar_ndwi = st.checkbox("NDWI (10m)", value=False)
+                        exportar_ndmi = st.checkbox("NDMI (10m)", value=False)
                     with col2:
-                        exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=True)
-                        exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=True)
-                        exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=True)
-                        exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=True)
-                        exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=True)
-                        exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=True)
-                        exportar_landforms = st.checkbox("Landforms (30m)", value=True)
+                        exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=False)
+                        exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=False)
+                        exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=False)
+                        exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=False)
+                        exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=False)
+                        exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=False)
+                        exportar_landforms = st.checkbox("Landforms (30m)", value=False)
                     
                     st.markdown("---")
                     exportar_dados_agro = st.checkbox("Dados Agro e Socioeconômicos", value=False)
@@ -421,11 +568,34 @@ else:
                                 st.session_state["resultados"] = resultados
                                 st.success("Dados processados com sucesso!")
                                 
-                                # Exportar imagens
+                                # Exportar imagens se selecionadas
                                 tasks_selecionadas = []
-                                if st.session_state.get("exportar_srtm_mde"):
+                                if st.session_state.get("exportar_srtm_mde") and "utm_elevation" in resultados:
                                     tasks_selecionadas.append(exportarImagem(resultados["utm_elevation"], "06_", "_SRTM_MDE", 30, geometry, nome_bacia_export))
-                                # ... (adicionar outras exportações de imagem conforme necessário)
+                                if st.session_state.get("exportar_declividade") and "utm_declividade" in resultados:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_declividade"], "07_", "_Declividade", 30, geometry, nome_bacia_export))
+                                if st.session_state.get("exportar_ndvi") and "utm_ndvi" in resultados:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_ndvi"], "01_", "_NDVI", 10, geometry, nome_bacia_export))
+                                if st.session_state.get("exportar_gndvi") and "utm_gndvi" in resultados:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_gndvi"], "02_", "_GNDVI", 10, geometry, nome_bacia_export))
+                                if st.session_state.get("exportar_ndwi") and "utm_ndwi" in resultados:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_ndwi"], "03_", "_NDWI", 10, geometry, nome_bacia_export))
+                                if st.session_state.get("exportar_ndmi") and "utm_ndmi" in resultados:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_ndmi"], "04_", "_NDMI", 10, geometry, nome_bacia_export))
+                                if st.session_state.get("exportar_sentinel_composite") and "utm_sentinel2" in resultados:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_sentinel2"], "05_", "_Sentinel2", 10, geometry, nome_bacia_export))
+                                if st.session_state.get("exportar_mapbiomas") and "utm_mapbiomas" in resultados:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_mapbiomas"], "08_", "_MapBiomas", 30, geometry, nome_bacia_export))
+                                if st.session_state.get("exportar_pasture_quality") and "utm_pasture_quality" in resultados:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_pasture_quality"], "09_", "_PastureQuality", 30, geometry, nome_bacia_export))
+                                if st.session_state.get("exportar_landforms") and "utm_landforms" in resultados:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_landforms"], "10_", "_Landforms", 30, geometry, nome_bacia_export))
+                                if st.session_state.get("exportar_puc_ufv") and "utm_puc_ufv" in resultados:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ufv"], "11_", "_PUC_UFV", 30, geometry, nome_bacia_export))
+                                if st.session_state.get("exportar_puc_ibge") and "utm_puc_ibge" in resultados:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ibge"], "12_", "_PUC_IBGE", 30, geometry, nome_bacia_export))
+                                if st.session_state.get("exportar_puc_embrapa") and "utm_puc_embrapa" in resultados:
+                                    tasks_selecionadas.append(exportarImagem(resultados["utm_puc_embrapa"], "13_", "_PUC_Embrapa", 30, geometry, nome_bacia_export))
                                 
                                 # Processar dados agro se selecionado
                                 if st.session_state.get("exportar_dados_agro") and 'municipios_df' in st.session_state:

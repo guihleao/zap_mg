@@ -245,7 +245,7 @@ def baixar_tabela(url):
         return None
 
 def processar_tabelas_agro(geocodigos):
-    # Ordem específica dos indicadores que você deseja
+    # Ordem específica dos indicadores
     ORDEM_INDICADORES = [
         'geocodigo',
         'Gentílico',
@@ -273,11 +273,14 @@ def processar_tabelas_agro(geocodigos):
     df_ibge = baixar_tabela(TABELAS_AGRO['IBGE_Municipios_ZAP'])
     if df_ibge is not None:
         try:
-            # Verificar se a coluna geocodigo existe
-            if 'geocodigo' not in df_ibge.columns:
-                raise ValueError("Coluna 'geocodigo' não encontrada na tabela IBGE")
-                
-            df_ibge['geocodigo'] = df_ibge['geocodigo'].astype(int)
+            # Pré-processamento: converter vírgulas para pontos em colunas numéricas
+            for col in df_ibge.columns:
+                if df_ibge[col].dtype == object:
+                    df_ibge[col] = df_ibge[col].str.replace('.', '', regex=False)  # Remove pontos de milhar
+                    df_ibge[col] = df_ibge[col].str.replace(',', '.', regex=False)  # Converte vírgula para ponto
+            
+            # Converter geocodigo para inteiro
+            df_ibge['geocodigo'] = pd.to_numeric(df_ibge['geocodigo'], errors='coerce').astype('Int64')
             df_ibge_filtrado = df_ibge[df_ibge['geocodigo'].isin(geocodigos)]
             
             if df_ibge_filtrado.empty:
@@ -293,7 +296,7 @@ def processar_tabelas_agro(geocodigos):
             df_ibge_filtrado = df_ibge_filtrado.rename(columns={nome_col: 'Municípios'})
 
             # Remover colunas indesejadas
-            cols_remover = [col for col in ['.geo', 'system:index', 'geocodigo'] 
+            cols_remover = [col for col in ['.geo', 'system:index'] 
                           if col in df_ibge_filtrado.columns]
             if cols_remover:
                 df_ibge_filtrado = df_ibge_filtrado.drop(columns=cols_remover)
@@ -303,36 +306,41 @@ def processar_tabelas_agro(geocodigos):
             df_ibge_final.index.name = 'Indicador'
             
             # Adicionar geocodigo como primeiro indicador
-            geocodigos_series = pd.Series({municipio: geocodigo 
-                                         for municipio, geocodigo in zip(df_ibge_filtrado['Municípios'], geocodigos)},
-                                       name='geocodigo')
+            geocodigos_dict = dict(zip(df_ibge_filtrado['Municípios'], df_ibge_filtrado['geocodigo']))
+            geocodigos_series = pd.Series(geocodigos_dict, name='geocodigo')
             df_ibge_final = pd.concat([geocodigos_series.to_frame().T, df_ibge_final])
             
             # Filtrar e ordenar conforme a lista especificada
             indicadores_presentes = [ind for ind in ORDEM_INDICADORES if ind in df_ibge_final.index]
             df_ibge_final = df_ibge_final.loc[indicadores_presentes]
             
-            # Formatar valores
-            formatacoes = {
-                'PIB per capita': lambda x: f" R$ {float(x):,.2f} ",
-                'Receitas': lambda x: f" R$ {float(x):,.2f} ",
-                'Despesas': lambda x: f" R$ {float(x):,.2f} ",
-                'Área (km²)': lambda x: f"{float(x):,.3f}".replace('.', 'X').replace(',', '.').replace('X', ','),
-                'População no último censo': lambda x: f"{int(x):,}".replace(",", "."),
-                'Densidade demográfica': lambda x: f"{float(x):,.2f}".replace('.', 'X').replace(',', '.').replace('X', ','),
-            }
+            # Função para formatar valores brasileiros
+            def formatar_br(valor):
+                try:
+                    num = float(valor)
+                    if num.is_integer():
+                        return f"{int(num):,}".replace(",", ".")
+                    else:
+                        return f"{num:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                except (ValueError, TypeError):
+                    return str(valor) if pd.notnull(valor) else "-"
             
-            for indicador, fmt in formatacoes.items():
+            # Aplicar formatação brasileira
+            for col in df_ibge_final.columns:
+                df_ibge_final[col] = df_ibge_final[col].apply(formatar_br)
+            
+            # Formatação especial para valores monetários
+            for indicador in ['PIB per capita', 'Receitas', 'Despesas']:
                 if indicador in df_ibge_final.index:
                     df_ibge_final.loc[indicador] = df_ibge_final.loc[indicador].apply(
-                        lambda x: fmt(x) if pd.notnull(x) and str(x).strip() else "-"
+                        lambda x: f"R$ {x}" if x != "-" else "-"
                     )
             
             resultados['IBGE_Municipios_ZAP'] = df_ibge_final
             
         except Exception as e:
             st.error(f"Erro ao processar tabela IBGE: {str(e)}")
-            st.error(traceback.format_exc())  # Log detalhado do erro
+            st.error(traceback.format_exc())
     
     # Processar as outras tabelas
     for nome_tabela, url in TABELAS_AGRO.items():

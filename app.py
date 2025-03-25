@@ -258,7 +258,7 @@ def processar_tabelas_agro(geocodigos):
             df_ibge_filtrado = df_ibge_filtrado.drop(columns=['.geo', 'system:index'])
         
         # Transpor a tabela para o formato desejado
-        df_ibge_final = df_ibge_filtrado.set_index('Municípios').T
+        df_ibge_final = df_ibge_filtrado.set_index('nome').T
         df_ibge_final.index.name = 'Indicador'
         resultados['IBGE_Municipios_ZAP'] = df_ibge_final
     

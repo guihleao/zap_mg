@@ -198,7 +198,33 @@ def processar_municipios(geometry, nome_bacia_export):
         
         if not df_municipios.empty:
             df_municipios = df_municipios.sort_values('percentual_na_bacia', ascending=False)
-            st.success(f"{len(df_municipios)} municípios selecionados com mais de 20% de área na bacia")
+            
+            # Formatando as colunas numéricas
+            df_municipios['area_intersecao_ha'] = df_municipios['area_intersecao_ha'].round(2)
+            df_municipios['percentual_na_bacia'] = df_municipios['percentual_na_bacia'].round(2)
+            df_municipios['area_municipio_ha'] = df_municipios['area_municipio_ha'].round(2)
+            
+            # Criando DataFrame para exibição
+            df_display = df_municipios[['nome', 'area_intersecao_ha', 'percentual_na_bacia']].copy()
+            df_display.columns = ['Município', 'Área na Bacia (ha)', 'Representatividade (%)']
+            
+            st.success(f"{len(df_municipios)} município(s) selecionado(s) com mais de 20% de área na bacia")
+            
+            # Mostrar tabela detalhada
+            st.write("### Detalhes dos Municípios")
+            st.dataframe(df_display.sort_values('Representatividade (%)', ascending=False))
+            
+            # Adicionar métricas resumidas
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Municípios selecionados", len(df_municipios))
+            with col2:
+                st.metric("Área total na bacia (ha)", 
+                         round(df_municipios['area_intersecao_ha'].sum(), 2))
+            with col3:
+                st.metric("Representatividade média (%)", 
+                         round(df_municipios['percentual_na_bacia'].mean(), 2))
+            
             return df_municipios
         else:
             st.warning("Nenhum município com mais de 20% de área na bacia foi encontrado.")
@@ -518,27 +544,45 @@ else:
                 nome_bacia_export = st.text_input("Digite o nome para exportação (sem espaços ou caracteres especiais):")
                 
                 with st.form(key='product_selection_form'):
+                    # Título da seção de Sensoriamento Remoto
+                    st.subheader("📡 Produtos de Sensoriamento Remoto (Imagens/Raster)")
+                    st.caption(f"Sistema de referência espacial: {crs}")
+                    
                     col1, col2 = st.columns(2)
                     with col1:
-                        exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=False)
-                        exportar_declividade = st.checkbox("Declividade (30m)", value=False)
+                        st.markdown("**Índices Espectrais**")
                         exportar_ndvi = st.checkbox("NDVI (10m)", value=False)
                         exportar_gndvi = st.checkbox("GNDVI (10m)", value=False)
                         exportar_ndwi = st.checkbox("NDWI (10m)", value=False)
                         exportar_ndmi = st.checkbox("NDMI (10m)", value=False)
+                        
+                        st.markdown("**Modelo Digital de Elevação**")
+                        exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=False)
+                        exportar_declividade = st.checkbox("Declividade (30m)", value=False)
+
                     with col2:
+                        st.markdown("**Cobertura e Uso da Terra**")
                         exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=False)
                         exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=False)
                         exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=False)
+                        
+                        st.markdown("**Potencial de Uso**")
                         exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=False)
                         exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=False)
                         exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=False)
+                        
+                        st.markdown("**Geomorfologia**")
                         exportar_landforms = st.checkbox("Landforms (30m)", value=False)
                     
+                    # Divisão visual
                     st.markdown("---")
-                    exportar_dados_agro = st.checkbox("Dados Agro e Socioeconômicos", value=False)
                     
-                    submit_button = st.form_submit_button(label='Confirmar Seleção')
+                    # Título da seção de Dados Socioeconômicos
+                    st.subheader("📊 Dados Agro e Socioeconômicos")
+                    st.caption("Municípios com representatividade >20% na bacia hidrográfica")
+                    exportar_dados_agro = st.checkbox("Ativar processamento de dados do IBGE", value=False)
+                    
+                    submit_button = st.form_submit_button(label='✅ Confirmar Seleção')
 
                 if submit_button:
                     st.session_state.update({

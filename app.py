@@ -19,7 +19,7 @@ import gdown
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
 
-# 1. Configuração inicial e autenticação (mantida igual)
+# 1. Configuração inicial e autenticação
 if 'google_oauth' in st.secrets:
     CLIENT_ID = st.secrets['google_oauth']['client_id']
     CLIENT_SECRET = st.secrets['google_oauth']['client_secret']
@@ -94,7 +94,7 @@ TABELAS_AGRO = {
     'IBGE_Municipios_ZAP': 'https://drive.google.com/uc?id=1skVkA0cN3TVlJThvqsilWwO2SGLY-joi'
 }
 
-# 4. Funções auxiliares (mantidas iguais)
+# 4. Funções auxiliares
 def load_geojson(file):
     try:
         gdf = gpd.read_file(file)
@@ -157,7 +157,7 @@ def check_task_status(task):
         st.error(f"Erro ao verificar o status da tarefa: {e}")
         return None
 
-# 5. Novas funções para processamento dos dados agro
+# 5. Funções para processamento dos dados agro
 def processar_municipios(geometry, nome_bacia_export):
     try:
         # Carregar municípios de MG (do Earth Engine)
@@ -247,26 +247,8 @@ def baixar_tabela(url):
 def processar_tabelas_agro(geocodigos):
     resultados = {}
     
-    # Primeiro processamos a tabela IBGE separadamente
-    df_ibge = baixar_tabela(TABELAS_AGRO['IBGE_Municipios_ZAP'])
-    if df_ibge is not None:
-        df_ibge['geocodigo'] = df_ibge['geocodigo'].astype(int)
-        df_ibge_filtrado = df_ibge[df_ibge['geocodigo'].isin(geocodigos)]
-        
-        # Remover colunas indesejadas
-        if '.geo' in df_ibge_filtrado.columns:
-            df_ibge_filtrado = df_ibge_filtrado.drop(columns=['.geo', 'system:index'])
-        
-        # Transpor a tabela para o formato desejado
-        df_ibge_final = df_ibge_filtrado.set_index('Municípios').T
-        df_ibge_final.index.name = 'Indicador'
-        resultados['IBGE_Municipios_ZAP'] = df_ibge_final
-    
-    # Processar as outras tabelas
+    # Processar todas as tabelas, incluindo IBGE
     for nome_tabela, url in TABELAS_AGRO.items():
-        if nome_tabela == 'IBGE_Municipios_ZAP':
-            continue
-            
         df = baixar_tabela(url)
         if df is None:
             continue
@@ -280,7 +262,19 @@ def processar_tabelas_agro(geocodigos):
         if df_filtrado.empty:
             continue
             
-        # Para cada município, criar uma planilha com seus top 10 produtos
+        # Tratamento especial para tabela IBGE
+        if nome_tabela == 'IBGE_Municipios_ZAP':
+            # Remover colunas indesejadas
+            if '.geo' in df_filtrado.columns:
+                df_filtrado = df_filtrado.drop(columns=['.geo', 'system:index'])
+            
+            # Transpor a tabela para o formato desejado
+            df_final = df_filtrado.set_index('Municípios').T
+            df_final.index.name = 'Indicador'
+            resultados[nome_tabela] = df_final
+            continue
+            
+        # Para outras tabelas, criar uma planilha com top 10 produtos por município
         municipios_dfs = {}
         for _, row in df_filtrado.iterrows():
             municipio = row['nome']
@@ -328,31 +322,21 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
     try:
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            # Escrever tabela IBGE primeiro
-            if 'IBGE_Municipios_ZAP' in dados_agro and dados_agro['IBGE_Municipios_ZAP'] is not None:
-                dados_agro['IBGE_Municipios_ZAP'].to_excel(
-                    writer, 
-                    sheet_name='IBGE_Municipios', 
-                    index=True
-                )
-            
-            # Escrever as outras tabelas (uma planilha por município)
-            for nome_tabela, municipios_data in dados_agro.items():
+            # Escrever cada planilha
+            for nome_tabela, dados in dados_agro.items():
+                # Tabela IBGE tem tratamento especial
                 if nome_tabela == 'IBGE_Municipios_ZAP':
+                    dados.to_excel(writer, sheet_name='IBGE_Municipios', index=True)
                     continue
                 
-                if isinstance(municipios_data, dict):  # Dados por município
-                    for municipio, df in municipios_data.items():
-                        # Limitar nome da planilha a 31 caracteres e remover caracteres inválidos
-                        sheet_name = f"{nome_tabela[:15]}_{municipio[:10]}"
+                # Para outras tabelas, escrever uma planilha por município
+                if isinstance(dados, dict):
+                    for municipio, df in dados.items():
+                        # Limitar nome da planilha a 31 caracteres
+                        sheet_name = f"{nome_tabela[:15]}_{municipio[:10]}"[:31]
                         sheet_name = ''.join(c for c in sheet_name if c.isalnum() or c in ('_', ' '))
-                        sheet_name = sheet_name[:31]
                         
-                        df.to_excel(
-                            writer, 
-                            sheet_name=sheet_name, 
-                            index=False
-                        )
+                        df.to_excel(writer, sheet_name=sheet_name, index=False)
         
         output.seek(0)
         return output
@@ -360,32 +344,7 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
         st.error(f"Erro ao gerar Excel: {e}")
         return None
 
-def gerar_excel_agro(dados_agro, nome_bacia_export):
-    try:
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            # Escrever cada planilha
-            for nome_completo, df in dados_agro.items():
-                # Simplificar nome da planilha (remover município)
-                nome_base = nome_completo.split('_')[0]
-                
-                # Criar nome seguro para a planilha (máx 31 caracteres)
-                sheet_name = nome_base[:31]
-                
-                # Escrever no Excel
-                df.to_excel(
-                    writer,
-                    sheet_name=sheet_name,
-                    index=False
-                )
-        
-        output.seek(0)
-        return output
-    except Exception as e:
-        st.error(f"Erro ao gerar Excel: {e}")
-        return None
-
-# 6. Processamento principal (modificado)
+# 6. Processamento principal
 def process_data(geometry, crs, nome_bacia_export="bacia"):
     try:
         data_atual = datetime.datetime.now()
@@ -406,24 +365,25 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
             st.info("Processando dados agro e socioeconômicos...")
             
             # Processar municípios na bacia
-            st.session_state["municipios_df"] = processar_municipios(geometry, nome_bacia_export)
+            municipios_df = processar_municipios(geometry, nome_bacia_export)
             
-            if st.session_state["municipios_df"] is not None:
-                geocodigos = st.session_state["municipios_df"]['geocodigo'].tolist()
+            if municipios_df is not None:
+                geocodigos = municipios_df['geocodigo'].tolist()
                 
-                # Processar todas as tabelas agro (incluindo IBGE)
-                st.session_state["dados_agro"] = processar_tabelas_agro(geocodigos)
+                # Processar todas as tabelas agro
+                dados_agro = processar_tabelas_agro(geocodigos)
                 
                 # Gerar Excel consolidado
-                excel_agro = gerar_excel_agro(st.session_state["dados_agro"], nome_bacia_export)
-                
-                if excel_agro:
-                    st.download_button(
-                        label="📥 Baixar Dados Agro e Socioeconômicos",
-                        data=excel_agro,
-                        file_name=f"{nome_bacia_export}_dados_agro.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
+                if dados_agro:
+                    excel_agro = gerar_excel_agro(dados_agro, nome_bacia_export)
+                    
+                    if excel_agro:
+                        st.download_button(
+                            label="📥 Baixar Dados Agro e Socioeconômicos",
+                            data=excel_agro,
+                            file_name=f"{nome_bacia_export}_dados_agro.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
             
             # Se também estiver processando imagens, retornar os resultados
             if any(st.session_state.get(key) for key in [
@@ -460,27 +420,26 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
                 st.success(f"Imagens encontradas: {num_imagens}")
 
                 # Exportar a lista de imagens Sentinel-2 para um arquivo CSV (se selecionado)
-                if st.session_state.get("exportar_sentinel_composite"):
-                    try:
-                        # Criar uma FeatureCollection com as informações das imagens
-                        sentinel_list = sentinel.toList(sentinel.size())
-                        features = ee.FeatureCollection(sentinel_list.map(lambda img: ee.Feature(None, {
-                            'id': ee.Image(img).id(),
-                            'date': ee.Image(img).date().format('YYYY-MM-dd'),
-                            'cloud_cover': ee.Image(img).get('CLOUDY_PIXEL_PERCENTAGE')
-                        })))
+                try:
+                    # Criar uma FeatureCollection com as informações das imagens
+                    sentinel_list = sentinel.toList(sentinel.size())
+                    features = ee.FeatureCollection(sentinel_list.map(lambda img: ee.Feature(None, {
+                        'id': ee.Image(img).id(),
+                        'date': ee.Image(img).date().format('YYYY-MM-dd'),
+                        'cloud_cover': ee.Image(img).get('CLOUDY_PIXEL_PERCENTAGE')
+                    })))
 
-                        # Exportar a lista de imagens para um arquivo CSV
-                        export_task = ee.batch.Export.table.toDrive(
-                            collection=features,
-                            folder='zap',
-                            description='lista_imagens_sentinel-2',
-                            fileFormat='CSV'
-                        )
-                        export_task.start()
-                        st.success("Exportação da lista de imagens Sentinel-2 iniciada. Verifique seu Google Drive na pasta 'export_zap'.")
-                    except Exception as e:
-                        st.error(f"Erro ao exportar a lista de imagens Sentinel-2: {e}")
+                    # Exportar a lista de imagens para um arquivo CSV
+                    export_task = ee.batch.Export.table.toDrive(
+                        collection=features,
+                        folder='zap',
+                        description='lista_imagens_sentinel-2',
+                        fileFormat='CSV'
+                    )
+                    export_task.start()
+                    st.success("Exportação da lista de imagens Sentinel-2 iniciada. Verifique seu Google Drive na pasta 'export_zap'.")
+                except Exception as e:
+                    st.error(f"Erro ao exportar a lista de imagens Sentinel-2: {e}")
 
             # Gerar a mediana das imagens Sentinel-2
             sentinel_median = sentinel.median().clip(bacia)
@@ -579,7 +538,7 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
         st.error(f"Erro ao processar dados: {e}")
         return None
 
-# 7. Interface do usuário (modificada)
+# 7. Interface do usuário
 if 'token' not in st.session_state:
     st.write("Para começar, conecte-se à sua conta Google:")
     result = oauth2.authorize_button("Conectar à Conta Google", REDIRECT_URI, SCOPE)
@@ -727,28 +686,6 @@ else:
                                     tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ibge"], "12_", "_PUC_IBGE", 30, geometry, nome_bacia_export))
                                 if st.session_state.get("exportar_puc_embrapa") and "utm_puc_embrapa" in resultados:
                                     tasks_selecionadas.append(exportarImagem(resultados["utm_puc_embrapa"], "13_", "_PUC_Embrapa", 30, geometry, nome_bacia_export))
-                                
-                                # Processar dados agro se selecionado
-                                if st.session_state.get("exportar_dados_agro") and 'municipios_df' in st.session_state:
-                                    st.info("Processando dados agro e socioeconômicos...")
-                                    
-                                    # Gerar Excel com dados agro
-                                    excel_agro = gerar_excel_agro(st.session_state["dados_agro"], nome_bacia_export)
-                                    
-                                    if excel_agro:
-                                        # Adicionar planilha IBGE se existir
-                                        if 'ibge_municipios' in st.session_state and st.session_state["ibge_municipios"] is not None:
-                                            with pd.ExcelWriter(excel_agro, engine='openpyxl', mode='a') as writer:
-                                                st.session_state["ibge_municipios"].to_excel(
-                                                    writer, sheet_name='IBGE_Municipios_ZAP', index=False)
-                                        
-                                        # Oferecer download
-                                        st.download_button(
-                                            label="Baixar Dados Agro e Socioeconômicos",
-                                            data=excel_agro,
-                                            file_name=f"{nome_bacia_export}_dados_agro.xlsx",
-                                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                        )
                                 
                                 # Verificar status das tarefas
                                 if tasks_selecionadas:

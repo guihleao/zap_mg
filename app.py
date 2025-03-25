@@ -367,22 +367,23 @@ def processar_tabelas_agro(geocodigos):
                 st.warning(f"Nenhum município encontrado na tabela {nome_tabela}")
                 continue
                 
-            # Dicionário para armazenar dados por tabela (não mais por município)
+            # Dicionário para armazenar dados
             tabela_dfs = {}
             
             for _, row in df_filtrado.iterrows():
-                municipio = row['nome']
-                geocodigo = row['geocodigo']
+                municipio = str(row['nome'])  # Garantir que é string
+                geocodigo = str(row['geocodigo'])
                 
                 # Identificar colunas de anos
                 colunas_ano = [col for col in row.index 
-                             if col[-2:].isdigit() and col not in ['geocodigo', 'nome'] and not col.startswith(('Unnamed', '.geo'))]
+                             if str(col)[-2:].isdigit() and col not in ['geocodigo', 'nome'] 
+                             and not str(col).startswith(('Unnamed', '.geo'))]
                 
                 # Agrupar por produto
                 produtos = {}
                 for col in colunas_ano:
-                    produto = col[:-2]
-                    ano = '20' + col[-2:]  # Formato 2014, 2015, etc.
+                    produto = str(col)[:-2]
+                    ano = '20' + str(col)[-2:]  # Formato 2014, 2015, etc.
                     valor = row[col]
                     
                     if pd.notnull(valor):
@@ -393,40 +394,41 @@ def processar_tabelas_agro(geocodigos):
                 # Converter para DataFrame
                 df_produtos = pd.DataFrame.from_dict(produtos, orient='index')
                 
-                # Ordenar anos corretamente
-                anos_ordenados = sorted(df_produtos.columns, key=lambda x: int(x))
-                df_produtos = df_produtos[anos_ordenados]
-                
-                # Ordenar por 2023 (se existir) ou pelo último ano disponível
+                # Ordenar anos corretamente (como inteiros)
                 if not df_produtos.empty:
-                    if '2023' in df_produtos.columns:
-                        df_produtos = df_produtos.sort_values('2023', ascending=False)
-                    else:
-                        ultimo_ano = sorted(df_produtos.columns)[-1]
-                        df_produtos = df_produtos.sort_values(ultimo_ano, ascending=False)
+                    anos_ordenados = sorted(df_produtos.columns, key=lambda x: int(x))
+                    df_produtos = df_produtos[anos_ordenados]
+                    
+                    # Ordenar por 2023 ou último ano
+                    sort_col = '2023' if '2023' in df_produtos.columns else anos_ordenados[-1]
+                    df_produtos = df_produtos.sort_values(sort_col, ascending=False)
                     
                     # Pegar top 10 e traduzir nomes
                     top_10 = df_produtos.head(10)
-                    top_10.index = [DICIONARIO_PRODUTOS.get(p, p) for p in top_10.index]
+                    top_10.index = [str(DICIONARIO_PRODUTOS.get(p, p)) for p in top_10.index]
                     
-                    # Formatar valores numéricos
-                    top_10 = top_10.applymap(lambda x: f"{int(float(x)):,}".replace(",", ".") if pd.notnull(x) and float(x).is_integer() else
-                                           f"{float(x):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "-")
+                    # Formatar valores (garantindo conversão para string)
+                    def formatar_valor(x):
+                        try:
+                            x = float(x)
+                            if x.is_integer():
+                                return f"{int(x):,}".replace(",", ".")
+                            return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                        except:
+                            return str(x) if pd.notnull(x) else "-"
                     
-                    # Adicionar linha com nome do município
-                    top_10.loc[-1] = [f"Município: {municipio}"] + [''] * (len(top_10.columns)-1)
-                    top_10.index = top_10.index + 1
-                    top_10 = top_10.sort_index()
+                    top_10 = top_10.applymap(formatar_valor)
                     
-                    # Adicionar ao dicionário
+                    # Adicionar linha com município (como string)
+                    linha_municipio = pd.DataFrame([["Município: " + municipio] + [""]*(len(top_10.columns)-1)], 
+                                                 columns=top_10.columns, index=["0"])
+                    top_10 = pd.concat([linha_municipio, top_10])
+                    
                     tabela_dfs[municipio] = top_10
             
             if tabela_dfs:
-                # Criar nome curto para a planilha
-                nome_curto = nome_tabela.split('_')[0]  # Pega a primeira parte (PAM, PPM, PEVS)
-                if len(nome_curto) > 20:  # Limite adicional de segurança
-                    nome_curto = nome_curto[:20]
-                
+                # Criar nome curto seguro para a planilha
+                nome_curto = ''.join(c for c in nome_tabela.split('_')[0] if c.isalnum())[:20]
                 resultados[nome_curto] = tabela_dfs
                 
         except Exception as e:

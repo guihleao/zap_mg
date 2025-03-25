@@ -313,9 +313,10 @@ def processar_tabelas_agro(geocodigos):
                 for col in df_ibge_final.columns:
                     df_ibge_final[col] = df_ibge_final[col].apply(lambda x: str(x).replace('.', '') if pd.notnull(x) else '-')
                 
-                    resultados['IBGE'] = df_ibge_final
-                except Exception as e:
-                    st.error(f"Erro ao processar tabela IBGE: {str(e)}")
+                resultados['IBGE'] = df_ibge_final
+                
+            except Exception as e:
+                st.error(f"Erro ao processar tabela IBGE: {str(e)}")
 
     # Dicionário para simplificar nomes das tabelas
     NOMES_SIMPLIFICADOS = {

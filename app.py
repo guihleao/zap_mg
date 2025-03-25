@@ -251,72 +251,71 @@ def processar_tabelas_agro(geocodigos):
     if 'IBGE_Municipios_ZAP' in TABELAS_AGRO:
         df_ibge = baixar_tabela(TABELAS_AGRO['IBGE_Municipios_ZAP'])
         if df_ibge is not None:
-            try:
+            try:                
+                # Converter geocodigo para string e limpar
+                df_ibge['geocodigo'] = df_ibge['geocodigo'].astype(str).str.strip().str.replace('.', '')
+                geocodigos_str = [str(g).strip().replace('.', '') for g in geocodigos]
+                df_ibge_filtrado = df_ibge[df_ibge['geocodigo'].isin(geocodigos_str)]
                 
-            # Converter geocodigo para string e limpar
-            df_ibge['geocodigo'] = df_ibge['geocodigo'].astype(str).str.strip().str.replace('.', '')
-            geocodigos_str = [str(g).strip().replace('.', '') for g in geocodigos]
-            df_ibge_filtrado = df_ibge[df_ibge['geocodigo'].isin(geocodigos_str)]
-            
-            if df_ibge_filtrado.empty:
-                st.warning("Nenhum município encontrado na tabela IBGE")
-                return resultados
-            
-            # Renomear coluna de municípios
-            nome_col = next((col for col in df_ibge_filtrado.columns 
-                          if col.lower() in ['municípios', 'municipio', 'nome']), None)
-            if not nome_col:
-                raise ValueError("Coluna de municípios não encontrada")
+                if df_ibge_filtrado.empty:
+                    st.warning("Nenhum município encontrado na tabela IBGE")
+                    return resultados
                 
-            df_ibge_filtrado = df_ibge_filtrado.rename(columns={nome_col: 'Municípios'})
+                # Renomear coluna de municípios
+                nome_col = next((col for col in df_ibge_filtrado.columns 
+                              if col.lower() in ['municípios', 'municipio', 'nome']), None)
+                if not nome_col:
+                    raise ValueError("Coluna de municípios não encontrada")
+                    
+                df_ibge_filtrado = df_ibge_filtrado.rename(columns={nome_col: 'Municípios'})
 
-            # Remover colunas indesejadas
-            cols_remover = [col for col in ['.geo', 'system:index'] 
-                          if col in df_ibge_filtrado.columns]
-            if cols_remover:
-                df_ibge_filtrado = df_ibge_filtrado.drop(columns=cols_remover)
+                # Remover colunas indesejadas
+                cols_remover = [col for col in ['.geo', 'system:index'] 
+                              if col in df_ibge_filtrado.columns]
+                if cols_remover:
+                    df_ibge_filtrado = df_ibge_filtrado.drop(columns=cols_remover)
 
-            # Transpor e formatar
-            df_ibge_final = df_ibge_filtrado.set_index('Municípios').T
-            df_ibge_final.index.name = 'Indicador'
-            
-            # Remover duplicatas e manter apenas geocodigo uma vez
-            if 'geocodigo' in df_ibge_final.index:
-                df_ibge_final = df_ibge_final[~df_ibge_final.index.duplicated(keep='first')]
-            
-            # Ordem específica dos indicadores
-            ordem = [
-                'geocodigo',
-                'Gentílico',
-                'Bioma predominante',
-                'Área (km²)',
-                'População no último censo',
-                'População ocupada {%}',
-                'Densidade demográfica (hab/km²)',
-                'PIB per capita',
-                'Salário médio mensal dos trabalhadores formais',
-                'Receitas',
-                'Despesas',
-                'Esgotamento sanitário adequado {%}',
-                'Estabelecimentos de Saúde SUS',
-                'Mortalidade Infantil {%}',
-                'Taxa de escolarização de 6 a 14 anos de idade {%}',
-                'Urbanização de vias públicas {%}',
-                'Arborização de vias públicas {%}',
-                'Índice de Desenvolvimento Humano Municipal (IDHM)'
-            ]
-            
-            # Filtrar e ordenar
-            indicadores_presentes = [ind for ind in ordem if ind in df_ibge_final.index]
-            df_ibge_final = df_ibge_final.loc[indicadores_presentes]
-            
-            # Formatar valores
-            for col in df_ibge_final.columns:
-                df_ibge_final[col] = df_ibge_final[col].apply(lambda x: str(x).replace('.', '') if pd.notnull(x) else '-')
-            
-                resultados['IBGE'] = df_ibge_final
-            except Exception as e:
-                st.error(f"Erro ao processar tabela IBGE: {str(e)}")
+                # Transpor e formatar
+                df_ibge_final = df_ibge_filtrado.set_index('Municípios').T
+                df_ibge_final.index.name = 'Indicador'
+                
+                # Remover duplicatas e manter apenas geocodigo uma vez
+                if 'geocodigo' in df_ibge_final.index:
+                    df_ibge_final = df_ibge_final[~df_ibge_final.index.duplicated(keep='first')]
+                
+                # Ordem específica dos indicadores
+                ordem = [
+                    'geocodigo',
+                    'Gentílico',
+                    'Bioma predominante',
+                    'Área (km²)',
+                    'População no último censo',
+                    'População ocupada {%}',
+                    'Densidade demográfica (hab/km²)',
+                    'PIB per capita',
+                    'Salário médio mensal dos trabalhadores formais',
+                    'Receitas',
+                    'Despesas',
+                    'Esgotamento sanitário adequado {%}',
+                    'Estabelecimentos de Saúde SUS',
+                    'Mortalidade Infantil {%}',
+                    'Taxa de escolarização de 6 a 14 anos de idade {%}',
+                    'Urbanização de vias públicas {%}',
+                    'Arborização de vias públicas {%}',
+                    'Índice de Desenvolvimento Humano Municipal (IDHM)'
+                ]
+                
+                # Filtrar e ordenar
+                indicadores_presentes = [ind for ind in ordem if ind in df_ibge_final.index]
+                df_ibge_final = df_ibge_final.loc[indicadores_presentes]
+                
+                # Formatar valores
+                for col in df_ibge_final.columns:
+                    df_ibge_final[col] = df_ibge_final[col].apply(lambda x: str(x).replace('.', '') if pd.notnull(x) else '-')
+                
+                    resultados['IBGE'] = df_ibge_final
+                except Exception as e:
+                    st.error(f"Erro ao processar tabela IBGE: {str(e)}")
 
     # Dicionário para simplificar nomes das tabelas
     NOMES_SIMPLIFICADOS = {

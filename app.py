@@ -247,171 +247,118 @@ def baixar_tabela(url):
 def processar_tabelas_agro(geocodigos):
     resultados = {}
     
-    # Processar tabela IBGE (apenas uma planilha)
-    if 'IBGE_Municipios_ZAP' in TABELAS_AGRO:
-        df_ibge = baixar_tabela(TABELAS_AGRO['IBGE_Municipios_ZAP'])
-        if df_ibge is not None:
-            try:                
-                # Converter geocodigo para string e limpar
-                df_ibge['geocodigo'] = df_ibge['geocodigo'].astype(str).str.strip().str.replace('.', '')
-                geocodigos_str = [str(g).strip().replace('.', '') for g in geocodigos]
-                df_ibge_filtrado = df_ibge[df_ibge['geocodigo'].isin(geocodigos_str)]
-                
-                if df_ibge_filtrado.empty:
-                    st.warning("Nenhum município encontrado na tabela IBGE")
-                    return resultados
-                
-                # Renomear coluna de municípios
-                nome_col = next((col for col in df_ibge_filtrado.columns 
-                              if col.lower() in ['municípios', 'municipio', 'nome']), None)
-                if not nome_col:
-                    raise ValueError("Coluna de municípios não encontrada")
-                    
-                df_ibge_filtrado = df_ibge_filtrado.rename(columns={nome_col: 'Municípios'})
-
-                # Remover colunas indesejadas
-                cols_remover = [col for col in ['.geo', 'system:index'] 
-                              if col in df_ibge_filtrado.columns]
-                if cols_remover:
-                    df_ibge_filtrado = df_ibge_filtrado.drop(columns=cols_remover)
-
-                # Transpor e formatar
-                df_ibge_final = df_ibge_filtrado.set_index('Municípios').T
-                df_ibge_final.index.name = 'Indicador'
-                
-                # Remover duplicatas e manter apenas geocodigo uma vez
-                if 'geocodigo' in df_ibge_final.index:
-                    df_ibge_final = df_ibge_final[~df_ibge_final.index.duplicated(keep='first')]
-                
-                # Ordem específica dos indicadores
-                ordem = [
-                    'geocodigo',
-                    'Gentílico',
-                    'Bioma predominante',
-                    'Área (km²)',
-                    'População no último censo',
-                    'População ocupada {%}',
-                    'Densidade demográfica (hab/km²)',
-                    'PIB per capita',
-                    'Salário médio mensal dos trabalhadores formais',
-                    'Receitas',
-                    'Despesas',
-                    'Esgotamento sanitário adequado {%}',
-                    'Estabelecimentos de Saúde SUS',
-                    'Mortalidade Infantil {%}',
-                    'Taxa de escolarização de 6 a 14 anos de idade {%}',
-                    'Urbanização de vias públicas {%}',
-                    'Arborização de vias públicas {%}',
-                    'Índice de Desenvolvimento Humano Municipal (IDHM)'
-                ]
-                
-                # Filtrar e ordenar
-                indicadores_presentes = [ind for ind in ordem if ind in df_ibge_final.index]
-                df_ibge_final = df_ibge_final.loc[indicadores_presentes]
-                
-                # Formatar valores
-                for col in df_ibge_final.columns:
-                    df_ibge_final[col] = df_ibge_final[col].apply(lambda x: str(x).replace('.', '') if pd.notnull(x) else '-')
-                
-                resultados['IBGE'] = df_ibge_final
-                
-            except Exception as e:
-                st.error(f"Erro ao processar tabela IBGE: {str(e)}")
-
-    # Dicionário para simplificar nomes das tabelas
-    NOMES_SIMPLIFICADOS = {
-        'PAM_Quantidade_produzida_14-23': 'PAM_Quantidade',
-        'PAM_Valor_da_producao_14-23': 'PAM_Valor',
-        'PPM_Efetivo_dos_rebanhos_14-23': 'PPM_Efetivo',
-        'PPM_Prod_origem_animal_14-23': 'PPM_Producao',
-        'PPM_Valor_da_producao_prod_animal_14-23': 'PPM_Valor',
-        'PPM_Producao_aquicultura_14-23': 'PPM_Aquicultura',
-        'PPM_Valor_producao_aquicultura_14-23': 'PPM_ValorAquicultura',
-        'PEVS_Area_silv_14-23': 'PEVS_Area',
-        'PEVS_Qnt_prod_silv_14-23': 'PEVS_Quantidade',
-        'PEVS_Valor_prod_silv_14-23': 'PEVS_Valor'
-    }
-
-    # Processar as 10 tabelas separadamente
-    for nome_original, url in TABELAS_AGRO.items():
-        if nome_original == 'IBGE_Municipios_ZAP':
+    # Primeiro processamos a tabela IBGE separadamente
+    df_ibge = baixar_tabela(TABELAS_AGRO['IBGE_Municipios_ZAP'])
+    if df_ibge is not None:
+        df_ibge['geocodigo'] = df_ibge['geocodigo'].astype(int)
+        df_ibge_filtrado = df_ibge[df_ibge['geocodigo'].isin(geocodigos)]
+        
+        # Remover colunas indesejadas
+        if '.geo' in df_ibge_filtrado.columns:
+            df_ibge_filtrado = df_ibge_filtrado.drop(columns=['.geo', 'system:index'])
+        
+        # Transpor a tabela para o formato desejado
+        df_ibge_final = df_ibge_filtrado.set_index('nome').T
+        df_ibge_final.index.name = 'Indicador'
+        resultados['IBGE_Municipios_ZAP'] = df_ibge_final
+    
+    # Processar as outras tabelas
+    for nome_tabela, url in TABELAS_AGRO.items():
+        if nome_tabela == 'IBGE_Municipios_ZAP':
             continue
             
-        try:
-            nome_simplificado = NOMES_SIMPLIFICADOS.get(nome_original, nome_original.split('_')[0])
-            df = baixar_tabela(url)
+        df = baixar_tabela(url)
+        if df is None:
+            continue
             
-            if df is None:
-                st.warning(f"Falha ao baixar tabela {nome_original}")
-                continue
-                
-            # Converter geocodigo para string
-            df['geocodigo'] = df['geocodigo'].astype(str).str.strip()
-            geocodigos_str = [str(g).strip() for g in geocodigos]
-            df_filtrado = df[df['geocodigo'].isin(geocodigos_str)]
+        # Converter geocodigo para inteiro
+        df['geocodigo'] = df['geocodigo'].astype(int)
+        
+        # Filtrar municípios selecionados
+        df_filtrado = df[df['geocodigo'].isin(geocodigos)]
+        
+        if df_filtrado.empty:
+            continue
             
-            if df_filtrado.empty:
-                st.warning(f"Nenhum município encontrado na tabela {nome_original}")
-                continue
+        # Para cada município, criar uma planilha com seus top 10 produtos
+        municipios_dfs = {}
+        for _, row in df_filtrado.iterrows():
+            municipio = row['nome']
+            geocodigo = row['geocodigo']
+            
+            # Identificar colunas de anos (terminadas com 2 dígitos)
+            colunas_ano = [col for col in row.index if col[-2:].isdigit() and col not in ['geocodigo', 'nome']]
+            
+            # Agrupar por produto (prefixo antes do ano)
+            produtos = {}
+            for col in colunas_ano:
+                produto = col[:-2]
+                ano = col[-2:]
+                valor = row[col]
                 
-            # Processar cada município
-            for _, row in df_filtrado.iterrows():
-                municipio = row['nome']
-                
-                # Identificar colunas de anos
-                colunas_ano = [col for col in row.index 
-                             if str(col)[-2:].isdigit() and col not in ['geocodigo', 'nome']]
-                
-                # Agrupar por produto
-                produtos = {}
-                for col in colunas_ano:
-                    produto = str(col)[:-2]
-                    ano = '20' + str(col)[-2:]
-                    valor = row[col]
-                    
-                    if pd.notnull(valor):
-                        if produto not in produtos:
-                            produtos[produto] = {}
-                        produtos[produto][ano] = valor
-                
-                # Converter para DataFrame
-                df_produtos = pd.DataFrame.from_dict(produtos, orient='index')
-                
-                # Ordenar anos corretamente
-                anos_ordenados = sorted(df_produtos.columns, key=lambda x: int(x))
-                df_produtos = df_produtos[anos_ordenados]
-                
-                # Ordenar por 2023 ou último ano
-                sort_col = '2023' if '2023' in df_produtos.columns else anos_ordenados[-1]
-                df_produtos = df_produtos.sort_values(sort_col, ascending=False)
-                
-                # Pegar top 10 e traduzir nomes
-                top_10 = df_produtos.head(10)
-                top_10.index = [DICIONARIO_PRODUTOS.get(p, p) for p in top_10.index]
-                
-                # Formatar valores
-                top_10 = top_10.applymap(
-                    lambda x: f"{int(x):,}".replace(",", ".") if pd.notnull(x) and float(x).is_integer() else
-                    f"{float(x):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "-"
-                )
-                
-                # Adicionar linha com nome do município
-                top_10.loc[-1] = [f"Município: {municipio}"] + [""]*(len(top_10.columns)-1)
-                top_10.index = top_10.index + 1
-                top_10 = top_10.sort_index()
-                
-                # Adicionar coluna de Produto
-                top_10.reset_index(inplace=True)
-                top_10.rename(columns={'index':'Produto'}, inplace=True)
-                
-                # Nome único para cada planilha (tabela + município)
-                chave = f"{nome_simplificado}_{municipio}"
-                resultados[chave] = top_10
-                
-        except Exception as e:
-            st.error(f"Erro ao processar {nome_original}: {str(e)}")
+                if produto not in produtos:
+                    produtos[produto] = {}
+                produtos[produto][ano] = valor
+            
+            # Converter para DataFrame e pegar top 10 produtos com maior valor em 2023
+            df_produtos = pd.DataFrame.from_dict(produtos, orient='index')
+            
+            # Ordenar por 2023 (se existir) ou pelo último ano disponível
+            if '23' in df_produtos.columns:
+                df_produtos = df_produtos.sort_values('23', ascending=False)
+            else:
+                ultimo_ano = sorted(df_produtos.columns)[-1]
+                df_produtos = df_produtos.sort_values(ultimo_ano, ascending=False)
+            
+            # Pegar top 10 e traduzir nomes
+            top_10 = df_produtos.head(10)
+            top_10.index = [DICIONARIO_PRODUTOS.get(p, p) for p in top_10.index]
+            
+            # Adicionar município como coluna
+            top_10 = top_10.reset_index()
+            top_10.columns = ['Produto'] + [f'20{ano}' for ano in top_10.columns[1:]]
+            
+            municipios_dfs[municipio] = top_10
+        
+        resultados[nome_tabela] = municipios_dfs
     
     return resultados
+
+def gerar_excel_agro(dados_agro, nome_bacia_export):
+    try:
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            # Escrever tabela IBGE primeiro
+            if 'IBGE_Municipios_ZAP' in dados_agro and dados_agro['IBGE_Municipios_ZAP'] is not None:
+                dados_agro['IBGE_Municipios_ZAP'].to_excel(
+                    writer, 
+                    sheet_name='IBGE_Municipios', 
+                    index=True
+                )
+            
+            # Escrever as outras tabelas (uma planilha por município)
+            for nome_tabela, municipios_data in dados_agro.items():
+                if nome_tabela == 'IBGE_Municipios_ZAP':
+                    continue
+                
+                if isinstance(municipios_data, dict):  # Dados por município
+                    for municipio, df in municipios_data.items():
+                        # Limitar nome da planilha a 31 caracteres e remover caracteres inválidos
+                        sheet_name = f"{nome_tabela[:15]}_{municipio[:10]}"
+                        sheet_name = ''.join(c for c in sheet_name if c.isalnum() or c in ('_', ' '))
+                        sheet_name = sheet_name[:31]
+                        
+                        df.to_excel(
+                            writer, 
+                            sheet_name=sheet_name, 
+                            index=False
+                        )
+        
+        output.seek(0)
+        return output
+    except Exception as e:
+        st.error(f"Erro ao gerar Excel: {e}")
+        return None
 
 def gerar_excel_agro(dados_agro, nome_bacia_export):
     try:
@@ -456,20 +403,37 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
         
         # Se selecionado, processar dados agro
         if st.session_state.get("exportar_dados_agro"):
+            st.info("Processando dados agro e socioeconômicos...")
+            
+            # Processar municípios na bacia
             st.session_state["municipios_df"] = processar_municipios(geometry, nome_bacia_export)
             
             if st.session_state["municipios_df"] is not None:
                 geocodigos = st.session_state["municipios_df"]['geocodigo'].tolist()
+                
+                # Processar todas as tabelas agro (incluindo IBGE)
                 st.session_state["dados_agro"] = processar_tabelas_agro(geocodigos)
                 
-                # Baixar tabela IBGE separadamente
-                df_ibge = baixar_tabela(TABELAS_AGRO['IBGE_Municipios_ZAP'])
-                if df_ibge is not None:
-                    df_ibge['geocodigo'] = df_ibge['geocodigo'].astype(int)
-                    st.session_state["ibge_municipios"] = df_ibge[df_ibge['geocodigo'].isin(geocodigos)]
+                # Gerar Excel consolidado
+                excel_agro = gerar_excel_agro(st.session_state["dados_agro"], nome_bacia_export)
+                
+                if excel_agro:
+                    st.download_button(
+                        label="📥 Baixar Dados Agro e Socioeconômicos",
+                        data=excel_agro,
+                        file_name=f"{nome_bacia_export}_dados_agro.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
             
-            # Retornar apenas os dados necessários para agro
-            return resultados
+            # Se também estiver processando imagens, retornar os resultados
+            if any(st.session_state.get(key) for key in [
+                "exportar_srtm_mde", "exportar_declividade", "exportar_ndvi", 
+                "exportar_gndvi", "exportar_ndwi", "exportar_ndmi",
+                "exportar_mapbiomas", "exportar_pasture_quality", "exportar_sentinel_composite",
+                "exportar_puc_ufv", "exportar_puc_ibge", "exportar_puc_embrapa",
+                "exportar_landforms"
+            ]):
+                return resultados
         
         # Se não for apenas agro, processar imagens
         # Calcular o bounding box da geometria

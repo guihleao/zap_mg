@@ -21,8 +21,7 @@ import gdown
 # Logo e título centralizado
 col1, col2, col3 = st.columns([1,2,1])
 with col2:
-    st.image("https://i.postimg.cc/c4VZ0fQw/zap-logo.png", width=200)
-    st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
+    st.image("https://i.postimg.cc/c4VZ0fQw/zap-logo.png", width=400)
 
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
@@ -33,21 +32,21 @@ st.markdown("""
 O Zoneamento Ambiental e Produtivo (ZAP) é um instrumento de planejamento e gestão territorial para o uso sustentável dos recursos naturais pela atividade agrossilvipastoril no estado de Minas Gerais, instituído pelo Decreto Estadual nº 46.650/2014.
 
 **🗺️ Produtos Básicos**  
-Pela concepção de três produtos básicos:
-- Mapeamento do uso e ocupação da terra
-- Avaliação da demanda hídrica superficial
-- Método do Potencial de Uso Conservacionista (PUC)
+- Mapeamento da cobertura e terra
+- Índice de Demanda Hídrica Superficial (IDHS)
+- Potencial de Uso Conservacionista (PUC)
 
 O ZAP busca disponibilizar informações detalhadas sobre o meio natural e produtivo por sub-bacia hidrográfica.
 
 **🔄 Evolução da Metodologia**  
-Desenvolvida inicialmente pela Semad e Seapa em 2014, a metodologia do ZAP está atualmente na 4ª edição (2023). O Comitê Gestor do ZAP é a instância consultiva e deliberativa.
+Desenvolvida inicialmente pela Semad e Seapa em 2014, a metodologia do ZAP está atualmente na 4ª edição (2023). O Comitê Gestor do ZAP é a instância consultiva e deliberativa da ferramenta.
 
 **🤝 Integração com Outros Instrumentos**  
 O ZAP pode trabalhar em conjunto com:
 - Indicadores de Sustentabilidade em Agroecossistemas (ISAs)
 - Planos de Adequação Socioeconômica e Ambiental (PASEAs)
 - Cadastro Ambiental Rural (CAR)
+- Entre outros
 
 **🔗 Mais informações:** [Site do Governo de MG](https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo)
 """)
@@ -58,7 +57,7 @@ st.markdown("---")
 # Texto sobre a ferramenta
 st.markdown("""
 **🛠️ Sobre esta Ferramenta**  
-Esta ferramenta automatiza a obtenção de produtos utilizados no ZAP para a 5ª edição da metodologia.
+Esta ferramenta automatiza a obtenção de produtos e bases para os produtos utilizados no ZAP para a 5ª edição da metodologia.
 
 **🔑 Requisitos**  
 - Conexão com conta Google (para Earth Engine, Cloud Service e Drive)

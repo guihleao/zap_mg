@@ -360,38 +360,56 @@ def processar_tabelas_agro(geocodigos):
 def gerar_excel_agro(dados_agro, nome_bacia_export):
     try:
         output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            # Escrever cada planilha
-            for nome_tabela, dados in dados_agro.items():
-                # Tabela IBGE tem tratamento especial (já está correta)
-                if nome_tabela == 'IBGE_Municipios_ZAP':
-                    dados.to_excel(writer, sheet_name='IBGE_Municipios', index=True)
-                    continue
-                
-                # Para outras tabelas, consolidar todos os municípios em uma planilha
-                if isinstance(dados, dict):
-                    # Criar DataFrame consolidado
-                    df_consolidado = pd.DataFrame()
-                    
-                    for municipio, df in dados.items():
-                        # Adicionar linha com nome do município
-                        df_municipio = pd.DataFrame([f"{municipio}"], columns=['Produto'])
-                        df_consolidado = pd.concat([df_consolidado, df_municipio], ignore_index=True)
-                        
-                        # Adicionar dados do município
-                        df_consolidado = pd.concat([df_consolidado, df], ignore_index=True)
-                        
-                        # Adicionar linha vazia para separação
-                        df_consolidado = pd.concat([df_consolidado, pd.DataFrame([[""]*len(df.columns)], columns=df.columns)], ignore_index=True)
-                    
-                    # Remover a última linha vazia se existir
-                    if df_consolidado.iloc[-1].isnull().all():
-                        df_consolidado = df_consolidado.iloc[:-1]
-                    
-                    # Escrever no Excel (limitando nome da planilha a 31 caracteres)
-                    sheet_name = nome_tabela[:31]
-                    df_consolidado.to_excel(writer, sheet_name=sheet_name, index=False)
+        workbook = Workbook()
+        workbook.remove(workbook.active)  # Remove a planilha padrão vazia
         
+        # Escrever cada planilha
+        for nome_tabela, dados in dados_agro.items():
+            # Tabela IBGE tem tratamento especial
+            if nome_tabela == 'IBGE_Municipios_ZAP':
+                ws = workbook.create_sheet(title='IBGE_Municipios')
+                for r in dataframe_to_rows(dados, index=True, header=True):
+                    ws.append(r)
+                continue
+            
+            # Para outras tabelas, criar uma planilha consolidada
+            if isinstance(dados, dict):
+                # Criar nova planilha (limitando nome a 31 caracteres)
+                sheet_name = nome_tabela[:31]
+                ws = workbook.create_sheet(title=sheet_name)
+                
+                # Adicionar cabeçalho inicial
+                header_added = False
+                current_row = 1
+                
+                for municipio, df in dados.items():
+                    # Adicionar cabeçalho completo antes de cada município
+                    if not df.empty:
+                        # Cabeçalho das colunas
+                        if not header_added or True:  # Sempre adicionar cabeçalho
+                            ws.append(['Produto'] + [f'20{ano}' for ano in df.columns[1:]])
+                            header_added = True
+                            current_row += 1
+                        
+                        # Nome do município (mesclado e em negrito)
+                        ws.append([municipio] + ['']*(len(df.columns)-1)
+                        ws.merge_cells(start_row=current_row, start_column=1, 
+                                      end_row=current_row, end_column=len(df.columns))
+                        cell = ws.cell(row=current_row, column=1)
+                        cell.font = cell.font.copy(bold=True)
+                        current_row += 1
+                        
+                        # Dados do município
+                        for _, row in df.iterrows():
+                            ws.append(row.tolist())
+                            current_row += 1
+                        
+                        # Linha vazia de separação
+                        ws.append(['']*len(df.columns))
+                        current_row += 1
+        
+        # Salvar o workbook no buffer
+        workbook.save(output)
         output.seek(0)
         return output
     except Exception as e:

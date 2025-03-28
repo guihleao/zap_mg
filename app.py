@@ -268,9 +268,49 @@ def processar_tabelas_agro(geocodigos):
             if '.geo' in df_filtrado.columns:
                 df_filtrado = df_filtrado.drop(columns=['.geo', 'system:index'])
             
+            # Definir a ordem das colunas conforme solicitado
+            ordem_colunas = [
+                'geocodigo',
+                'Gentílico',
+                'Bioma predominante',
+                'Área (km²)',
+                'População no último censo',
+                'População ocupada',
+                'Densidade demográfica',
+                'PIB per capita',
+                'Salário médio mensal dos trabalhadores formais',
+                'Receitas',
+                'Despesas',
+                'Esgotamento sanitário adequado',
+                'Estabelecimentos de Saúde SUS',
+                'Mortalidade Infantil',
+                'Taxa de escolarização de 6 a 14 anos de idade',
+                'Urbanização de vias públicas',
+                'Arborização de vias públicas',
+                'Índice de Desenvolvimento Humano Municipal (IDHM)'
+            ]
+            
+            # Renomear colunas conforme solicitado
+            renomear_colunas = {
+                'População ocupada': 'População ocupada {%}',
+                'Densidade demográfica': 'Densidade demográfica (hab/km²)',
+                'Esgotamento sanitário adequado': 'Esgotamento sanitário adequado {%}',
+                'Mortalidade Infantil': 'Mortalidade Infantil {%}',
+                'Taxa de escolarização de 6 a 14 anos de idade': 'Taxa de escolarização de 6 a 14 anos de idade {%}',
+                'Urbanização de vias públicas': 'Urbanização de vias públicas {%}',
+                'Arborização de vias públicas': 'Arborização de vias públicas {%}'
+            }
+            
+            # Filtrar apenas as colunas existentes no DataFrame
+            colunas_existentes = [col for col in ordem_colunas if col in df_filtrado.columns]
+            
+            # Reordenar e renomear as colunas
+            df_final = df_filtrado[colunas_existentes].rename(columns=renomear_colunas)
+            
             # Transpor a tabela para o formato desejado
-            df_final = df_filtrado.set_index('Municípios').T
+            df_final = df_final.set_index('Municípios').T
             df_final.index.name = 'Indicador'
+            
             resultados[nome_tabela] = df_final
             continue
             

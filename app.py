@@ -17,6 +17,8 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Alignment
 import gdown
 
+# Configuração de layout ampliado
+st.set_page_config(layout="wide")
 
 # Logo e título centralizado
 col1, col2, col3 = st.columns([1,2,1])

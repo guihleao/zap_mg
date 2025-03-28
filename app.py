@@ -264,12 +264,13 @@ def processar_tabelas_agro(geocodigos):
             
         # Tratamento especial para tabela IBGE
         if nome_tabela == 'IBGE_Municipios_ZAP':
-            # Remover colunas indesejadas
-            if '.geo' in df_filtrado.columns:
-                df_filtrado = df_filtrado.drop(columns=['.geo', 'system:index'])
+            # Remover colunas indesejadas (mas manter 'Municípios')
+            colunas_remover = [col for col in ['.geo', 'system:index'] if col in df_filtrado.columns]
+            if colunas_remover:
+                df_filtrado = df_filtrado.drop(columns=colunas_remover)
             
-            # Renomear e reordenar as colunas conforme solicitado
-            df_filtrado = df_filtrado.rename(columns={
+            # Renomear colunas conforme solicitado
+            renomear = {
                 'População ocupada': 'População ocupada {%}',
                 'Densidade demográfica': 'Densidade demográfica (hab/km²)',
                 'Esgotamento sanitário adequado': 'Esgotamento sanitário adequado {%}',
@@ -277,10 +278,12 @@ def processar_tabelas_agro(geocodigos):
                 'Taxa de escolarização de 6 a 14 anos de idade': 'Taxa de escolarização de 6 a 14 anos de idade {%}',
                 'Urbanização de vias públicas': 'Urbanização de vias públicas {%}',
                 'Arborização de vias públicas': 'Arborização de vias públicas {%}'
-            })
+            }
+            df_filtrado = df_filtrado.rename(columns=renomear)
             
-            # Definir a ordem das colunas
+            # Definir a ordem das colunas (incluindo 'Municípios')
             ordem_colunas = [
+                'Municípios',
                 'geocodigo',
                 'Gentílico',
                 'Bioma predominante',
@@ -304,7 +307,7 @@ def processar_tabelas_agro(geocodigos):
             # Manter apenas as colunas que existem no DataFrame
             ordem_colunas = [col for col in ordem_colunas if col in df_filtrado.columns]
             
-            # Reordenar as colunas
+            # Reordenar as colunas e transpor
             df_final = df_filtrado[ordem_colunas].set_index('Municípios').T
             df_final.index.name = 'Indicador'
             resultados[nome_tabela] = df_final

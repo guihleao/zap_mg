@@ -268,61 +268,13 @@ def processar_tabelas_agro(geocodigos):
             if '.geo' in df_filtrado.columns:
                 df_filtrado = df_filtrado.drop(columns=['.geo', 'system:index'])
             
-            # Verificar se a coluna 'Municípios' existe
-            if 'Municípios' not in df_filtrado.columns:
-                st.error("Coluna 'Municípios' não encontrada na tabela IBGE")
-                continue
-            
-            # Definir a ordem das colunas conforme solicitado
-            ordem_colunas = [
-                'geocodigo',
-                'Gentílico',
-                'Bioma predominante',
-                'Área (km²)',
-                'População no último censo',
-                'População ocupada',
-                'Densidade demográfica',
-                'PIB per capita',
-                'Salário médio mensal dos trabalhadores formais',
-                'Receitas',
-                'Despesas',
-                'Esgotamento sanitário adequado',
-                'Estabelecimentos de Saúde SUS',
-                'Mortalidade Infantil',
-                'Taxa de escolarização de 6 a 14 anos de idade',
-                'Urbanização de vias públicas',
-                'Arborização de vias públicas',
-                'Índice de Desenvolvimento Humano Municipal (IDHM)'
-            ]
-            
-            # Filtrar apenas colunas existentes
-            colunas_existentes = [col for col in ordem_colunas if col in df_filtrado.columns]
-            
-            # Adicionar 'Municípios' que será usado como índice
-            colunas_existentes = ['Municípios'] + colunas_existentes
-            
-            # Selecionar e reordenar colunas
-            df_final = df_filtrado[colunas_existentes]
-            
-            # Renomear colunas conforme solicitado
-            df_final = df_final.rename(columns={
-                'População ocupada': 'População ocupada {%}',
-                'Densidade demográfica': 'Densidade demográfica (hab/km²)',
-                'Esgotamento sanitário adequado': 'Esgotamento sanitário adequado {%}',
-                'Mortalidade Infantil': 'Mortalidade Infantil {%}',
-                'Taxa de escolarização de 6 a 14 anos de idade': 'Taxa de escolarização de 6 a 14 anos de idade {%}',
-                'Urbanização de vias públicas': 'Urbanização de vias públicas {%}',
-                'Arborização de vias públicas': 'Arborização de vias públicas {%}'
-            })
-            
             # Transpor a tabela para o formato desejado
-            df_final = df_final.set_index('Municípios').T
+            df_final = df_filtrado.set_index('Municípios').T
             df_final.index.name = 'Indicador'
-            
             resultados[nome_tabela] = df_final
             continue
             
-        # Para outras tabelas (que usam 'nome' em vez de 'Municípios')
+        # Para outras tabelas, criar uma planilha com top 10 produtos por município
         municipios_dfs = {}
         for _, row in df_filtrado.iterrows():
             municipio = row['nome']
@@ -340,12 +292,12 @@ def processar_tabelas_agro(geocodigos):
                 
                 if produto not in produtos:
                     produtos[produto] = {}
-                produtos[produto][ano] = valorb
+                produtos[produto][ano] = valor
             
-            # Converter para DataFrame e pegar top 10 produtos
+            # Converter para DataFrame e pegar top 10 produtos com maior valor em 2023
             df_produtos = pd.DataFrame.from_dict(produtos, orient='index')
             
-            # Ordenar por 2023 ou último ano disponível
+            # Ordenar por 2023 (se existir) ou pelo último ano disponível
             if '23' in df_produtos.columns:
                 df_produtos = df_produtos.sort_values('23', ascending=False)
             else:

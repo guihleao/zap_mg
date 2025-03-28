@@ -35,8 +35,6 @@ st.set_page_config(
 sidebar_logo = "https://i.postimg.cc/c4VZ0fQw/zap-logo.png"
 main_body_logo = "https://i.postimg.cc/65qGpMc8/zap-logo-sb.png"
 st.logo(sidebar_logo, size="large", icon_image=main_body_logo)
-st.sidebar.markdown("## Navegação")
-
 # Sidebar com links como markdown
 with st.sidebar:
     st.markdown("## Navegação")
@@ -77,7 +75,8 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### Versão 1.0")
     st.caption("Desenvolvido para a 5ª edição do ZAP")
-
+    st.caption("Secretaria de Agricultura, Pecuária e Abastecimento de Minas Gerais")
+    
 # Logo e título centralizado
 col1, col2, col3 = st.columns([1,2,1])
 with col2:

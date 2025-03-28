@@ -392,7 +392,7 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                             current_row += 1
                         
                         # Nome do município (mesclado e em negrito)
-                        ws.append([municipio] + ['']*(len(df.columns)-1)
+                        ws.append([municipio] + ['']*(len(df.columns)-1))
                         ws.merge_cells(start_row=current_row, start_column=1, 
                                       end_row=current_row, end_column=len(df.columns))
                         cell = ws.cell(row=current_row, column=1)

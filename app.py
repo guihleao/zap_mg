@@ -89,7 +89,7 @@ st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e P
 st.markdown("""
 <style>
     .custom-card {
-        background-color: #f8f9fa;
+        background-color: #242434;
         border-radius: 15px;
         padding: 1.5rem;
         margin: 1rem 0;

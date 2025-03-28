@@ -884,62 +884,98 @@ else:
                     if st.session_state.get("exportar_srtm_mde") is not None and nome_bacia_export:
                         if st.button("Processar Dados"):
                             with st.spinner("Processando dados, por favor aguarde..."):
-                                resultados = process_data(geometry, crs, nome_bacia_export)
+                                # Processa primeiro os produtos de sensoriamento remoto
+                                if any([
+                                    st.session_state.get("exportar_srtm_mde"),
+                                    st.session_state.get("exportar_declividade"), 
+                                    st.session_state.get("exportar_ndvi"),
+                                    st.session_state.get("exportar_gndvi"),
+                                    st.session_state.get("exportar_ndwi"),
+                                    st.session_state.get("exportar_ndmi"),
+                                    st.session_state.get("exportar_sentinel_composite"),
+                                    st.session_state.get("exportar_mapbiomas"),
+                                    st.session_state.get("exportar_pasture_quality"),
+                                    st.session_state.get("exportar_landforms"),
+                                    st.session_state.get("exportar_puc_ufv"),
+                                    st.session_state.get("exportar_puc_ibge"),
+                                    st.session_state.get("exportar_puc_embrapa")
+                                ]):
+                                    resultados = process_data(geometry, crs, nome_bacia_export)
+                                    
+                                    if resultados:
+                                        st.session_state["resultados"] = resultados
+                                        st.success("Dados de sensoriamento processados com sucesso!")
+                                        
+                                        # Exportar produtos de sensoriamento remoto
+                                        tasks_remoto = []
+                                        if st.session_state.get("exportar_srtm_mde") and "utm_elevation" in resultados:
+                                            tasks_remoto.append(exportarImagem(resultados["utm_elevation"], "06_", "_SRTM_MDE", 30, geometry, nome_bacia_export))
+                                        if st.session_state.get("exportar_declividade") and "utm_declividade" in resultados:
+                                            tasks_remoto.append(exportarImagem(resultados["utm_declividade"], "07_", "_Declividade", 30, geometry, nome_bacia_export))
+                                        if st.session_state.get("exportar_ndvi") and "utm_ndvi" in resultados:
+                                            tasks_remoto.append(exportarImagem(resultados["utm_ndvi"], "01_", "_NDVI", 10, geometry, nome_bacia_export))
+                                        if st.session_state.get("exportar_gndvi") and "utm_gndvi" in resultados:
+                                            tasks_remoto.append(exportarImagem(resultados["utm_gndvi"], "02_", "_GNDVI", 10, geometry, nome_bacia_export))
+                                        if st.session_state.get("exportar_ndwi") and "utm_ndwi" in resultados:
+                                            tasks_remoto.append(exportarImagem(resultados["utm_ndwi"], "03_", "_NDWI", 10, geometry, nome_bacia_export))
+                                        if st.session_state.get("exportar_ndmi") and "utm_ndmi" in resultados:
+                                            tasks_remoto.append(exportarImagem(resultados["utm_ndmi"], "04_", "_NDMI", 10, geometry, nome_bacia_export))
+                                        if st.session_state.get("exportar_sentinel_composite") and "utm_sentinel2" in resultados:
+                                            tasks_remoto.append(exportarImagem(resultados["utm_sentinel2"], "05_", "_Sentinel2", 10, geometry, nome_bacia_export))
+                                        if st.session_state.get("exportar_mapbiomas") and "utm_mapbiomas" in resultados:
+                                            tasks_remoto.append(exportarImagem(resultados["utm_mapbiomas"], "08_", "_MapBiomas", 30, geometry, nome_bacia_export))
+                                        if st.session_state.get("exportar_pasture_quality") and "utm_pasture_quality" in resultados:
+                                            tasks_remoto.append(exportarImagem(resultados["utm_pasture_quality"], "09_", "_PastureQuality", 30, geometry, nome_bacia_export))
+                                        if st.session_state.get("exportar_landforms") and "utm_landforms" in resultados:
+                                            tasks_remoto.append(exportarImagem(resultados["utm_landforms"], "10_", "_Landforms", 30, geometry, nome_bacia_export))
+                                        if st.session_state.get("exportar_puc_ufv") and "utm_puc_ufv" in resultados:
+                                            tasks_remoto.append(exportarImagem(resultados["utm_puc_ufv"], "11_", "_PUC_UFV", 30, geometry, nome_bacia_export))
+                                        if st.session_state.get("exportar_puc_ibge") and "utm_puc_ibge" in resultados:
+                                            tasks_remoto.append(exportarImagem(resultados["utm_puc_ibge"], "12_", "_PUC_IBGE", 30, geometry, nome_bacia_export))
+                                        if st.session_state.get("exportar_puc_embrapa") and "utm_puc_embrapa" in resultados:
+                                            tasks_remoto.append(exportarImagem(resultados["utm_puc_embrapa"], "13_", "_PUC_Embrapa", 30, geometry, nome_bacia_export))
+                                        
+                                        # Verifica conclusão das tarefas de sensoriamento
+                                        if tasks_remoto:
+                                            st.write("Processando produtos de sensoriamento remoto...")
+                                            status_placeholder = st.empty()
+                                            todas_concluidas = False
+                                            
+                                            while not todas_concluidas:
+                                                status_placeholder.empty()
+                                                todas_concluidas = True
+                                                
+                                                for task in tasks_remoto:
+                                                    state = check_task_status(task)
+                                                    if state != "COMPLETED":
+                                                        todas_concluidas = False
+                                                
+                                                if todas_concluidas:
+                                                    status_placeholder.success("Produtos de sensoriamento concluídos!")
+                                                    break
+                                                
+                                                time.sleep(60)
                                 
-                                if resultados:
-                                    st.session_state["resultados"] = resultados
-                                    st.success("Dados processados com sucesso!")
+                                # Processa dados agro/socioeconômicos APÓS a conclusão dos outros
+                                if st.session_state.get("exportar_dados_agro"):
+                                    st.write("Iniciando processamento de dados agro/socioeconômicos...")
                                     
-                                    # Exportar imagens se selecionadas
-                                    tasks_selecionadas = []
-                                    if st.session_state.get("exportar_srtm_mde") and "utm_elevation" in resultados:
-                                        tasks_selecionadas.append(exportarImagem(resultados["utm_elevation"], "06_", "_SRTM_MDE", 30, geometry, nome_bacia_export))
-                                    if st.session_state.get("exportar_declividade") and "utm_declividade" in resultados:
-                                        tasks_selecionadas.append(exportarImagem(resultados["utm_declividade"], "07_", "_Declividade", 30, geometry, nome_bacia_export))
-                                    if st.session_state.get("exportar_ndvi") and "utm_ndvi" in resultados:
-                                        tasks_selecionadas.append(exportarImagem(resultados["utm_ndvi"], "01_", "_NDVI", 10, geometry, nome_bacia_export))
-                                    if st.session_state.get("exportar_gndvi") and "utm_gndvi" in resultados:
-                                        tasks_selecionadas.append(exportarImagem(resultados["utm_gndvi"], "02_", "_GNDVI", 10, geometry, nome_bacia_export))
-                                    if st.session_state.get("exportar_ndwi") and "utm_ndwi" in resultados:
-                                        tasks_selecionadas.append(exportarImagem(resultados["utm_ndwi"], "03_", "_NDWI", 10, geometry, nome_bacia_export))
-                                    if st.session_state.get("exportar_ndmi") and "utm_ndmi" in resultados:
-                                        tasks_selecionadas.append(exportarImagem(resultados["utm_ndmi"], "04_", "_NDMI", 10, geometry, nome_bacia_export))
-                                    if st.session_state.get("exportar_sentinel_composite") and "utm_sentinel2" in resultados:
-                                        tasks_selecionadas.append(exportarImagem(resultados["utm_sentinel2"], "05_", "_Sentinel2", 10, geometry, nome_bacia_export))
-                                    if st.session_state.get("exportar_mapbiomas") and "utm_mapbiomas" in resultados:
-                                        tasks_selecionadas.append(exportarImagem(resultados["utm_mapbiomas"], "08_", "_MapBiomas", 30, geometry, nome_bacia_export))
-                                    if st.session_state.get("exportar_pasture_quality") and "utm_pasture_quality" in resultados:
-                                        tasks_selecionadas.append(exportarImagem(resultados["utm_pasture_quality"], "09_", "_PastureQuality", 30, geometry, nome_bacia_export))
-                                    if st.session_state.get("exportar_landforms") and "utm_landforms" in resultados:
-                                        tasks_selecionadas.append(exportarImagem(resultados["utm_landforms"], "10_", "_Landforms", 30, geometry, nome_bacia_export))
-                                    if st.session_state.get("exportar_puc_ufv") and "utm_puc_ufv" in resultados:
-                                        tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ufv"], "11_", "_PUC_UFV", 30, geometry, nome_bacia_export))
-                                    if st.session_state.get("exportar_puc_ibge") and "utm_puc_ibge" in resultados:
-                                        tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ibge"], "12_", "_PUC_IBGE", 30, geometry, nome_bacia_export))
-                                    if st.session_state.get("exportar_puc_embrapa") and "utm_puc_embrapa" in resultados:
-                                        tasks_selecionadas.append(exportarImagem(resultados["utm_puc_embrapa"], "13_", "_PUC_Embrapa", 30, geometry, nome_bacia_export))
+                                    # Processa municípios (necessário para os dados agro)
+                                    municipios_df = processar_municipios(geometry, nome_bacia_export)
                                     
-                                    # Verificar status das tarefas
-                                    if tasks_selecionadas:
-                                        st.session_state["tasks"] = tasks_selecionadas
-                                        st.write("Verificando status das tarefas...")
+                                    if municipios_df is not None:
+                                        dados_agro = processar_tabelas_agro([int(x) for x in municipios_df['geocodigo'].tolist()])
                                         
-                                        status_placeholder = st.empty()
-                                        todas_concluidas = False
-                                        
-                                        while not todas_concluidas:
-                                            status_placeholder.empty()
-                                            todas_concluidas = True
-                                            
-                                            for task in st.session_state["tasks"]:
-                                                state = check_task_status(task)
-                                                if state != "COMPLETED":
-                                                    todas_concluidas = False
-                                            
-                                            if todas_concluidas:
-                                                status_placeholder.success("Todas as tarefas concluídas!")
-                                                break
-                                            
-                                            time.sleep(60)
+                                        if dados_agro:
+                                            excel_agro = gerar_excel_agro(dados_agro, nome_bacia_export)
+                                            if excel_agro:
+                                                st.download_button(
+                                                    label="📥 Baixar Dados Agro e Socioeconômicos",
+                                                    data=excel_agro,
+                                                    file_name=f"{nome_bacia_export}_dados_agro.xlsx",
+                                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                                )
+                                
+                                st.success("Todos os processamentos foram concluídos com sucesso!")
                 else:
                     st.warning("Por favor, preencha o nome para exportação antes de selecionar os produtos.")

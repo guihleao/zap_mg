@@ -24,9 +24,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
-        'Ajuda': 'https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo',
-        'Reporte um erro': "mailto:zap@agricultura.mg.gov.br",
-        'Sobre': "# This is a header. This is an *extremely* cool app!"
+        'Get help': 'https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo',
+        'Report a Bug': "mailto:zap@agricultura.mg.gov.br",
+        'About': "# This is a header. This is an *extremely* cool app!"
     }
 )
 

@@ -17,8 +17,18 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Alignment
 import gdown
 
-# Configuração de layout ampliado
-st.set_page_config(layout="wide")
+# Configuração de layout
+st.set_page_config(
+    page_title="ZAP - Automatização",
+    page_icon="🗺️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Ajuda': 'https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo',
+        'Reporte um erro': "mailto:zap@agricultura.mg.gov.br",
+        'Sobre': "# This is a header. This is an *extremely* cool app!"
+    }
+)
 
 # Logo e título centralizado
 col1, col2, col3 = st.columns([1,2,1])

@@ -85,43 +85,74 @@ with col2:
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
 
-# Texto de introdução com emojis
+# CSS customizado para os cards
 st.markdown("""
-**🌱 Sobre o ZAP**  
+<style>
+    .custom-card {
+        background-color: #f8f9fa;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        border-left: 4px solid #2e7d32;
+    }
+    .custom-card h3 {
+        color: #2e7d32;
+        margin-top: 0;
+    }
+    .custom-card ul {
+        padding-left: 1.2rem;
+    }
+    .custom-card a {
+        color: #1a5a96 !important;
+        font-weight: 500;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Card 1 - Sobre o ZAP
+st.markdown("""
+<div class="custom-card">
+<h3>🌱 Sobre o ZAP</h3>
 O Zoneamento Ambiental e Produtivo (ZAP) é um instrumento de planejamento e gestão territorial para o uso sustentável dos recursos naturais pela atividade agrossilvipastoril no estado de Minas Gerais, instituído pelo Decreto Estadual nº 46.650/2014.
 
-**🗺️ Produtos Básicos**  
-- Mapeamento da cobertura e terra
-- Índice de Demanda Hídrica Superficial (IDHS)
-- Potencial de Uso Conservacionista (PUC)
+<h3>🗺️ Produtos Básicos</h3>
+<ul>
+<li>Mapeamento da cobertura e terra</li>
+<li>Índice de Demanda Hídrica Superficial (IDHS)</li>
+<li>Potencial de Uso Conservacionista (PUC)</li>
+</ul>
 
 O ZAP busca disponibilizar informações detalhadas sobre o meio natural e produtivo por sub-bacia hidrográfica.
 
-**🔄 Evolução da Metodologia**  
-Desenvolvida inicialmente pela Semad e Seapa em 2014, a metodologia do ZAP está atualmente na 4ª edição (2023). O Comitê Gestor do ZAP é a instância consultiva e deliberativa da ferramenta.
+<h3>🔄 Evolução da Metodologia</h3>
+Desenvolvida inicialmente pela Semad e Seapa em 2014, a metodologia do ZAP está atualmente na 5ª edição (2025). O Comitê Gestor do ZAP é a instância consultiva e deliberativa da ferramenta.
 
-**🤝 Integração com Outros Instrumentos**  
-O ZAP pode trabalhar em conjunto com:
-- Indicadores de Sustentabilidade em Agroecossistemas (ISAs)
-- Planos de Adequação Socioeconômica e Ambiental (PASEAs)
-- Cadastro Ambiental Rural (CAR)
-- Entre outros
+<h3>🤝 Integração com Outros Instrumentos</h3>
+<ul>
+<li>Indicadores de Sustentabilidade em Agroecossistemas (ISAs)</li>
+<li>Planos de Adequação Socioeconômica e Ambiental (PASEAs)</li>
+<li>Cadastro Ambiental Rural (CAR)</li>
+<li>Entre outros</li>
+</ul>
 
-**🔗 Mais informações:** [Site do Governo de MG](https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo)
-""")
+🔗 <a href="https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo" target="_blank">Mais informações no Site do Governo de MG</a>
+</div>
+""", unsafe_allow_html=True)
 
-# Divisão visual
-st.markdown("---")
-
-# Texto sobre a ferramenta
+# Card 2 - Sobre a Ferramenta
 st.markdown("""
-**🛠️ Sobre esta Ferramenta**  
+<div class="custom-card">
+<h3>🛠️ Sobre esta Ferramenta</h3>
 Esta ferramenta automatiza a obtenção de produtos e bases para os produtos utilizados no ZAP para a 5ª edição da metodologia.
 
-**🔑 Requisitos**  
-- Conexão com conta Google (para Earth Engine, Cloud Service e Drive)
-- Arquivo GeoJSON da bacia hidrográfica (preferencialmente em UTM)
-""")
+<h3>🔑 Requisitos</h3>
+<ul>
+<li>Conexão com conta Google (para Earth Engine, Cloud Service e Drive)</li>
+<li>Arquivo GeoJSON da bacia hidrográfica (preferencialmente em UTM)</li>
+</ul>
+</div>
+""", unsafe_allow_html=True)
 
 # Divisão visual
 st.markdown("---")

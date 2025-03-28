@@ -591,13 +591,13 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
                 # Gerar Excel consolidado
                 if dados_agro:
                     excel_agro = gerar_excel_agro(dados_agro, nome_bacia_export)
-                    
                     if excel_agro:
                         st.download_button(
                             label="📥 Baixar Dados Agro e Socioeconômicos",
                             data=excel_agro,
                             file_name=f"{nome_bacia_export}_dados_agro.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            key=f"download_agro_{nome_bacia_export}"  # Key única baseada no nome da bacia
                         )
             
             # Se também estiver processando imagens, retornar os resultados

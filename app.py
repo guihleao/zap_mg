@@ -268,8 +268,44 @@ def processar_tabelas_agro(geocodigos):
             if '.geo' in df_filtrado.columns:
                 df_filtrado = df_filtrado.drop(columns=['.geo', 'system:index'])
             
-            # Transpor a tabela para o formato desejado
-            df_final = df_filtrado.set_index('Municípios').T
+            # Renomear e reordenar as colunas conforme solicitado
+            df_filtrado = df_filtrado.rename(columns={
+                'População ocupada': 'População ocupada {%}',
+                'Densidade demográfica': 'Densidade demográfica (hab/km²)',
+                'Esgotamento sanitário adequado': 'Esgotamento sanitário adequado {%}',
+                'Mortalidade Infantil': 'Mortalidade Infantil {%}',
+                'Taxa de escolarização de 6 a 14 anos de idade': 'Taxa de escolarização de 6 a 14 anos de idade {%}',
+                'Urbanização de vias públicas': 'Urbanização de vias públicas {%}',
+                'Arborização de vias públicas': 'Arborização de vias públicas {%}'
+            })
+            
+            # Definir a ordem das colunas
+            ordem_colunas = [
+                'geocodigo',
+                'Gentílico',
+                'Bioma predominante',
+                'Área (km²)',
+                'População no último censo',
+                'População ocupada {%}',
+                'Densidade demográfica (hab/km²)',
+                'PIB per capita',
+                'Salário médio mensal dos trabalhadores formais',
+                'Receitas',
+                'Despesas',
+                'Esgotamento sanitário adequado {%}',
+                'Estabelecimentos de Saúde SUS',
+                'Mortalidade Infantil {%}',
+                'Taxa de escolarização de 6 a 14 anos de idade {%}',
+                'Urbanização de vias públicas {%}',
+                'Arborização de vias públicas {%}',
+                'Índice de Desenvolvimento Humano Municipal (IDHM)'
+            ]
+            
+            # Manter apenas as colunas que existem no DataFrame
+            ordem_colunas = [col for col in ordem_colunas if col in df_filtrado.columns]
+            
+            # Reordenar as colunas
+            df_final = df_filtrado[ordem_colunas].set_index('Municípios').T
             df_final.index.name = 'Indicador'
             resultados[nome_tabela] = df_final
             continue

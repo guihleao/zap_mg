@@ -18,26 +18,6 @@ from openpyxl.styles import Alignment
 import gdown
 import webbrowser
 
-#CSS
-st.markdown(
-    """
-    <style>
-        [data-testid="stSidebar"] button {
-            transition: all 0.3s ease;
-            justify-content: start !important;
-        }
-        [data-testid="stSidebar"] button:hover {
-            transform: translateX(5px);
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-        }
-        [data-testid="stSidebar"] hr {
-            margin: 15px 0;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
 # Configuração de layout
 st.set_page_config(
     page_title="ZAP - Automatização",
@@ -56,31 +36,43 @@ sidebar_logo = "https://i.postimg.cc/c4VZ0fQw/zap-logo.png"
 main_body_logo = "https://i.postimg.cc/65qGpMc8/zap-logo-sb.png"
 st.logo(sidebar_logo, size="large", icon_image=main_body_logo)
 st.sidebar.markdown("## Navegação")
-# Botões com links
+
+# Sidebar com links como markdown
 with st.sidebar:
-    # Botão 1 - Sobre o ZAP
-    if st.button("📘 Sobre o ZAP", 
-                use_container_width=True,
-                help="Acesse informações sobre o Zoneamento Ambiental e Produtivo"):
-        webbrowser.open_new_tab("https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo")
+    st.markdown("## Navegação")
     
-    # Botão 2 - Reportar Bug
-    if st.button("🐞 Reportar um Bug", 
-                 use_container_width=True,
-                 help="Relatar problemas técnicos"):
-        webbrowser.open_new_tab("mailto:zap@agricultura.mg.gov.br")
+    # Links como markdown formatados como botões
+    st.markdown("""
+    <style>
+        .sidebar-link {
+            display: block;
+            padding: 0.5rem 1rem;
+            margin: 0.25rem 0;
+            background-color: #f0f2f6;
+            border-radius: 0.5rem;
+            color: #333 !important;
+            text-decoration: none !important;
+            transition: all 0.3s;
+            border: 1px solid #ddd;
+        }
+        .sidebar-link:hover {
+            background-color: #e6e6e6;
+            transform: translateX(3px);
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Link 1 - Sobre o ZAP
+    st.markdown('<a href="https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo" class="sidebar-link" target="_blank">📘 Sobre o ZAP</a>', unsafe_allow_html=True)
     
-    # Botão 3 - Política de Privacidade
-    if st.button("🔒 Política de Privacidade", 
-                 use_container_width=True,
-                 help="Conheça nossas políticas de dados"):
-        webbrowser.open_new_tab("https://www.mg.gov.br/agricultura/pagina/politica-de-privacidade")
+    # Link 2 - Reportar Bug
+    st.markdown('<a href="mailto:zap@agricultura.mg.gov.br" class="sidebar-link">🐞 Reportar um Bug</a>', unsafe_allow_html=True)
     
-    # Botão 4 - Aspectos Legais
-    if st.button("⚖️ Aspectos Legais", 
-                 use_container_width=True,
-                 help="Informações legais e responsabilidades"):
-        webbrowser.open_new_tab("https://www.mg.gov.br/pagina/aspectos-legais-e-responsabilidades")
+    # Link 3 - Política de Privacidade
+    st.markdown('<a href="https://www.mg.gov.br/agricultura/pagina/politica-de-privacidade" class="sidebar-link" target="_blank">🔒 Política de Privacidade</a>', unsafe_allow_html=True)
+    
+    # Link 4 - Aspectos Legais
+    st.markdown('<a href="https://www.mg.gov.br/pagina/aspectos-legais-e-responsabilidades" class="sidebar-link" target="_blank">⚖️ Aspectos Legais</a>', unsafe_allow_html=True)
     
     st.markdown("---")
     st.markdown("### Versão 1.0")

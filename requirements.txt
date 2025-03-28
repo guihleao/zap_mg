@@ -16,3 +16,4 @@ google-auth-oauthlib
 shapely
 pyproj
 fiona
+webbrowser

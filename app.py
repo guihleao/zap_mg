@@ -17,8 +17,56 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Alignment
 import gdown
 
+
+# Logo e título centralizado
+col1, col2, col3 = st.columns([1,2,1])
+with col2:
+    st.image("https://i.postimg.cc/c4VZ0fQw/zap-logo.png", width=200)
+    st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
+
 # Título do aplicativo
 st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
+
+# Texto de introdução com emojis
+st.markdown("""
+**🌱 Sobre o ZAP**  
+O Zoneamento Ambiental e Produtivo (ZAP) é um instrumento de planejamento e gestão territorial para o uso sustentável dos recursos naturais pela atividade agrossilvipastoril no estado de Minas Gerais, instituído pelo Decreto Estadual nº 46.650/2014.
+
+**🗺️ Produtos Básicos**  
+Pela concepção de três produtos básicos:
+- Mapeamento do uso e ocupação da terra
+- Avaliação da demanda hídrica superficial
+- Método do Potencial de Uso Conservacionista (PUC)
+
+O ZAP busca disponibilizar informações detalhadas sobre o meio natural e produtivo por sub-bacia hidrográfica.
+
+**🔄 Evolução da Metodologia**  
+Desenvolvida inicialmente pela Semad e Seapa em 2014, a metodologia do ZAP está atualmente na 4ª edição (2023). O Comitê Gestor do ZAP é a instância consultiva e deliberativa.
+
+**🤝 Integração com Outros Instrumentos**  
+O ZAP pode trabalhar em conjunto com:
+- Indicadores de Sustentabilidade em Agroecossistemas (ISAs)
+- Planos de Adequação Socioeconômica e Ambiental (PASEAs)
+- Cadastro Ambiental Rural (CAR)
+
+**🔗 Mais informações:** [Site do Governo de MG](https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo)
+""")
+
+# Divisão visual
+st.markdown("---")
+
+# Texto sobre a ferramenta
+st.markdown("""
+**🛠️ Sobre esta Ferramenta**  
+Esta ferramenta automatiza a obtenção de produtos utilizados no ZAP para a 5ª edição da metodologia.
+
+**🔑 Requisitos**  
+- Conexão com conta Google (para Earth Engine, Cloud Service e Drive)
+- Arquivo GeoJSON da bacia hidrográfica (preferencialmente em UTM)
+""")
+
+# Divisão visual
+st.markdown("---")
 
 # 1. Configuração inicial e autenticação
 if 'google_oauth' in st.secrets:
@@ -77,7 +125,7 @@ DICIONARIO_PRODUTOS = {
     'tambaqu': 'Tambaqui', 'tilapia': 'Tilápia', 'traira': 'Traíra', 'truta': 'Truta',
     'tucuna': 'Tucunaré', 'eucalip': 'Eucalipto', 'outesp': 'Outras espécies',
     'pinus': 'Pinus', 'carveg': 'Carvão vegetal', 'lenha': 'Lenha',
-    'madtor': 'Madeira em tora', 'outprod': 'Outros produtos'
+    'cenoura': 'Cenoura', 'morango': 'Morango', 'madtor': 'Madeira em tora', 'outprod': 'Outros produtos'
 }
 
 # 3. URLs das tabelas (convertidas para links diretos do Google Drive)
@@ -619,7 +667,12 @@ def process_data(geometry, crs, nome_bacia_export="bacia"):
 # 7. Interface do usuário
 if 'token' not in st.session_state:
     st.write("Para começar, conecte-se à sua conta Google:")
-    result = oauth2.authorize_button("Conectar à Conta Google", REDIRECT_URI, SCOPE)
+    result = oauth2.authorize_button(
+        "🔵 Conectar com Google",  # Adicionei o emoji do Google
+        REDIRECT_URI, 
+        SCOPE,
+        icon="https://www.google.com/favicon.ico"  # Ícone do Google
+    )
     if result and 'token' in result:
         st.session_state.token = result.get('token')
         st.rerun()
@@ -663,9 +716,22 @@ else:
             geometry, crs = load_geojson(uploaded_file)
             if geometry:
                 st.write(f"CRS do arquivo GeoJSON: {crs}")
-                nome_bacia_export = st.text_input("Digite o nome para exportação (sem espaços ou caracteres especiais):")
+                # Campo obrigatório para nome de exportação
+                nome_bacia_export = st.text_input(
+                    "Digite o nome para exportação (sem espaços ou caracteres especiais). "
+                    "Esse nome deve seguir o padrão utilizado para todos os produtos SIG do ZAP "
+                    "(Ex.: Para o Ribeirão Santa Juliana foi utilizado o nome Rib_Santa_Juliana):",
+                    placeholder="Ex: Rib_Santa_Juliana",
+                    help="⚠️ Este campo é obrigatório e deve seguir o padrão de nomenclatura do ZAP"
+                )
                 
                 with st.form(key='product_selection_form'):
+                    # Botão para marcar/desmarcar todos
+                    col1, col2 = st.columns([4,1])
+                    with col2:
+                        if st.button("✅ Marcar Todos"):
+                            st.session_state.select_all = not st.session_state.get('select_all', False)
+                    
                     # Título da seção de Sensoriamento Remoto
                     st.subheader("📡 Produtos de Sensoriamento Remoto (Imagens/Raster)")
                     st.caption(f"Sistema de referência espacial: {crs}")
@@ -673,28 +739,28 @@ else:
                     col1, col2 = st.columns(2)
                     with col1:
                         st.markdown("**Índices Espectrais**")
-                        exportar_ndvi = st.checkbox("NDVI (10m)", value=False)
-                        exportar_gndvi = st.checkbox("GNDVI (10m)", value=False)
-                        exportar_ndwi = st.checkbox("NDWI (10m)", value=False)
-                        exportar_ndmi = st.checkbox("NDMI (10m)", value=False)
+                        exportar_ndvi = st.checkbox("NDVI (10m)", value=st.session_state.get('select_all', False))
+                        exportar_gndvi = st.checkbox("GNDVI (10m)", value=st.session_state.get('select_all', False))
+                        exportar_ndwi = st.checkbox("NDWI (10m)", value=st.session_state.get('select_all', False))
+                        exportar_ndmi = st.checkbox("NDMI (10m)", value=st.session_state.get('select_all', False))
                         
                         st.markdown("**Modelo Digital de Elevação**")
-                        exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=False)
-                        exportar_declividade = st.checkbox("Declividade (30m)", value=False)
+                        exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=st.session_state.get('select_all', False))
+                        exportar_declividade = st.checkbox("Declividade (30m)", value=st.session_state.get('select_all', False))
 
                     with col2:
                         st.markdown("**Cobertura e Uso da Terra**")
-                        exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=False)
-                        exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=False)
-                        exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=False)
+                        exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=st.session_state.get('select_all', False))
+                        exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=st.session_state.get('select_all', False))
+                        exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=st.session_state.get('select_all', False))
                         
                         st.markdown("**Potencial de Uso**")
-                        exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=False)
-                        exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=False)
-                        exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=False)
+                        exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=st.session_state.get('select_all', False))
+                        exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=st.session_state.get('select_all', False))
+                        exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=st.session_state.get('select_all', False))
                         
                         st.markdown("**Geomorfologia**")
-                        exportar_landforms = st.checkbox("Landforms (30m)", value=False)
+                        exportar_landforms = st.checkbox("Landforms (30m)", value=st.session_state.get('select_all', False))
                     
                     # Divisão visual
                     st.markdown("---")

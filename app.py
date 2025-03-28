@@ -31,8 +31,8 @@ st.set_page_config(
 )
 
 #Logo Sidebar e Sidebar
-sidebar_logo = "https://i.postimg.cc/65qGpMc8/zap-logo-sb.png"
-main_body_logo = "https://i.postimg.cc/c4VZ0fQw/zap-logo.png"
+sidebar_logo = "https://i.postimg.cc/c4VZ0fQw/zap-logo.png"
+main_body_logo = "https://i.postimg.cc/65qGpMc8/zap-logo-sb.png"
 st.logo(sidebar_logo, icon_image=main_body_logo)
 st.sidebar.markdown("Oi!")
 

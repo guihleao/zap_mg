@@ -385,23 +385,33 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                 for municipio, df in dados.items():
                     # Adicionar cabeçalho completo antes de cada município
                     if not df.empty:
-                        # Cabeçalho das colunas
-                        if not header_added or True:  # Sempre adicionar cabeçalho
-                            ws.append(['Produto'] + [f'20{ano}' for ano in df.columns[1:]])
-                            header_added = True
-                            current_row += 1
+                        # Cabeçalho das colunas (com anos corretos e em negrito)
+                        header = ['Produto'] + [col[-4:] if isinstance(col, str) and col.startswith('20') else col for col in df.columns[1:]]
+                        ws.append(header)
                         
-                        # Nome do município (mesclado e em negrito)
+                        # Formatar cabeçalho em negrito
+                        for col in range(1, len(header)+1):
+                            cell = ws.cell(row=current_row, column=col)
+                            cell.font = cell.font.copy(bold=True)
+                        
+                        current_row += 1
+                        
+                        # Nome do município (mesclado, em negrito e centralizado)
                         ws.append([municipio] + ['']*(len(df.columns)-1))
                         ws.merge_cells(start_row=current_row, start_column=1, 
                                       end_row=current_row, end_column=len(df.columns))
                         cell = ws.cell(row=current_row, column=1)
                         cell.font = cell.font.copy(bold=True)
+                        cell.alignment = Alignment(horizontal='center', vertical='center')
                         current_row += 1
                         
                         # Dados do município
                         for _, row in df.iterrows():
-                            ws.append(row.tolist())
+                            # Corrigir os anos nas colunas se necessário
+                            row_data = [row.iloc[0]]  # Produto
+                            for val in row.iloc[1:]:
+                                row_data.append(val)
+                            ws.append(row_data)
                             current_row += 1
                         
                         # Linha vazia de separação

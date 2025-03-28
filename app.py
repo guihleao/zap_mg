@@ -14,6 +14,7 @@ import requests
 from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.styles import Alignment
 import gdown
 
 # Título do aplicativo
@@ -379,14 +380,13 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                 ws = workbook.create_sheet(title=sheet_name)
                 
                 # Adicionar cabeçalho inicial
-                header_added = False
                 current_row = 1
                 
                 for municipio, df in dados.items():
                     # Adicionar cabeçalho completo antes de cada município
                     if not df.empty:
-                        # Cabeçalho das colunas (com anos corretos e em negrito)
-                        header = ['Produto'] + [col[-4:] if isinstance(col, str) and col.startswith('20') else col for col in df.columns[1:]]
+                        # Cabeçalho das colunas (com anos corretos)
+                        header = ['Produto'] + [str(col)[-4:] if str(col).startswith('20') else col for col in df.columns[1:]]
                         ws.append(header)
                         
                         # Formatar cabeçalho em negrito
@@ -407,11 +407,7 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                         
                         # Dados do município
                         for _, row in df.iterrows():
-                            # Corrigir os anos nas colunas se necessário
-                            row_data = [row.iloc[0]]  # Produto
-                            for val in row.iloc[1:]:
-                                row_data.append(val)
-                            ws.append(row_data)
+                            ws.append(row.tolist())
                             current_row += 1
                         
                         # Linha vazia de separação

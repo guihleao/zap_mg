@@ -363,19 +363,34 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             # Escrever cada planilha
             for nome_tabela, dados in dados_agro.items():
-                # Tabela IBGE tem tratamento especial
+                # Tabela IBGE tem tratamento especial (já está correta)
                 if nome_tabela == 'IBGE_Municipios_ZAP':
                     dados.to_excel(writer, sheet_name='IBGE_Municipios', index=True)
                     continue
                 
-                # Para outras tabelas, escrever uma planilha por município
+                # Para outras tabelas, consolidar todos os municípios em uma planilha
                 if isinstance(dados, dict):
+                    # Criar DataFrame consolidado
+                    df_consolidado = pd.DataFrame()
+                    
                     for municipio, df in dados.items():
-                        # Limitar nome da planilha a 31 caracteres
-                        sheet_name = f"{nome_tabela[:15]}_{municipio[:10]}"[:31]
-                        sheet_name = ''.join(c for c in sheet_name if c.isalnum() or c in ('_', ' '))
+                        # Adicionar linha com nome do município
+                        df_municipio = pd.DataFrame([f"{municipio}"], columns=['Produto'])
+                        df_consolidado = pd.concat([df_consolidado, df_municipio], ignore_index=True)
                         
-                        df.to_excel(writer, sheet_name=sheet_name, index=False)
+                        # Adicionar dados do município
+                        df_consolidado = pd.concat([df_consolidado, df], ignore_index=True)
+                        
+                        # Adicionar linha vazia para separação
+                        df_consolidado = pd.concat([df_consolidado, pd.DataFrame([[""]*len(df.columns)], columns=df.columns)], ignore_index=True)
+                    
+                    # Remover a última linha vazia se existir
+                    if df_consolidado.iloc[-1].isnull().all():
+                        df_consolidado = df_consolidado.iloc[:-1]
+                    
+                    # Escrever no Excel (limitando nome da planilha a 31 caracteres)
+                    sheet_name = nome_tabela[:31]
+                    df_consolidado.to_excel(writer, sheet_name=sheet_name, index=False)
         
         output.seek(0)
         return output

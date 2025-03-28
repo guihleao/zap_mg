@@ -804,7 +804,6 @@ else:
         if uploaded_file is not None:
             geometry, crs = load_geojson(uploaded_file)
             if geometry:
-                st.write(f"CRS do arquivo GeoJSON: {crs}")
                 nome_bacia_export = st.text_input(
                     "Digite o nome para exportação (sem espaços ou caracteres especiais). "
                     "Esse nome deve seguir o padrão utilizado para todos os produtos SIG do ZAP "
@@ -812,132 +811,135 @@ else:
                     placeholder="Ex: Rib_Santa_Juliana",
                     help="⚠️ Este campo é obrigatório e deve seguir o padrão de nomenclatura do ZAP"
                 )
-                
-                # Botão "Marcar Todos" movido para FORA do formulário
-                col1, col2 = st.columns([4,1])
-                with col2:
-                    if st.button("✅ Marcar Todos"):
-                        st.session_state.select_all = not st.session_state.get('select_all', False)
-                        st.session_state.select_ibge = st.session_state.select_all
-                        st.rerun()
-                
-                # Formulário principal (tudo igual, apenas sem o botão "Marcar Todos" dentro dele)
-                with st.form(key='product_selection_form'):
-                    # Título da seção de Sensoriamento Remoto
-                    st.subheader("📡 Produtos de Sensoriamento Remoto (Imagens/Raster)")
-                    st.caption(f"Sistema de referência espacial: {crs}")
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown("**Índices Espectrais**")
-                        exportar_ndvi = st.checkbox("NDVI (10m)", value=st.session_state.get('select_all', False))
-                        exportar_gndvi = st.checkbox("GNDVI (10m)", value=st.session_state.get('select_all', False))
-                        exportar_ndwi = st.checkbox("NDWI (10m)", value=st.session_state.get('select_all', False))
-                        exportar_ndmi = st.checkbox("NDMI (10m)", value=st.session_state.get('select_all', False))
-                        
-                        st.markdown("**Modelo Digital de Elevação**")
-                        exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=st.session_state.get('select_all', False))
-                        exportar_declividade = st.checkbox("Declividade (30m)", value=st.session_state.get('select_all', False))
-
+                # Só mostra o resto do formulário se o nome foi preenchido
+                if nome_bacia_export:
+                    # Botão "Marcar Todos" movido para FORA do formulário
+                    col1, col2 = st.columns([4,1])
                     with col2:
-                        st.markdown("**Cobertura e Uso da Terra**")
-                        exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=st.session_state.get('select_all', False))
-                        exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=st.session_state.get('select_all', False))
-                        exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=st.session_state.get('select_all', False))
+                        if st.button("✅ Marcar Todos"):
+                            st.session_state.select_all = not st.session_state.get('select_all', False)
+                            st.session_state.select_ibge = st.session_state.select_all
+                            st.rerun()
+                    
+                    # Formulário principal (tudo igual, apenas sem o botão "Marcar Todos" dentro dele)
+                    with st.form(key='product_selection_form'):
+                        # Título da seção de Sensoriamento Remoto
+                        st.subheader("📡 Produtos de Sensoriamento Remoto (Imagens/Raster)")
+                        st.caption(f"Sistema de referência espacial: {crs}")
                         
-                        st.markdown("**Potencial de Uso**")
-                        exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=st.session_state.get('select_all', False))
-                        exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=st.session_state.get('select_all', False))
-                        exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=st.session_state.get('select_all', False))
-                        
-                        st.markdown("**Geomorfologia**")
-                        exportar_landforms = st.checkbox("Landforms (30m)", value=st.session_state.get('select_all', False))
-                    
-                    st.markdown("---")
-                    
-                    st.subheader("📊 Dados Agro e Socioeconômicos")
-                    st.caption("Municípios com representatividade >20% na bacia hidrográfica")
-                    exportar_dados_agro = st.checkbox("Ativar processamento de dados do IBGE", value=st.session_state.get('select_ibge', False))
-                    
-                    st.markdown("---")                    
-                    submit_button = st.form_submit_button(label='✅ Confirmar Seleção')
-
-                if submit_button:
-                    st.session_state.update({
-                        "exportar_srtm_mde": exportar_srtm_mde,
-                        "exportar_declividade": exportar_declividade,
-                        "exportar_ndvi": exportar_ndvi,
-                        "exportar_gndvi": exportar_gndvi,
-                        "exportar_ndwi": exportar_ndwi,
-                        "exportar_ndmi": exportar_ndmi,
-                        "exportar_mapbiomas": exportar_mapbiomas,
-                        "exportar_pasture_quality": exportar_pasture_quality,
-                        "exportar_sentinel_composite": exportar_sentinel_composite,
-                        "exportar_puc_ufv": exportar_puc_ufv,
-                        "exportar_puc_ibge": exportar_puc_ibge,
-                        "exportar_puc_embrapa": exportar_puc_embrapa,
-                        "exportar_landforms": exportar_landforms,
-                        "exportar_dados_agro": exportar_dados_agro
-                    })
-                    st.success("Seleção de produtos confirmada!")
-
-                if st.session_state.get("exportar_srtm_mde") is not None and nome_bacia_export:
-                    if st.button("Processar Dados"):
-                        with st.spinner("Processando dados, por favor aguarde..."):
-                            resultados = process_data(geometry, crs, nome_bacia_export)
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown("**Índices Espectrais**")
+                            exportar_ndvi = st.checkbox("NDVI (10m)", value=st.session_state.get('select_all', False))
+                            exportar_gndvi = st.checkbox("GNDVI (10m)", value=st.session_state.get('select_all', False))
+                            exportar_ndwi = st.checkbox("NDWI (10m)", value=st.session_state.get('select_all', False))
+                            exportar_ndmi = st.checkbox("NDMI (10m)", value=st.session_state.get('select_all', False))
                             
-                            if resultados:
-                                st.session_state["resultados"] = resultados
-                                st.success("Dados processados com sucesso!")
+                            st.markdown("**Modelo Digital de Elevação**")
+                            exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=st.session_state.get('select_all', False))
+                            exportar_declividade = st.checkbox("Declividade (30m)", value=st.session_state.get('select_all', False))
+
+                        with col2:
+                            st.markdown("**Cobertura e Uso da Terra**")
+                            exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=st.session_state.get('select_all', False))
+                            exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=st.session_state.get('select_all', False))
+                            exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=st.session_state.get('select_all', False))
+                            
+                            st.markdown("**Potencial de Uso**")
+                            exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=st.session_state.get('select_all', False))
+                            exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=st.session_state.get('select_all', False))
+                            exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=st.session_state.get('select_all', False))
+                            
+                            st.markdown("**Geomorfologia**")
+                            exportar_landforms = st.checkbox("Landforms (30m)", value=st.session_state.get('select_all', False))
+                        
+                        st.markdown("---")
+                        
+                        st.subheader("📊 Dados Agro e Socioeconômicos")
+                        st.caption("Municípios com representatividade >20% na bacia hidrográfica")
+                        exportar_dados_agro = st.checkbox("Ativar processamento de dados do IBGE", value=st.session_state.get('select_ibge', False))
+                        
+                        st.markdown("---")                    
+                        submit_button = st.form_submit_button(label='✅ Confirmar Seleção')
+
+                    if submit_button:
+                        st.session_state.update({
+                            "exportar_srtm_mde": exportar_srtm_mde,
+                            "exportar_declividade": exportar_declividade,
+                            "exportar_ndvi": exportar_ndvi,
+                            "exportar_gndvi": exportar_gndvi,
+                            "exportar_ndwi": exportar_ndwi,
+                            "exportar_ndmi": exportar_ndmi,
+                            "exportar_mapbiomas": exportar_mapbiomas,
+                            "exportar_pasture_quality": exportar_pasture_quality,
+                            "exportar_sentinel_composite": exportar_sentinel_composite,
+                            "exportar_puc_ufv": exportar_puc_ufv,
+                            "exportar_puc_ibge": exportar_puc_ibge,
+                            "exportar_puc_embrapa": exportar_puc_embrapa,
+                            "exportar_landforms": exportar_landforms,
+                            "exportar_dados_agro": exportar_dados_agro
+                        })
+                        st.success("Seleção de produtos confirmada!")
+
+                    if st.session_state.get("exportar_srtm_mde") is not None and nome_bacia_export:
+                        if st.button("Processar Dados"):
+                            with st.spinner("Processando dados, por favor aguarde..."):
+                                resultados = process_data(geometry, crs, nome_bacia_export)
                                 
-                                # Exportar imagens se selecionadas
-                                tasks_selecionadas = []
-                                if st.session_state.get("exportar_srtm_mde") and "utm_elevation" in resultados:
-                                    tasks_selecionadas.append(exportarImagem(resultados["utm_elevation"], "06_", "_SRTM_MDE", 30, geometry, nome_bacia_export))
-                                if st.session_state.get("exportar_declividade") and "utm_declividade" in resultados:
-                                    tasks_selecionadas.append(exportarImagem(resultados["utm_declividade"], "07_", "_Declividade", 30, geometry, nome_bacia_export))
-                                if st.session_state.get("exportar_ndvi") and "utm_ndvi" in resultados:
-                                    tasks_selecionadas.append(exportarImagem(resultados["utm_ndvi"], "01_", "_NDVI", 10, geometry, nome_bacia_export))
-                                if st.session_state.get("exportar_gndvi") and "utm_gndvi" in resultados:
-                                    tasks_selecionadas.append(exportarImagem(resultados["utm_gndvi"], "02_", "_GNDVI", 10, geometry, nome_bacia_export))
-                                if st.session_state.get("exportar_ndwi") and "utm_ndwi" in resultados:
-                                    tasks_selecionadas.append(exportarImagem(resultados["utm_ndwi"], "03_", "_NDWI", 10, geometry, nome_bacia_export))
-                                if st.session_state.get("exportar_ndmi") and "utm_ndmi" in resultados:
-                                    tasks_selecionadas.append(exportarImagem(resultados["utm_ndmi"], "04_", "_NDMI", 10, geometry, nome_bacia_export))
-                                if st.session_state.get("exportar_sentinel_composite") and "utm_sentinel2" in resultados:
-                                    tasks_selecionadas.append(exportarImagem(resultados["utm_sentinel2"], "05_", "_Sentinel2", 10, geometry, nome_bacia_export))
-                                if st.session_state.get("exportar_mapbiomas") and "utm_mapbiomas" in resultados:
-                                    tasks_selecionadas.append(exportarImagem(resultados["utm_mapbiomas"], "08_", "_MapBiomas", 30, geometry, nome_bacia_export))
-                                if st.session_state.get("exportar_pasture_quality") and "utm_pasture_quality" in resultados:
-                                    tasks_selecionadas.append(exportarImagem(resultados["utm_pasture_quality"], "09_", "_PastureQuality", 30, geometry, nome_bacia_export))
-                                if st.session_state.get("exportar_landforms") and "utm_landforms" in resultados:
-                                    tasks_selecionadas.append(exportarImagem(resultados["utm_landforms"], "10_", "_Landforms", 30, geometry, nome_bacia_export))
-                                if st.session_state.get("exportar_puc_ufv") and "utm_puc_ufv" in resultados:
-                                    tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ufv"], "11_", "_PUC_UFV", 30, geometry, nome_bacia_export))
-                                if st.session_state.get("exportar_puc_ibge") and "utm_puc_ibge" in resultados:
-                                    tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ibge"], "12_", "_PUC_IBGE", 30, geometry, nome_bacia_export))
-                                if st.session_state.get("exportar_puc_embrapa") and "utm_puc_embrapa" in resultados:
-                                    tasks_selecionadas.append(exportarImagem(resultados["utm_puc_embrapa"], "13_", "_PUC_Embrapa", 30, geometry, nome_bacia_export))
-                                
-                                # Verificar status das tarefas
-                                if tasks_selecionadas:
-                                    st.session_state["tasks"] = tasks_selecionadas
-                                    st.write("Verificando status das tarefas...")
+                                if resultados:
+                                    st.session_state["resultados"] = resultados
+                                    st.success("Dados processados com sucesso!")
                                     
-                                    status_placeholder = st.empty()
-                                    todas_concluidas = False
+                                    # Exportar imagens se selecionadas
+                                    tasks_selecionadas = []
+                                    if st.session_state.get("exportar_srtm_mde") and "utm_elevation" in resultados:
+                                        tasks_selecionadas.append(exportarImagem(resultados["utm_elevation"], "06_", "_SRTM_MDE", 30, geometry, nome_bacia_export))
+                                    if st.session_state.get("exportar_declividade") and "utm_declividade" in resultados:
+                                        tasks_selecionadas.append(exportarImagem(resultados["utm_declividade"], "07_", "_Declividade", 30, geometry, nome_bacia_export))
+                                    if st.session_state.get("exportar_ndvi") and "utm_ndvi" in resultados:
+                                        tasks_selecionadas.append(exportarImagem(resultados["utm_ndvi"], "01_", "_NDVI", 10, geometry, nome_bacia_export))
+                                    if st.session_state.get("exportar_gndvi") and "utm_gndvi" in resultados:
+                                        tasks_selecionadas.append(exportarImagem(resultados["utm_gndvi"], "02_", "_GNDVI", 10, geometry, nome_bacia_export))
+                                    if st.session_state.get("exportar_ndwi") and "utm_ndwi" in resultados:
+                                        tasks_selecionadas.append(exportarImagem(resultados["utm_ndwi"], "03_", "_NDWI", 10, geometry, nome_bacia_export))
+                                    if st.session_state.get("exportar_ndmi") and "utm_ndmi" in resultados:
+                                        tasks_selecionadas.append(exportarImagem(resultados["utm_ndmi"], "04_", "_NDMI", 10, geometry, nome_bacia_export))
+                                    if st.session_state.get("exportar_sentinel_composite") and "utm_sentinel2" in resultados:
+                                        tasks_selecionadas.append(exportarImagem(resultados["utm_sentinel2"], "05_", "_Sentinel2", 10, geometry, nome_bacia_export))
+                                    if st.session_state.get("exportar_mapbiomas") and "utm_mapbiomas" in resultados:
+                                        tasks_selecionadas.append(exportarImagem(resultados["utm_mapbiomas"], "08_", "_MapBiomas", 30, geometry, nome_bacia_export))
+                                    if st.session_state.get("exportar_pasture_quality") and "utm_pasture_quality" in resultados:
+                                        tasks_selecionadas.append(exportarImagem(resultados["utm_pasture_quality"], "09_", "_PastureQuality", 30, geometry, nome_bacia_export))
+                                    if st.session_state.get("exportar_landforms") and "utm_landforms" in resultados:
+                                        tasks_selecionadas.append(exportarImagem(resultados["utm_landforms"], "10_", "_Landforms", 30, geometry, nome_bacia_export))
+                                    if st.session_state.get("exportar_puc_ufv") and "utm_puc_ufv" in resultados:
+                                        tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ufv"], "11_", "_PUC_UFV", 30, geometry, nome_bacia_export))
+                                    if st.session_state.get("exportar_puc_ibge") and "utm_puc_ibge" in resultados:
+                                        tasks_selecionadas.append(exportarImagem(resultados["utm_puc_ibge"], "12_", "_PUC_IBGE", 30, geometry, nome_bacia_export))
+                                    if st.session_state.get("exportar_puc_embrapa") and "utm_puc_embrapa" in resultados:
+                                        tasks_selecionadas.append(exportarImagem(resultados["utm_puc_embrapa"], "13_", "_PUC_Embrapa", 30, geometry, nome_bacia_export))
                                     
-                                    while not todas_concluidas:
-                                        status_placeholder.empty()
-                                        todas_concluidas = True
+                                    # Verificar status das tarefas
+                                    if tasks_selecionadas:
+                                        st.session_state["tasks"] = tasks_selecionadas
+                                        st.write("Verificando status das tarefas...")
                                         
-                                        for task in st.session_state["tasks"]:
-                                            state = check_task_status(task)
-                                            if state != "COMPLETED":
-                                                todas_concluidas = False
+                                        status_placeholder = st.empty()
+                                        todas_concluidas = False
                                         
-                                        if todas_concluidas:
-                                            status_placeholder.success("Todas as tarefas concluídas!")
-                                            break
-                                        
-                                        time.sleep(60)
+                                        while not todas_concluidas:
+                                            status_placeholder.empty()
+                                            todas_concluidas = True
+                                            
+                                            for task in st.session_state["tasks"]:
+                                                state = check_task_status(task)
+                                                if state != "COMPLETED":
+                                                    todas_concluidas = False
+                                            
+                                            if todas_concluidas:
+                                                status_placeholder.success("Todas as tarefas concluídas!")
+                                                break
+                                            
+                                            time.sleep(60)
+                else:
+                    st.warning("Por favor, preencha o nome para exportação antes de selecionar os produtos.")

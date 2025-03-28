@@ -815,53 +815,54 @@ else:
                 )
                 
                 with st.form(key='product_selection_form'):
-                    # Botão para marcar/desmarcar todos
                     col1, col2 = st.columns([4,1])
                     with col2:
                         if st.button("✅ Marcar Todos"):
                             st.session_state.select_all = not st.session_state.get('select_all', False)
-                    
-                    # Título da seção de Sensoriamento Remoto
-                    st.subheader("📡 Produtos de Sensoriamento Remoto (Imagens/Raster)")
-                    st.caption(f"Sistema de referência espacial: {crs}")
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown("**Índices Espectrais**")
-                        exportar_ndvi = st.checkbox("NDVI (10m)", value=st.session_state.get('select_all', False))
-                        exportar_gndvi = st.checkbox("GNDVI (10m)", value=st.session_state.get('select_all', False))
-                        exportar_ndwi = st.checkbox("NDWI (10m)", value=st.session_state.get('select_all', False))
-                        exportar_ndmi = st.checkbox("NDMI (10m)", value=st.session_state.get('select_all', False))
-                        
-                        st.markdown("**Modelo Digital de Elevação**")
-                        exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=st.session_state.get('select_all', False))
-                        exportar_declividade = st.checkbox("Declividade (30m)", value=st.session_state.get('select_all', False))
+                            st.rerun()  # Isso faz o app recarregar para aplicar as mudanças
 
-                    with col2:
-                        st.markdown("**Cobertura e Uso da Terra**")
-                        exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=st.session_state.get('select_all', False))
-                        exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=st.session_state.get('select_all', False))
-                        exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=st.session_state.get('select_all', False))
+                    # 2. Agora crie o formulário
+                    with st.form(key='product_selection_form'):
+                        # Título da seção
+                        st.subheader("📡 Produtos de Sensoriamento Remoto (Imagens/Raster)")
+                        st.caption(f"Sistema de referência espacial: {crs}")
                         
-                        st.markdown("**Potencial de Uso**")
-                        exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=st.session_state.get('select_all', False))
-                        exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=st.session_state.get('select_all', False))
-                        exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=st.session_state.get('select_all', False))
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown("**Índices Espectrais**")
+                            exportar_ndvi = st.checkbox("NDVI (10m)", value=st.session_state.get('select_all', False))
+                            exportar_gndvi = st.checkbox("GNDVI (10m)", value=st.session_state.get('select_all', False))
+                            exportar_ndwi = st.checkbox("NDWI (10m)", value=st.session_state.get('select_all', False))
+                            exportar_ndmi = st.checkbox("NDMI (10m)", value=st.session_state.get('select_all', False))
+                            
+                            st.markdown("**Modelo Digital de Elevação**")
+                            exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=st.session_state.get('select_all', False))
+                            exportar_declividade = st.checkbox("Declividade (30m)", value=st.session_state.get('select_all', False))
+
+                        with col2:
+                            st.markdown("**Cobertura e Uso da Terra**")
+                            exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=st.session_state.get('select_all', False))
+                            exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=st.session_state.get('select_all', False))
+                            exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=st.session_state.get('select_all', False))
+                            
+                            st.markdown("**Potencial de Uso**")
+                            exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=st.session_state.get('select_all', False))
+                            exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=st.session_state.get('select_all', False))
+                            exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=st.session_state.get('select_all', False))
+                            
+                            st.markdown("**Geomorfologia**")
+                            exportar_landforms = st.checkbox("Landforms (30m)", value=st.session_state.get('select_all', False))
                         
-                        st.markdown("**Geomorfologia**")
-                        exportar_landforms = st.checkbox("Landforms (30m)", value=st.session_state.get('select_all', False))
-                    
-                    # Divisão visual
-                    st.markdown("---")
-                    
-                    # Título da seção de Dados Socioeconômicos
-                    st.subheader("📊 Dados Agro e Socioeconômicos")
-                    st.caption("Municípios com representatividade >20% na bacia hidrográfica")
-                    exportar_dados_agro = st.checkbox("Ativar processamento de dados do IBGE", value=False)
-                    
-                    # Divisão visual
-                    st.markdown("---")                    
-                    submit_button = st.form_submit_button(label='✅ Confirmar Seleção')
+                        # Botão de submit dentro do formulário
+                        submit_button = st.form_submit_button(label='✅ Confirmar Seleção')
+
+                        if submit_button:
+                            st.session_state.update({
+                                "exportar_srtm_mde": exportar_srtm_mde,
+                                "exportar_declividade": exportar_declividade,
+                                # ... (todos os outros estados)
+                            })
+                            st.success("Seleção de produtos confirmada!")
 
                 if submit_button:
                     st.session_state.update({

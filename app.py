@@ -818,6 +818,7 @@ else:
                 with col2:
                     if st.button("✅ Marcar Todos"):
                         st.session_state.select_all = not st.session_state.get('select_all', False)
+                        st.session_state.select_ibge = st.session_state.select_all
                         st.rerun()
                 
                 # Formulário principal (tudo igual, apenas sem o botão "Marcar Todos" dentro dele)
@@ -856,7 +857,7 @@ else:
                     
                     st.subheader("📊 Dados Agro e Socioeconômicos")
                     st.caption("Municípios com representatividade >20% na bacia hidrográfica")
-                    exportar_dados_agro = st.checkbox("Ativar processamento de dados do IBGE", value=False)
+                    exportar_dados_agro = st.checkbox("Ativar processamento de dados do IBGE", value=st.session_state.get('select_ibge', False))
                     
                     st.markdown("---")                    
                     submit_button = st.form_submit_button(label='✅ Confirmar Seleção')

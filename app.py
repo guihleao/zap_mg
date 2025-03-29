@@ -243,7 +243,7 @@ TABELAS_AGRO = {
 # 4. Funções auxiliares
 def load_geojson(file):
     try:
-        # Verificação de tamanho (como antes)
+        # Verificação de tamanho (1 MB)
         MAX_FILE_SIZE_KB = 1024  # 1 MB = 1024 KB
         if file.size > MAX_FILE_SIZE_KB * 1024:
             st.error(f"Tamanho do arquivo ({file.size/1024:.1f} KB) excede o limite de {MAX_FILE_SIZE_KB} KB (1 MB)")
@@ -251,6 +251,11 @@ def load_geojson(file):
 
         gdf = gpd.read_file(file)
         
+        # Verifica número de features
+        if len(gdf) > 1:
+            st.error("O arquivo deve conter APENAS UMA feature (polígono/multipolígono).")
+            return None, None
+            
         # Validações de geometria
         if gdf.geometry.is_empty.any():
             st.error("O arquivo contém geometrias vazias.")
@@ -278,11 +283,10 @@ def load_geojson(file):
             zoom_start=10
         )
         
-        for _, row in gdf_visualizacao.iterrows():
-            folium.GeoJson(
-                row['geometry'],
-                style_function=lambda x: {'fillColor': '#4daf4a', 'color': '#377eb8'}
-            ).add_to(m)
+        folium.GeoJson(
+            gdf_visualizacao.geometry.iloc[0],
+            style_function=lambda x: {'fillColor': '#4daf4a', 'color': '#377eb8'}
+        ).add_to(m)
             
         st_folium(m, width=600, height=400)
         
@@ -791,10 +795,10 @@ else:
 
     if st.session_state.get("ee_initialized"):
         uploaded_file = st.file_uploader(
-            "Carregue o arquivo GeoJSON da bacia (máximo 1 MB)",
+            "Carregue o arquivo GeoJSON da bacia (apenas 1 polígono/multipolígono, máximo 1 MB)",
             type=["geojson"],
             accept_multiple_files=False,
-            help="Formato GeoJSON com polígonos/multipolígonos"
+            help="Use ferramentas como QGIS ou geojson.io para garantir que seu arquivo tem apenas UMA geometria"
         )
         if uploaded_file is not None:
             geometry, crs = load_geojson(uploaded_file)

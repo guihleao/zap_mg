@@ -1,19 +1,4 @@
 [server]
-
-# Enables support for Cross-Origin Resource Sharing (CORS) protection,
-# for added security.
-# If XSRF protection is enabled and CORS protection is disabled at the
-# same time, Streamlit will enable them both instead.
-# Default: true
-enableCORS = true
-
-# Enables support for Cross-Site Request Forgery (XSRF) protection, for
-# added security.
-# If XSRF protection is enabled and CORS protection is disabled at the
-# same time, Streamlit will enable them both instead.
-# Default: true
-enableXsrfProtection = true
-
 # Max size, in megabytes, for files uploaded with the file_uploader.
 # Default: 200
 maxUploadSize = 1

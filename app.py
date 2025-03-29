@@ -244,57 +244,62 @@ TABELAS_AGRO = {
 def load_geojson(file):
     try:
         # Verificação de tamanho (1 MB)
-        MAX_FILE_SIZE_KB = 1024  # 1 MB = 1024 KB
+        MAX_FILE_SIZE_KB = 1024
         if file.size > MAX_FILE_SIZE_KB * 1024:
-            st.error(f"Tamanho do arquivo ({file.size/1024:.1f} KB) excede o limite de {MAX_FILE_SIZE_KB} KB (1 MB)")
+            st.error(f"Tamanho do arquivo ({file.size/1024:.1f} KB) excede o limite de {MAX_FILE_SIZE_KB} KB")
             return None, None
 
         gdf = gpd.read_file(file)
         
         # Verifica número de features
         if len(gdf) > 1:
-            st.error("O arquivo deve conter APENAS UMA feature (polígono/multipolígono).")
+            st.error("Erro: O arquivo deve conter APENAS UMA feature (polígono/multipolígono).")
             return None, None
             
         # Validações de geometria
         if gdf.geometry.is_empty.any():
-            st.error("O arquivo contém geometrias vazias.")
+            st.error("Erro: O arquivo contém geometrias vazias.")
             return None, None
             
         if not all(gdf.geometry.geom_type.isin(['Polygon', 'MultiPolygon'])):
-            st.error("Apenas polígonos ou multipolígonos são aceitos.")
+            st.error("Erro: Apenas polígonos ou multipolígonos são aceitos.")
             return None, None
 
-        # Correção de geometrias (apenas se necessário)
+        # Verificação do CRS (APENAS SIRGAS 2000)
+        CRS_OBRIGATORIO = 'EPSG:4674'
+        if gdf.crs is None:
+            st.error(f"Erro: O arquivo não possui CRS definido. O CRS deve ser {CRS_OBRIGATORIO} (SIRGAS 2000).")
+            return None, None
+            
+        if str(gdf.crs).upper() != CRS_OBRIGATORIO:
+            st.error(f"Erro: CRS {gdf.crs} não permitido. O arquivo deve estar em {CRS_OBRIGATORIO} (SIRGAS 2000).")
+            return None, None
+
+        # Correção de geometrias (buffer 0 se necessário)
         if not gdf.geometry.is_valid.all():
             gdf['geometry'] = gdf.geometry.buffer(0)
         
-        # Mantém CRS original para processamento
-        original_crs = gdf.crs if gdf.crs is not None else "EPSG:4326"
-        st.write(f"CRS original do arquivo: {original_crs}")
-
-        # Reprojeta para WGS84 (EPSG:4326) APENAS para visualização
-        gdf_visualizacao = gdf.to_crs("EPSG:4326") if gdf.crs != "EPSG:4326" else gdf
-        
-        # Visualização no mapa
-        centroid = gdf_visualizacao.geometry.centroid
+        # Visualização DIRETAMENTE no SIRGAS 2000 (Folium aceita coordenadas equivalentes)
+        centroid = gdf.geometry.centroid
         m = folium.Map(
-            location=[centroid.y.mean(), centroid.x.mean()],
-            zoom_start=10
+            location=[centroid.y.mean(), centroid.x.mean()],  # Coordenadas serão interpretadas como WGS84
+            zoom_start=10,
+            tiles='CartoDB positron'
         )
         
         folium.GeoJson(
-            gdf_visualizacao.geometry.iloc[0],
+            gdf.geometry.iloc[0],
             style_function=lambda x: {'fillColor': '#4daf4a', 'color': '#377eb8'}
         ).add_to(m)
             
         st_folium(m, width=600, height=400)
+        st.success(f"CRS do arquivo validado: {gdf.crs} (SIRGAS 2000)")
         
-        # Retorna geometria no CRS original para processamento no EE
-        return ee.Geometry(gdf.geometry.iloc[0].__geo_interface__), original_crs
+        # Retorna geometria no SIRGAS 2000
+        return ee.Geometry(gdf.geometry.iloc[0].__geo_interface__), CRS_OBRIGATORIO
         
     except Exception as e:
-        st.error(f"Erro ao carregar GeoJSON: {str(e)}")
+        st.error(f"Erro crítico ao carregar GeoJSON: {str(e)}")
         return None, None
 
 def reprojetarImagem(imagem, epsg, escala):
@@ -795,10 +800,10 @@ else:
 
     if st.session_state.get("ee_initialized"):
         uploaded_file = st.file_uploader(
-            "Carregue o arquivo GeoJSON da bacia (apenas 1 polígono/multipolígono, máximo 1 MB)",
+            "Carregue o arquivo GeoJSON da bacia (apenas 1 polígono/multipolígono, SIRGAS 2000 (4674), máximo 1 MB)",
             type=["geojson"],
             accept_multiple_files=False,
-            help="Use ferramentas como QGIS ou geojson.io para garantir que seu arquivo tem apenas UMA geometria"
+            help="Seu arquivo tem de estar projetado em SIRGAS 2000 (4674). Use ferramentas como QGIS ou geojson.io para garantir que seu arquivo tem apenas UMA geometria"
         )
         if uploaded_file is not None:
             geometry, crs = load_geojson(uploaded_file)

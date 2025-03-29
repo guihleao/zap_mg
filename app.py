@@ -244,9 +244,9 @@ TABELAS_AGRO = {
 def load_geojson(file):
     try:
         # Verificação de tamanho (como antes)
-        MAX_FILE_SIZE = 500 * 1024
-        if file.size > MAX_FILE_SIZE:
-            st.error(f"Arquivo muito grande ({(file.size/1024):.2f} KB). Máximo: 500 KB")
+        MAX_FILE_SIZE_KB = 1024  # 1 MB = 1024 KB
+        if file.size > MAX_FILE_SIZE_KB * 1024:
+            st.error(f"Tamanho do arquivo ({file.size/1024:.1f} KB) excede o limite de {MAX_FILE_SIZE_KB} KB (1 MB)")
             return None, None
 
         gdf = gpd.read_file(file)
@@ -791,7 +791,7 @@ else:
 
     if st.session_state.get("ee_initialized"):
         uploaded_file = st.file_uploader(
-            "Carregue o arquivo GeoJSON da bacia (máximo 500 KB)",
+            "Carregue o arquivo GeoJSON da bacia (máximo 1 MB)",
             type=["geojson"],
             accept_multiple_files=False,
             help="Formato GeoJSON com polígonos/multipolígonos"

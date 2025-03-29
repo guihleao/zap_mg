@@ -240,24 +240,45 @@ def load_geojson(file):
         if file.size > MAX_FILE_SIZE:
             st.error(f"O arquivo é muito grande ({(file.size/1024):.2f} KB). Tamanho máximo permitido: 500 KB")
             return None, None
+
+        # Lê o arquivo diretamente do buffer de memória
         gdf = gpd.read_file(file)
+        
+        # Validações de geometria
         if gdf.geometry.is_empty.any():
             st.error("O arquivo GeoJSON contém geometrias vazias.")
             return None, None
+            
         if not all(gdf.geometry.geom_type.isin(['Polygon', 'MultiPolygon'])):
             st.error("O arquivo deve conter apenas polígonos ou multipolígonos.")
             return None, None
+            
+        # Correção de geometrias e definição de CRS
         gdf['geometry'] = gdf['geometry'].buffer(0)
         crs = gdf.crs if gdf.crs is not None else "EPSG:4326"
         st.write(f"CRS do arquivo GeoJSON: {crs}")
+        
+        # Visualização simplificada no mapa
         centroid = gdf.geometry.centroid
-        m = folium.Map(location=[centroid.y.mean(), centroid.x.mean()], zoom_start=10)
+        m = folium.Map(
+            location=[centroid.y.mean(), centroid.x.mean()], 
+            zoom_start=10,
+            tiles='CartoDB positron'  # Tile mais leve
+        )
+        
+        # Simplifica geometrias para visualização
         for _, row in gdf.iterrows():
-            folium.GeoJson(row['geometry']).add_to(m)
-        st_folium(m, returned_objects=[])
+            folium.GeoJson(
+                row['geometry'].simplify(tolerance=0.001),  # Simplificação
+                style_function=lambda x: {'fillColor': '#4daf4a', 'color': '#377eb8'}
+            ).add_to(m)
+            
+        st_folium(m, width=600, height=400, returned_objects=[])
+        
         return ee.Geometry(gdf.geometry.iloc[0].__geo_interface__), crs
+        
     except Exception as e:
-        st.error(f"Erro ao carregar o GeoJSON: {e}")
+        st.error(f"Erro ao carregar o GeoJSON: {str(e)}")
         return None, None
 
 def reprojetarImagem(imagem, epsg, escala):

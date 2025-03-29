@@ -235,50 +235,54 @@ TABELAS_AGRO = {
 # 4. Funções auxiliares
 def load_geojson(file):
     try:
-        # Verifica tamanho do arquivo (limite de 500 KB = 500 * 1024 bytes)
-        MAX_FILE_SIZE = 500 * 1024  # 500 KB em bytes
+        # Verificação de tamanho (como antes)
+        MAX_FILE_SIZE = 500 * 1024
         if file.size > MAX_FILE_SIZE:
-            st.error(f"O arquivo é muito grande ({(file.size/1024):.2f} KB). Tamanho máximo permitido: 500 KB")
+            st.error(f"Arquivo muito grande ({(file.size/1024):.2f} KB). Máximo: 500 KB")
             return None, None
 
-        # Lê o arquivo diretamente do buffer de memória
         gdf = gpd.read_file(file)
         
         # Validações de geometria
         if gdf.geometry.is_empty.any():
-            st.error("O arquivo GeoJSON contém geometrias vazias.")
+            st.error("O arquivo contém geometrias vazias.")
             return None, None
             
         if not all(gdf.geometry.geom_type.isin(['Polygon', 'MultiPolygon'])):
-            st.error("O arquivo deve conter apenas polígonos ou multipolígonos.")
+            st.error("Apenas polígonos ou multipolígonos são aceitos.")
             return None, None
-            
-        # Correção de geometrias e definição de CRS
-        gdf['geometry'] = gdf['geometry'].buffer(0)
-        crs = gdf.crs if gdf.crs is not None else "EPSG:4326"
-        st.write(f"CRS do arquivo GeoJSON: {crs}")
+
+        # Correção de geometrias (apenas se necessário)
+        if not gdf.geometry.is_valid.all():
+            gdf['geometry'] = gdf.geometry.buffer(0)
         
-        # Visualização simplificada no mapa
-        centroid = gdf.geometry.centroid
+        # Mantém CRS original para processamento
+        original_crs = gdf.crs if gdf.crs is not None else "EPSG:4326"
+        st.write(f"CRS original do arquivo: {original_crs}")
+
+        # Reprojeta para WGS84 (EPSG:4326) APENAS para visualização
+        gdf_visualizacao = gdf.to_crs("EPSG:4326") if gdf.crs != "EPSG:4326" else gdf
+        
+        # Visualização no mapa
+        centroid = gdf_visualizacao.geometry.centroid
         m = folium.Map(
-            location=[centroid.y.mean(), centroid.x.mean()], 
-            zoom_start=10,
-            tiles='CartoDB positron'  # Tile mais leve
+            location=[centroid.y.mean(), centroid.x.mean()],
+            zoom_start=10
         )
         
-        # Simplifica geometrias para visualização
-        for _, row in gdf.iterrows():
+        for _, row in gdf_visualizacao.iterrows():
             folium.GeoJson(
-                row['geometry'].simplify(tolerance=0.001),  # Simplificação
+                row['geometry'],
                 style_function=lambda x: {'fillColor': '#4daf4a', 'color': '#377eb8'}
             ).add_to(m)
             
-        st_folium(m, width=600, height=400, returned_objects=[])
+        st_folium(m, width=600, height=400)
         
-        return ee.Geometry(gdf.geometry.iloc[0].__geo_interface__), crs
+        # Retorna geometria no CRS original para processamento no EE
+        return ee.Geometry(gdf.geometry.iloc[0].__geo_interface__), original_crs
         
     except Exception as e:
-        st.error(f"Erro ao carregar o GeoJSON: {str(e)}")
+        st.error(f"Erro ao carregar GeoJSON: {str(e)}")
         return None, None
 
 def reprojetarImagem(imagem, epsg, escala):

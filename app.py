@@ -958,23 +958,46 @@ else:
                                         
                                         # Verifica conclusão das tarefas de sensoriamento
                                         if tasks_remoto:
-                                            st.write("Processando produtos de sensoriamento remoto...")
-                                            status_placeholder = st.empty()
+                                            status_container = st.empty()  # Container fixo para as mensagens
+                                            
+                                            with status_container:
+                                                st.write("⏳ Processando produtos de sensoriamento remoto na Earth Engine...")
+                                                
+                                                progress_bar = st.progress(0)
+                                                status_text = st.empty()
+                                            
                                             todas_concluidas = False
+                                            last_update = time.time()
                                             
                                             while not todas_concluidas:
-                                                status_placeholder.empty()
                                                 todas_concluidas = True
+                                                completed_tasks = 0
                                                 
-                                                for task in tasks_remoto:
-                                                    state = check_task_status(task)
-                                                    if state != "COMPLETED":
-                                                        todas_concluidas = False
+                                                # Atualiza status dentro do mesmo container
+                                                with status_container:
+                                                    progress_bar.empty()
+                                                    status_text.empty()
+                                                    
+                                                    for i, task in enumerate(tasks_remoto):
+                                                        state = check_task_status(task)
+                                                        status_text.write(f"Tarefa {i+1}/{len(tasks_remoto)}: {state}")
+                                                        
+                                                        if state != "COMPLETED":
+                                                            todas_concluidas = False
+                                                        else:
+                                                            completed_tasks += 1
+                                                    
+                                                    # Barra de progresso
+                                                    progress = completed_tasks / len(tasks_remoto)
+                                                    progress_bar.progress(progress)
+                                                    
+                                                    if todas_concluidas:
+                                                        st.success("✅ Todos os produtos de sensoriamento foram processados!")
+                                                        break
+                                                    else:
+                                                        st.warning(f"⌛ Progresso: {completed_tasks}/{len(tasks_remoto)} tarefas concluídas")
                                                 
-                                                if todas_concluidas:
-                                                    status_placeholder.success("Produtos de sensoriamento concluídos!")
-                                                    break
-                                                
+                                                # Espera 60 segundos entre verificações
                                                 time.sleep(60)
                                         
                                         # Processar dados agro APÓS o sensoriamento, se selecionado

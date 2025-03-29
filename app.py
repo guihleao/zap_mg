@@ -235,6 +235,11 @@ TABELAS_AGRO = {
 # 4. Funções auxiliares
 def load_geojson(file):
     try:
+        # Verifica tamanho do arquivo (limite de 500 KB = 500 * 1024 bytes)
+        MAX_FILE_SIZE = 500 * 1024  # 500 KB em bytes
+        if file.size > MAX_FILE_SIZE:
+            st.error(f"O arquivo é muito grande ({(file.size/1024):.2f} KB). Tamanho máximo permitido: 500 KB")
+            return None, None
         gdf = gpd.read_file(file)
         if gdf.geometry.is_empty.any():
             st.error("O arquivo GeoJSON contém geometrias vazias.")
@@ -881,29 +886,29 @@ else:
                                         if st.session_state.get("exportar_srtm_mde") and "utm_elevation" in resultados:
                                             tasks_remoto.append(exportarImagem(resultados["utm_elevation"], "06_", "_SRTM_MDE", 30, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_declividade") and "utm_declividade" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_declividade"], "07_", "_Declividade", 30, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_declividade"], "02_", "_Declividade", 30, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_ndvi") and "utm_ndvi" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_ndvi"], "01_", "_NDVI", 10, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_ndvi"], "06_", "_NDVI", 10, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_gndvi") and "utm_gndvi" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_gndvi"], "02_", "_GNDVI", 10, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_gndvi"], "06_", "_GNDVI", 10, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_ndwi") and "utm_ndwi" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_ndwi"], "03_", "_NDWI", 10, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_ndwi"], "06_", "_NDWI", 10, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_ndmi") and "utm_ndmi" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_ndmi"], "04_", "_NDMI", 10, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_ndmi"], "06_", "_NDMI", 10, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_sentinel_composite") and "utm_sentinel2" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_sentinel2"], "05_", "_Sentinel2", 10, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_sentinel2"], "06_", "_Sentinel2", 10, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_mapbiomas") and "utm_mapbiomas" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_mapbiomas"], "08_", "_MapBiomas", 30, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_mapbiomas"], "06_", "_MapBiomas", 30, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_pasture_quality") and "utm_pasture_quality" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_pasture_quality"], "09_", "_PastureQuality", 30, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_pasture_quality"], "06_", "_PastureQuality", 30, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_landforms") and "utm_landforms" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_landforms"], "10_", "_Landforms", 30, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_landforms"], "06_", "_Landforms", 30, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_puc_ufv") and "utm_puc_ufv" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_puc_ufv"], "11_", "_PUC_UFV", 30, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_puc_ufv"], "02_", "_PUC_UFV", 30, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_puc_ibge") and "utm_puc_ibge" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_puc_ibge"], "12_", "_PUC_IBGE", 30, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_puc_ibge"], "02_", "_PUC_IBGE", 30, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_puc_embrapa") and "utm_puc_embrapa" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_puc_embrapa"], "13_", "_PUC_Embrapa", 30, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_puc_embrapa"], "02_", "_PUC_Embrapa", 30, geometry, nome_bacia_export))
                                         
                                         # Verifica conclusão das tarefas de sensoriamento
                                         if tasks_remoto:

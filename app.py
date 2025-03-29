@@ -107,6 +107,14 @@ st.markdown("""
         color: #1a5a96 !important;
         font-weight: 500;
     }
+        .stFileUploader > label > div:first-child {
+        font-weight: bold;
+        color: #ff4b4b;
+    }
+    .stFileUploader > label > div:nth-child(2) {
+        font-size: 0.8em;
+        color: #777;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -782,8 +790,12 @@ else:
             st.stop()
 
     if st.session_state.get("ee_initialized"):
-        uploaded_file = st.file_uploader("Carregue o arquivo GeoJSON da bacia", type=["geojson"])
-        
+        uploaded_file = st.file_uploader(
+            "Carregue o arquivo GeoJSON da bacia (máximo 500 KB)",
+            type=["geojson"],
+            accept_multiple_files=False,
+            help="Formato GeoJSON com polígonos/multipolígonos"
+        )
         if uploaded_file is not None:
             geometry, crs = load_geojson(uploaded_file)
             if geometry:

@@ -74,6 +74,6 @@ sublicenciamento e/ou venda de cópias do Software.
 ## 📧 Contato
 Secretaria de Agricultura de MG  
 📩 [zap@agricultura.mg.gov.br](mailto:zap@agricultura.mg.gov.br)  
-🌐 [www.agricultura.mg.gov.br/zap](https://www.agricultura.mg.gov.br/zap)
+🌐 [Mais Sobre o ZAP](https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo)
 
 [![Acesse o App](https://img.shields.io/badge/ACESSE_O_APP_AQUI-FF6B6B?style=for-the-badge&logo=google-chrome&logoColor=white)](https://zap-mg.streamlit.app)

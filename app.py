@@ -26,8 +26,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
     menu_items={
         'Get help': 'https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo',
-        'Report a Bug': "mailto:zap@agricultura.mg.gov.br",
-        'About': "# This is a header. This is an *extremely* cool app!"
+        'Report a Bug': "mailto:zap@agricultura.mg.gov.br"
     }
 )
 
@@ -67,10 +66,10 @@ with st.sidebar:
     st.markdown('<a href="mailto:zap@agricultura.mg.gov.br" class="sidebar-link">🐞 Reportar um Bug</a>', unsafe_allow_html=True)
     
     # Link 3 - Política de Privacidade
-    st.markdown('<a href="https://www.mg.gov.br/agricultura/pagina/politica-de-privacidade" class="sidebar-link" target="_blank">🔒 Política de Privacidade</a>', unsafe_allow_html=True)
+    st.markdown('<a href="https://github.com/guihleao/zap_mg/tree/main?tab=security-ov-file" class="sidebar-link" target="_blank">🔒 Política de Privacidade</a>', unsafe_allow_html=True)
     
-    # Link 4 - Aspectos Legais
-    st.markdown('<a href="https://www.mg.gov.br/pagina/aspectos-legais-e-responsabilidades" class="sidebar-link" target="_blank">⚖️ Aspectos Legais</a>', unsafe_allow_html=True)
+    # Link 4 - Termo de Serviço
+    st.markdown('<a href="https://github.com/guihleao/zap_mg/tree/main?tab=security-ov-file" class="sidebar-link" target="_blank">⚖️ Aspectos Legais</a>', unsafe_allow_html=True)
     
     st.markdown("---")
     st.markdown("### Versão 1.0")

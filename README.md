@@ -21,13 +21,14 @@ Aplicação web para processamento automatizado de dados geoespaciais e agropecu
 ## ⚙️ Funcionalidades
 
 ### 🛰️ Processamento Geoespacial
-| Módulo | Descrição |
-|--------|-----------|
+| Módulo | Descrição | Resolução |
+|--------|-----------|-----------|
 | **Índices de Vegetação** | NDVI, GNDVI, NDWI, NDMI | 10m |
 | **Topografia** | Modelo Digital de Elevação (SRTM) e declividade | 30m |
 | **Cobertura e uso da terra** | MapBiomas + Qualidade de Pastagens | 30m |
-| **Potencial de Uso Conservacionista** | IDE-Sisema | 30m |
+| **Potencial de Uso Conservacionista** | Três opções disponíveis | 30m |
 | **Imagem Senintel-2** | Mediana da Imagem de 1 ano | 10m |
+| **Geomorfologia** | Landforms | 30m (Reamostrado) |
 
 ### 📊 Dados Agropecuários
 - Análise de dados do IBGE, PAM, PPM e PEVS

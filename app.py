@@ -304,7 +304,7 @@ def load_geojson(file):
 def reprojetarImagem(imagem, epsg, escala):
     return imagem.reproject(crs=f"EPSG:{epsg}", scale=escala)
 
-def exportarImagem(imagem, nome_prefixo, nome_sufixo, escala, regiao, nome_bacia_export, pasta="zap"):
+def exportarImagem(imagem, nome_prefixo, nome_sufixo, escala, regiao, nome_bacia_export, pasta="zap", mes_formatado, ano_anterior, ano_atual):
     try:
         nome_arquivo = f"{nome_prefixo}{nome_bacia_export}{nome_sufixo}"
         task = ee.batch.Export.image.toDrive(

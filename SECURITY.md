@@ -73,7 +73,7 @@ Não nos responsabilizamos por:
 - Reservamos o direito de encerrar o acesso ao aplicativo a qualquer usuário que violar estes Termos.
 
 **8. Legislação Aplicável**
-Estes Termos são regidos pelas leis brasileiras e quaisquer disputas serão resolvidas no foro da Comarca de Belo Horizonte/MG.
+- Estes Termos são regidos pelas leis brasileiras e quaisquer disputas serão resolvidas no foro da Comarca de Belo Horizonte/MG.
 
 ## Contato
 Para questões sobre privacidade ou termos de serviço:

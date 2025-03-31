@@ -304,7 +304,7 @@ def load_geojson(file):
 def reprojetarImagem(imagem, epsg, escala):
     return imagem.reproject(crs=f"EPSG:{epsg}", scale=escala)
 
-def exportarImagem(imagem, nome_prefixo, nome_sufixo, escala, regiao, nome_bacia_export, pasta="zap", mes_formatado, ano_anterior, ano_atual):
+def exportarImagem(imagem, nome_prefixo, nome_sufixo, escala, regiao, nome_bacia_export, pasta="zap"):
     try:
         nome_arquivo = f"{nome_prefixo}{nome_bacia_export}{nome_sufixo}"
         task = ee.batch.Export.image.toDrive(
@@ -986,15 +986,15 @@ else:
                                         if st.session_state.get("exportar_declividade") and "utm_declividade" in resultados:
                                             tasks_remoto.append(exportarImagem(resultados["utm_declividade"], "02_", "_Declividade", 30, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_ndvi") and "utm_ndvi" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_ndvi"], "06_", f"_NDVImediana_{mes_formatado}{ano_anterior}-{ano_atual}", 10, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_ndvi"], "06_", f"_NDVImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_gndvi") and "utm_gndvi" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_gndvi"], "06_", f"_GNDVI_{mes_formatado}{ano_anterior}-{ano_atual}", 10, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_gndvi"], "06_", f"_GNDVI_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_ndwi") and "utm_ndwi" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_ndwi"], "06_", f"_NDWI_{mes_formatado}{ano_anterior}-{ano_atual}", 10, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_ndwi"], "06_", f"_NDWI_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_ndmi") and "utm_ndmi" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_ndmi"], "06_", f"_NDMI_{mes_formatado}{ano_anterior}-{ano_atual}", 10, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_ndmi"], "06_", f"_NDMI_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_sentinel_composite") and "utm_sentinel2" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_sentinel2"], "06_", f"_S2_B2B3B4B8_{mes_formatado}{ano_anterior}-{ano_atual}", 10, geometry, nome_bacia_export))
+                                            tasks_remoto.append(exportarImagem(resultados["utm_sentinel2"], "06_", f"_S2_B2B3B4B8_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_mapbiomas") and "utm_mapbiomas" in resultados:
                                             tasks_remoto.append(exportarImagem(resultados["utm_mapbiomas"], "06_", "_MapBiomas_col9_2023", 30, geometry, nome_bacia_export))
                                         if st.session_state.get("exportar_pasture_quality") and "utm_pasture_quality" in resultados:

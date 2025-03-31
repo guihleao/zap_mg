@@ -668,6 +668,27 @@ def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
                     st.success(f"Imagens Sentinel-2 encontradas: {num_imagens}")
                     sentinel_median = sentinel.median().clip(bacia)
                     sentinel_composite = sentinel_median.select(['B2', 'B3', 'B4', 'B8']).rename(['B2', 'B3', 'B4', 'B8'])
+                    
+                    try:
+                        # Criar uma FeatureCollection com as informações das imagens
+                        sentinel_list = sentinel.toList(sentinel.size())
+                        features = ee.FeatureCollection(sentinel_list.map(lambda img: ee.Feature(None, {
+                            'id': ee.Image(img).id(),
+                            'date': ee.Image(img).date().format('YYYY-MM-dd'),
+                            'cloud_cover': ee.Image(img).get('CLOUDY_PIXEL_PERCENTAGE')
+                        }))
+
+                        # Exportar a lista de imagens para um arquivo CSV
+                        export_task = ee.batch.Export.table.toDrive(
+                            collection=features,
+                            folder='zap',
+                            description='lista_imagens_sentinel-2',
+                            fileFormat='CSV'
+                        )
+                        export_task.start()
+                        st.success("Exportação da lista de imagens Sentinel-2 iniciada. Verifique seu Google Drive na pasta 'export_zap'.")
+                    except Exception as e:
+                        st.error(f"Erro ao exportar a lista de imagens Sentinel-2: {e}")
 
             # Gerar índices se selecionados
             indices = {}

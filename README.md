@@ -8,10 +8,10 @@
 
 ## 📋 Tabela de Conteúdos
 - [Visão Geral](#-visão-geral)
-- [Funcionalidades](#-funcionalidades) 
+- [Funcionalidades](#-Funcionalidades)
 - [Como Usar](#-como-usar)
-- [Tecnologias](#-tecnologias)
-- [Política de Privacidade](#-política-de-privacidade)
+- [Tecnologias](#-Tecnologias)
+- [Política de Privacidade](#-política-de-privacidade-e-termo-de-serviço)
 - [Licença](#-licença)
 - [Contato](#-contato)
 
@@ -50,7 +50,7 @@ Aplicação web para processamento automatizado de dados geoespaciais e agropecu
   - ![Earth Engine](https://img.shields.io/badge/Earth_Engine_API-v1.0-orange)
   - ![Google Drive](https://img.shields.io/badge/Google_Drive_API-v3-blue)
 
-## 🔒 Política de Privacidade e Termo de Serviços
+## 🔒 Política de Privacidade e Termo de Serviço
 - Autenticação via OAuth 2.0 do Google
 - Dados processados são armazenados **temporariamente** durante a sessão
 - Credenciais são gerenciadas diretamente pelo Google Auth

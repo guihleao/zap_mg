@@ -8,9 +8,9 @@
 
 ## 📋 Tabela de Conteúdos
 - [Visão Geral](#-visão-geral)
-- [Funcionalidades](#-funcionalidades)
+- [Funcionalidades](#%EF%B8%8F-funcionalidades)
 - [Como Usar](#-como-usar)
-- [Tecnologias](#-tecnologias)
+- [Tecnologias](#%EF%B8%8F-tecnologias)
 - [Política de Privacidade](#-política-de-privacidade-e-termo-de-serviço)
 - [Licença](#-licença)
 - [Contato](#-contato)

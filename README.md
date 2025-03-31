@@ -1,4 +1,4 @@
-# ZAP Automatização - Earth Engine Processor
+# ZAP Automatização (Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo)
 
 [![Streamlit](https://img.shields.io/badge/Streamlit-Cloud-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)](https://streamlit.io)
 [![Earth Engine](https://img.shields.io/badge/Google%20Earth%20Engine-API-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://earthengine.google.com)
@@ -23,12 +23,14 @@ Aplicação web para processamento automatizado de dados geoespaciais e agropecu
 ### 🛰️ Processamento Geoespacial
 | Módulo | Descrição |
 |--------|-----------|
-| **Índices de Vegetação** | NDVI, GNDVI, NDWI, NDMI |
-| **Topografia** | Modelo Digital de Elevação (SRTM) e declividade |
-| **Cobertura do Solo** | MapBiomas + Qualidade de Pastagens |
+| **Índices de Vegetação** | NDVI, GNDVI, NDWI, NDMI | 10m |
+| **Topografia** | Modelo Digital de Elevação (SRTM) e declividade | 30m |
+| **Cobertura e uso da terra** | MapBiomas + Qualidade de Pastagens | 30m |
+| **Potencial de Uso Conservacionista** | IDE-Sisema | 30m |
+| **Imagem Senintel-2** | Mediana da Imagem de 1 ano | 10m |
 
 ### 📊 Dados Agropecuários
-- Análise de dados do IBGE, PAM e PPM
+- Análise de dados do IBGE, PAM, PPM e PEVS
 - Filtro automático por municípios relevantes
 - Exportação de relatórios em Excel
 

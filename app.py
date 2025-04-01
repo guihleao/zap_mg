@@ -66,103 +66,108 @@ with st.sidebar:
     st.markdown('<a href="mailto:zap@agricultura.mg.gov.br" class="sidebar-link">🐞 Reportar um Bug</a>', unsafe_allow_html=True)
     
     # Botão para Política de Privacidade (abre modal)
-    if st.button("🔒 Política de Privacidade", key="privacidade_btn", 
-                help="Clique para ver nossa política de privacidade"):
-        with st.modal("Política de Privacidade"):
-            st.markdown("""
-            # Política de Privacidade e Termos de Serviço para o Aplicativo ZAP Automatização
+    @st.dialog("Política de Privacidade", width="large")
+    def show_privacy_policy():
+        st.markdown("""
+        # Política de Privacidade e Termos de Serviço para o Aplicativo ZAP Automatização
 
-            ## Política de Privacidade
-            Última atualização: 31/03/2025
+        ## Política de Privacidade
+        Última atualização: 31/03/2025
 
-            **1. Informações Gerais**
-            - O aplicativo ZAP Automatização ("nós", "nosso" ou "aplicativo") é desenvolvido pela a Secretaria de Agricultura, Pecuária e Abastecimento de Minas Gerais como ferramenta de apoio ao Zoneamento Ambiental e Produtivo (ZAP). Esta política descreve como coletamos, usamos e protegemos suas informações.
+        **1. Informações Gerais**
+        - O aplicativo ZAP Automatização ("nós", "nosso" ou "aplicativo") é desenvolvido pela a Secretaria de Agricultura, Pecuária e Abastecimento de Minas Gerais como ferramenta de apoio ao Zoneamento Ambiental e Produtivo (ZAP). Esta política descreve como coletamos, usamos e protegemos suas informações.
 
-            **2. Dados Coletados**
-            - Autenticação Google: Utilizamos OAuth 2.0 para acessar serviços do Google (Earth Engine, Drive e Cloud) com seu consentimento explícito.
-            - Arquivos GeoJSON: Arquivos geográficos enviados para processamento são armazenados temporariamente apenas durante a sessão.
-            - Dados de Uso: Registramos operações realizadas para fins de auditoria e melhoria do serviço.
+        **2. Dados Coletados**
+        - Autenticação Google: Utilizamos OAuth 2.0 para acessar serviços do Google (Earth Engine, Drive e Cloud) com seu consentimento explícito.
+        - Arquivos GeoJSON: Arquivos geográficos enviados para processamento são armazenados temporariamente apenas durante a sessão.
+        - Dados de Uso: Registramos operações realizadas para fins de auditoria e melhoria do serviço.
 
-            **3. Uso dos Dados**
-            Os dados coletados são usados exclusivamente para:
-            - Processamento de informações geográficas
-            - Geração de relatórios e produtos do ZAP
-            - Melhoria contínua do aplicativo
+        **3. Uso dos Dados**
+        Os dados coletados são usados exclusivamente para:
+        - Processamento de informações geográficas
+        - Geração de relatórios e produtos do ZAP
+        - Melhoria contínua do aplicativo
 
-            **4. Compartilhamento de Dados**
-            Não compartilhamos seus dados pessoais com terceiros, exceto:
-            - Quando exigido por lei
-            - Para prestação de serviços Google necessários ao funcionamento do aplicativo
+        **4. Compartilhamento de Dados**
+        Não compartilhamos seus dados pessoais com terceiros, exceto:
+        - Quando exigido por lei
+        - Para prestação de serviços Google necessários ao funcionamento do aplicativo
 
-            **5. Segurança**
-            - Implementamos medidas técnicas e organizacionais para proteger seus dados, incluindo:
-            - Autenticação em dois fatores recomendada
-            - Acesso restrito a pessoal autorizado
-            - Criptografia de dados em trânsito
+        **5. Segurança**
+        - Implementamos medidas técnicas e organizacionais para proteger seus dados, incluindo:
+        - Autenticação em dois fatores recomendada
+        - Acesso restrito a pessoal autorizado
+        - Criptografia de dados em trânsito
 
-            **6. Seus Direitos**
-            Você pode:
+        **6. Seus Direitos**
+        Você pode:
 
-            - Revogar o acesso à sua conta Google a qualquer momento
-            - Solicitar acesso aos dados armazenados
-            - Requerer a exclusão de seus dados
+        - Revogar o acesso à sua conta Google a qualquer momento
+        - Solicitar acesso aos dados armazenados
+        - Requerer a exclusão de seus dados
 
-            **7. Alterações na Política**
-            - Esta política pode ser atualizada periodicamente. Alterações significativas serão comunicadas aos usuários.
-            """)
+        **7. Alterações na Política**
+        - Esta política pode ser atualizada periodicamente. Alterações significativas serão comunicadas aos usuários.
+        """)
     
     # Botão para Aspectos Legais (abre modal)
-    if st.button("⚖️ Termo de Serviço", key="legais_btn", 
-                help="Clique para ver os termos legais"):
-        with st.modal("Aspectos Legais"):
-            st.markdown("""
-            ## Termos de Serviço
+    @st.dialog("Aspectos Legais", width="large")
+    def show_legal_terms():
+        st.markdown("""
+        ## Termos de Serviço
 
-            **1. Aceitação dos Termos**
-            - Ao utilizar o aplicativo ZAP Automatização, você concorda com estes Termos de Serviço.
+        **1. Aceitação dos Termos**
+        - Ao utilizar o aplicativo ZAP Automatização, você concorda com estes Termos de Serviço.
 
-            **2. Uso Autorizado**
-            O aplicativo destina-se exclusivamente a:
-            - Técnicos e gestores públicos envolvidos com o ZAP
-            - Usuários autorizados pela Secretaria de Agricultura de MG
+        **2. Uso Autorizado**
+        O aplicativo destina-se exclusivamente a:
+        - Técnicos e gestores públicos envolvidos com o ZAP
+        - Usuários autorizados pela Secretaria de Agricultura de MG
 
-            **3. Responsabilidades do Usuário**
-            Você concorda em:
-            - Fornecer apenas informações precisas e atualizadas
-            - Não utilizar o aplicativo para fins ilegais
-            - Manter suas credenciais de acesso em sigilo
+        **3. Responsabilidades do Usuário**
+        Você concorda em:
+        - Fornecer apenas informações precisas e atualizadas
+        - Não utilizar o aplicativo para fins ilegais
+        - Manter suas credenciais de acesso em sigilo
 
-            **4. Limitações**
-            O aplicativo não garante:
-            - Disponibilidade contínua ou ininterrupta
-            - Precisão absoluta dos resultados processados
-            - Compatibilidade com todos os sistemas ou dispositivos
+        **4. Limitações**
+        O aplicativo não garante:
+        - Disponibilidade contínua ou ininterrupta
+        - Precisão absoluta dos resultados processados
+        - Compatibilidade com todos os sistemas ou dispositivos
 
-            **5. Propriedade Intelectual**
-            - Todo o conteúdo e funcionalidades do aplicativo são propriedade do Governo de Minas Gerais e estão protegidos por leis de propriedade intelectual.
+        **5. Propriedade Intelectual**
+        - Todo o conteúdo e funcionalidades do aplicativo são propriedade do Governo de Minas Gerais e estão protegidos por leis de propriedade intelectual.
 
-            **6. Isenção de Responsabilidade**
-            Não nos responsabilizamos por:
-            - Danos resultantes do uso inadequado do aplicativo
-            - Perda de dados devido a falhas técnicas
-            - Conteúdo gerado por terceiros
+        **6. Isenção de Responsabilidade**
+        Não nos responsabilizamos por:
+        - Danos resultantes do uso inadequado do aplicativo
+        - Perda de dados devido a falhas técnicas
+        - Conteúdo gerado por terceiros
 
-            **7. Rescisão**
-            - Reservamos o direito de encerrar o acesso ao aplicativo a qualquer usuário que violar estes Termos.
+        **7. Rescisão**
+        - Reservamos o direito de encerrar o acesso ao aplicativo a qualquer usuário que violar estes Termos.
 
-            **8. Legislação Aplicável**
-            - Estes Termos são regidos pelas leis brasileiras e quaisquer disputas serão resolvidas no foro da Comarca de Belo Horizonte/MG.
+        **8. Legislação Aplicável**
+        - Estes Termos são regidos pelas leis brasileiras e quaisquer disputas serão resolvidas no foro da Comarca de Belo Horizonte/MG.
 
-            ## Contato
-            Para questões sobre privacidade ou termos de serviço:
-            - Email: zap@agricultura.mg.gov.br
-            - Site: [ZAP Minas Gerais - SEAPA](https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo)
+        ## Contato
+        Para questões sobre privacidade ou termos de serviço:
+        - Email: zap@agricultura.mg.gov.br
+        - Site: [ZAP Minas Gerais - SEAPA](https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo)
 
-            ## Outros Links:
-            - [Aspectos Legais e Responsabilidades (Governo de MG)](https://www.mg.gov.br/pagina/aspectos-legais-e-responsabilidades)
-            - [Política de Privacidade (SEAPA-MG)](https://www.mg.gov.br/agricultura/pagina/politica-de-privacidade)
-            """)
+        ## Outros Links:
+        - [Aspectos Legais e Responsabilidades (Governo de MG)](https://www.mg.gov.br/pagina/aspectos-legais-e-responsabilidades)
+        - [Política de Privacidade (SEAPA-MG)](https://www.mg.gov.br/agricultura/pagina/politica-de-privacidade)
+        """)
     
+    # Botões que acionam os diálogos
+    if st.button("🔒 Política de Privacidade", key="privacy_button"):
+        show_privacy_policy()
+    
+    if st.button("⚖️ Aspectos Legais", key="legal_button"):
+        show_legal_terms()
+
     st.markdown("---")
     st.markdown("### Versão 1.0")
     st.caption("Desenvolvido para a 5ª edição do ZAP")

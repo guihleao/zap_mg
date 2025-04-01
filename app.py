@@ -280,7 +280,7 @@ if st.button("🔒 Política de Privacidade",
 
 if st.button("⚖️ Termos de Serviço", 
             key="card_legal_button",
-            help="Clique para ver os termos legais"):
+            help="Clique para ver os termos de serviço"):
     show_legal_terms()
 
 st.markdown("</div></div>", unsafe_allow_html=True)

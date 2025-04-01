@@ -59,7 +59,6 @@ def local_css():
             display: block;
             padding: 0.75rem 1rem;
             margin: 0.5rem 0;
-            background-color: #f0f2f6;
             border-radius: 8px;
             color: #333 !important;
             text-decoration: none !important;
@@ -68,7 +67,6 @@ def local_css():
             font-size: 0.9rem;
         }
         .sidebar-link:hover {
-            background-color: #e6e6e6;
             transform: translateX(5px);
         }
         
@@ -81,12 +79,10 @@ def local_css():
             box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
         }
         .primary-button {
-            background-color: #2e7d32 !important;
             color: white !important;
             border: none !important;
         }
         .secondary-button {
-            background-color: #f0f2f6 !important;
             color: #333 !important;
             border: 1px solid #ddd !important;
         }

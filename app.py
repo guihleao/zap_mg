@@ -1,3 +1,6 @@
+# ==============================================
+# 1. IMPORTAÇÕES E CONFIGURAÇÕES INICIAIS
+# ==============================================
 import ee
 import streamlit as st
 import geopandas as gpd
@@ -16,7 +19,6 @@ from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Alignment
 import gdown
-import webbrowser
 
 # Configuração de layout
 st.set_page_config(
@@ -30,309 +32,10 @@ st.set_page_config(
     }
 )
 
-#Logo Sidebar e Sidebar
-sidebar_logo = "https://i.postimg.cc/c4VZ0fQw/zap-logo.png"
-main_body_logo = "https://i.postimg.cc/65qGpMc8/zap-logo-sb.png"
-st.logo(sidebar_logo, size="large", icon_image=main_body_logo)
-# Sidebar com links como markdown
-with st.sidebar:
-    st.markdown("## Navegação")
-    
-    # Links como markdown formatados como botões
-    st.markdown("""
-    <style>
-        .sidebar-link {
-            display: block;
-            padding: 0.5rem 1rem;
-            margin: 0.25rem 0;
-            background-color: #f0f2f6;
-            border-radius: 0.5rem;
-            color: #333 !important;
-            text-decoration: none !important;
-            transition: all 0.3s;
-            border: 1px solid #ddd;
-        }
-        .sidebar-link:hover {
-            background-color: #e6e6e6;
-            transform: translateX(3px);
-        }
-        
-        /* Estilo dos botões para parecerem com os links */
-        div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div > button {
-            width: 100%;
-            text-align: left;
-            padding: 0.5rem 1rem;
-            margin: 0.25rem 0;
-            background-color: #f0f2f6 !important;
-            border-radius: 0.5rem !important;
-            color: #333 !important;
-            border: 1px solid #ddd !important;
-            box-shadow: none !important;
-            transition: all 0.3s;
-        }
-        div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div > button:hover {
-            background-color: #e6e6e6 !important;
-            transform: translateX(3px);
-        }
-        div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div > button div p {
-            font-weight: normal !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # Link 1 - Sobre o ZAP
-    st.markdown('<a href="https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo" class="sidebar-link" target="_blank">📘 Sobre o ZAP</a>', unsafe_allow_html=True)
-    
-    # Link 2 - Reportar Bug
-    st.markdown('<a href="mailto:zap@agricultura.mg.gov.br" class="sidebar-link">🐞 Reportar um Bug</a>', unsafe_allow_html=True)
-    
-    # Botão para Política de Privacidade (abre modal)
-    @st.dialog("Política de Privacidade", width="large")
-    def show_privacy_policy():
-        st.markdown("""
-        # Política de Privacidade e Termos de Serviço para o Aplicativo ZAP Automatização
-
-        ## Política de Privacidade
-        Última atualização: 31/03/2025
-
-        **1. Informações Gerais**
-        - O aplicativo ZAP Automatização ("nós", "nosso" ou "aplicativo") é desenvolvido pela a Secretaria de Agricultura, Pecuária e Abastecimento de Minas Gerais como ferramenta de apoio ao Zoneamento Ambiental e Produtivo (ZAP). Esta política descreve como coletamos, usamos e protegemos suas informações.
-
-        **2. Dados Coletados**
-        - Autenticação Google: Utilizamos OAuth 2.0 para acessar serviços do Google (Earth Engine, Drive e Cloud) com seu consentimento explícito.
-        - Arquivos GeoJSON: Arquivos geográficos enviados para processamento são armazenados temporariamente apenas durante a sessão.
-        - Dados de Uso: Registramos operações realizadas para fins de auditoria e melhoria do serviço.
-
-        **3. Uso dos Dados**
-        Os dados coletados são usados exclusivamente para:
-        - Processamento de informações geográficas
-        - Geração de relatórios e produtos do ZAP
-        - Melhoria contínua do aplicativo
-
-        **4. Compartilhamento de Dados**
-        Não compartilhamos seus dados pessoais com terceiros, exceto:
-        - Quando exigido por lei
-        - Para prestação de serviços Google necessários ao funcionamento do aplicativo
-
-        **5. Segurança**
-        - Implementamos medidas técnicas e organizacionais para proteger seus dados, incluindo:
-        - Autenticação em dois fatores recomendada
-        - Acesso restrito a pessoal autorizado
-        - Criptografia de dados em trânsito
-
-        **6. Seus Direitos**
-        Você pode:
-
-        - Revogar o acesso à sua conta Google a qualquer momento
-        - Solicitar acesso aos dados armazenados
-        - Requerer a exclusão de seus dados
-
-        **7. Alterações na Política**
-        - Esta política pode ser atualizada periodicamente. Alterações significativas serão comunicadas aos usuários.
-        """)
-    
-    # Botão para Aspectos Legais (abre modal)
-    @st.dialog("Aspectos Legais", width="large")
-    def show_legal_terms():
-        st.markdown("""
-        ## Termos de Serviço
-
-        **1. Aceitação dos Termos**
-        - Ao utilizar o aplicativo ZAP Automatização, você concorda com estes Termos de Serviço.
-
-        **2. Uso Autorizado**
-        O aplicativo destina-se exclusivamente a:
-        - Técnicos e gestores públicos envolvidos com o ZAP
-        - Usuários autorizados pela Secretaria de Agricultura de MG
-
-        **3. Responsabilidades do Usuário**
-        Você concorda em:
-        - Fornecer apenas informações precisas e atualizadas
-        - Não utilizar o aplicativo para fins ilegais
-        - Manter suas credenciais de acesso em sigilo
-
-        **4. Limitações**
-        O aplicativo não garante:
-        - Disponibilidade contínua ou ininterrupta
-        - Precisão absoluta dos resultados processados
-        - Compatibilidade com todos os sistemas ou dispositivos
-
-        **5. Propriedade Intelectual**
-        - Todo o conteúdo e funcionalidades do aplicativo são propriedade do Governo de Minas Gerais e estão protegidos por leis de propriedade intelectual.
-
-        **6. Isenção de Responsabilidade**
-        Não nos responsabilizamos por:
-        - Danos resultantes do uso inadequado do aplicativo
-        - Perda de dados devido a falhas técnicas
-        - Conteúdo gerado por terceiros
-
-        **7. Rescisão**
-        - Reservamos o direito de encerrar o acesso ao aplicativo a qualquer usuário que violar estes Termos.
-
-        **8. Legislação Aplicável**
-        - Estes Termos são regidos pelas leis brasileiras e quaisquer disputas serão resolvidas no foro da Comarca de Belo Horizonte/MG.
-
-        ## Contato
-        Para questões sobre privacidade ou termos de serviço:
-        - Email: zap@agricultura.mg.gov.br
-        - Site: [ZAP Minas Gerais - SEAPA](https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo)
-
-        ## Outros Links:
-        - [Aspectos Legais e Responsabilidades (Governo de MG)](https://www.mg.gov.br/pagina/aspectos-legais-e-responsabilidades)
-        - [Política de Privacidade (SEAPA-MG)](https://www.mg.gov.br/agricultura/pagina/politica-de-privacidade)
-        """)
-    
-    # Botões que acionam os diálogos
-    if st.button("🔒 Política de Privacidade", key="privacy_button"):
-        show_privacy_policy()
-    
-    if st.button("⚖️ Termos de Serviço", key="legal_button"):
-        show_legal_terms()
-
-    st.markdown("---")
-    st.markdown("### Versão 1.0")
-    st.caption("Desenvolvido para a 5ª edição do ZAP")
-    st.caption("Secretaria de Agricultura, Pecuária e Abastecimento de Minas Gerais")
-    
-# Logo e título centralizado
-col1, col2, col3 = st.columns([1,2,1])
-with col2:
-    st.image("https://i.postimg.cc/c4VZ0fQw/zap-logo.png", width=400)
-
-# Título do aplicativo
-st.title("Automatização de Obtenção de Dados para o Zoneamento Ambiental e Produtivo")
-
-# CSS customizado para os cards
-st.markdown("""
-<style>
-    .custom-card {
-        background-color: #242434;
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        border-left: 4px solid #2e7d32;
-    }
-    .custom-card h3 {
-        color: #2e7d32;
-        margin-top: 0;
-    }
-    .custom-card ul {
-        padding-left: 1.2rem;
-    }
-    .custom-card a {
-        color: #1a5a96 !important;
-        font-weight: 500;
-    }
-        .stFileUploader > label > div:first-child {
-        font-weight: bold;
-        color: #ff4b4b;
-    }
-    .stFileUploader > label > div:nth-child(2) {
-        font-size: 0.8em;
-        color: #777;
-    }
-    /* Estilo específico para os botões dentro do .custom-card */
-    .custom-card .stButton button {
-        width: 100%;
-        text-align: center;
-        padding: 0.5rem 1rem;
-        margin: 0.75rem 0;
-        background-color: #2e7d32 !important;
-        color: white !important;
-        border-radius: 8px !important;
-        border: none !important;
-        transition: all 0.3s;
-    }
-    .custom-card .stButton button:hover {
-        background-color: #1e5e22 !important;
-        transform: translateY(-2px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    .card-buttons-container {
-        display: flex;
-        gap: 1rem;
-        margin-top: 1.5rem;
-    }
-    @media (max-width: 768px) {
-        .card-buttons-container {
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Card Política de Privacidade e Termo de Serviço
-st.markdown("""
-<div class="custom-card">
-    <h3>🔒 Política de Privacidade e Termos de Serviço ⚖️</h3>
-    <p>Antes de iniciar, leia nossa Política de Privacidade e nossos Termos de Serviço.</p>
-    <div class="card-buttons-container">
-""", unsafe_allow_html=True)
-
-# Botões dentro do card (usando columns para layout responsivo)
-
-if st.button("🔒 Política de Privacidade", 
-            key="card_privacy_button",
-            help="Clique para ver nossa política de privacidade"):
-    show_privacy_policy()
-
-if st.button("⚖️ Termos de Serviço", 
-            key="card_legal_button",
-            help="Clique para ver os termos de serviço"):
-    show_legal_terms()
-
-st.markdown("</div></div>", unsafe_allow_html=True)
-
-# Card 1 - Sobre o ZAP
-st.markdown("""
-<div class="custom-card">
-<h3>🌱 Sobre o ZAP</h3>
-O Zoneamento Ambiental e Produtivo (ZAP) é um instrumento de planejamento e gestão territorial para o uso sustentável dos recursos naturais pela atividade agrossilvipastoril no estado de Minas Gerais, instituído pelo Decreto Estadual nº 46.650/2014.
-
-<h3>🗺️ Produtos Básicos</h3>
-<ul>
-<li>Mapeamento da cobertura e terra</li>
-<li>Índice de Demanda Hídrica Superficial (IDHS)</li>
-<li>Potencial de Uso Conservacionista (PUC)</li>
-</ul>
-
-O ZAP busca disponibilizar informações detalhadas sobre o meio natural e produtivo por sub-bacia hidrográfica.
-
-<h3>🔄 Evolução da Metodologia</h3>
-Desenvolvida inicialmente pela Semad e Seapa em 2014, a metodologia do ZAP está atualmente na 5ª edição (2025). O Comitê Gestor do ZAP é a instância consultiva e deliberativa da ferramenta.
-
-<h3>🤝 Integração com Outros Instrumentos</h3>
-<ul>
-<li>Indicadores de Sustentabilidade em Agroecossistemas (ISAs)</li>
-<li>Planos de Adequação Socioeconômica e Ambiental (PASEAs)</li>
-<li>Cadastro Ambiental Rural (CAR)</li>
-<li>Entre outros</li>
-</ul>
-
-🔗 <a href="https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo" target="_blank">Mais informações no Site do Governo de MG</a>
-</div>
-""", unsafe_allow_html=True)
-
-# Card 2 - Sobre a Ferramenta
-st.markdown("""
-<div class="custom-card">
-<h3>🛠️ Sobre esta Ferramenta</h3>
-Esta ferramenta automatiza a obtenção de produtos e bases para os produtos utilizados no ZAP para a 5ª edição da metodologia.
-
-<h3>🔑 Requisitos</h3>
-<ul>
-<li>Conexão com conta Google (para Earth Engine, Cloud Service e Drive)</li>
-<li>Arquivo GeoJSON da bacia hidrográfica (preferencialmente em UTM)</li>
-</ul>
-</div>
-""", unsafe_allow_html=True)
-
-# Divisão visual
-st.markdown("---")
-
-# 1. Configuração inicial e autenticação
+# ==============================================
+# 2. CONSTANTES E CONFIGURAÇÕES
+# ==============================================
+# URLs e configurações OAuth
 if 'google_oauth' in st.secrets:
     CLIENT_ID = st.secrets['google_oauth']['client_id']
     CLIENT_SECRET = st.secrets['google_oauth']['client_secret']
@@ -353,9 +56,7 @@ SCOPES = [
 ]
 SCOPE = " ".join(SCOPES)
 
-oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL, REFRESH_TOKEN_URL, REVOKE_TOKEN_URL)
-
-# 2. Dicionário de produtos (completo)
+# Dicionários de produtos
 DICIONARIO_PRODUTOS = {
     'abacate': 'Abacate', 'abacaxi': 'Abacaxi', 'algodaa': 'Algodão arbóreo', 
     'algodah': 'Algodão herbáceo', 'alho': 'Alho', 'amendoi': 'Amendoim', 
@@ -392,7 +93,7 @@ DICIONARIO_PRODUTOS = {
     'cenoura': 'Cenoura', 'morango': 'Morango', 'madtor': 'Madeira em tora', 'outprod': 'Outros produtos'
 }
 
-# 3. URLs das tabelas (convertidas para links diretos do Google Drive)
+# URLs das tabelas
 TABELAS_AGRO = {
     'PAM_Quantidade_produzida_14-23': 'https://drive.google.com/uc?id=19BaNA96nXA4gtkmF_nwSQFdxA5UEBmmx',
     'PAM_Valor_da_producao_14-23': 'https://drive.google.com/uc?id=1A9o-eEiXpPMWOyCtE4m2jwYaovRy9bv9',
@@ -407,8 +108,11 @@ TABELAS_AGRO = {
     'IBGE_Municipios_ZAP': 'https://drive.google.com/uc?id=1skVkA0cN3TVlJThvqsilWwO2SGLY-joi'
 }
 
-# 4. Funções auxiliares
+# ==============================================
+# 3. FUNÇÕES AUXILIARES
+# ==============================================
 def load_geojson(file):
+    """Carrega e valida arquivo GeoJSON"""
     try:
         # Verificação de tamanho (1 MB)
         MAX_FILE_SIZE_KB = 1024
@@ -418,12 +122,11 @@ def load_geojson(file):
 
         gdf = gpd.read_file(file)
         
-        # Verifica número de features
+        # Validações
         if len(gdf) > 1:
             st.error("Erro: O arquivo deve conter APENAS UMA feature (polígono/multipolígono).")
             return None, None
             
-        # Validações de geometria
         if gdf.geometry.is_empty.any():
             st.error("Erro: O arquivo contém geometrias vazias.")
             return None, None
@@ -432,7 +135,7 @@ def load_geojson(file):
             st.error("Erro: Apenas polígonos ou multipolígonos são aceitos.")
             return None, None
 
-        # Verificação do CRS (APENAS SIRGAS 2000)
+        # Verificação do CRS (SIRGAS 2000)
         CRS_OBRIGATORIO = 'EPSG:4674'
         if gdf.crs is None:
             st.error(f"Erro: O arquivo não possui CRS definido. O CRS deve ser {CRS_OBRIGATORIO} (SIRGAS 2000).")
@@ -442,14 +145,14 @@ def load_geojson(file):
             st.error(f"Erro: CRS {gdf.crs} não permitido. O arquivo deve estar em {CRS_OBRIGATORIO} (SIRGAS 2000).")
             return None, None
 
-        # Correção de geometrias (buffer 0 se necessário)
+        # Correção de geometrias
         if not gdf.geometry.is_valid.all():
             gdf['geometry'] = gdf.geometry.buffer(0)
         
-        # Visualização DIRETAMENTE no SIRGAS 2000 (Folium aceita coordenadas equivalentes)
+        # Visualização no mapa
         centroid = gdf.geometry.centroid
         m = folium.Map(
-            location=[centroid.y.mean(), centroid.x.mean()],  # Coordenadas serão interpretadas como WGS84
+            location=[centroid.y.mean(), centroid.x.mean()],
             zoom_start=10,
             tiles='CartoDB positron'
         )
@@ -462,7 +165,6 @@ def load_geojson(file):
         st_folium(m, width=600, height=400)
         st.success(f"CRS do arquivo validado: {gdf.crs} (SIRGAS 2000)")
         
-        # Retorna geometria no SIRGAS 2000
         return ee.Geometry(gdf.geometry.iloc[0].__geo_interface__), CRS_OBRIGATORIO
         
     except Exception as e:
@@ -470,9 +172,11 @@ def load_geojson(file):
         return None, None
 
 def reprojetarImagem(imagem, epsg, escala):
+    """Reprojeção de imagens para o CRS especificado"""
     return imagem.reproject(crs=f"EPSG:{epsg}", scale=escala)
 
 def exportarImagem(imagem, nome_prefixo, nome_sufixo, escala, regiao, nome_bacia_export, pasta="zap"):
+    """Exporta imagem para o Google Drive"""
     try:
         nome_arquivo = f"{nome_prefixo}{nome_bacia_export}{nome_sufixo}"
         task = ee.batch.Export.image.toDrive(
@@ -493,6 +197,7 @@ def exportarImagem(imagem, nome_prefixo, nome_sufixo, escala, regiao, nome_bacia
         return None
 
 def check_task_status(task):
+    """Verifica o status de uma tarefa no Earth Engine"""
     try:
         status = task.status()
         state = status["state"]
@@ -509,16 +214,12 @@ def check_task_status(task):
         st.error(f"Erro ao verificar o status da tarefa: {e}")
         return None
 
-# 5. Funções para processamento dos dados agro
 def processar_municipios(geometry, nome_bacia_export):
+    """Processa os municípios que intersectam a bacia"""
     try:
-        # Carregar municípios de MG (do Earth Engine)
         municipios_mg = ee.FeatureCollection("projects/ee-zapmg/assets/mg-municipios")
-        
-        # Calcular área da bacia
         area_bacia = geometry.area()
         
-        # Função para calcular interseção
         def calcular_intersecao(feature):
             intersecao = feature.geometry().intersection(geometry, 1)
             area_intersecao = intersecao.area()
@@ -531,19 +232,15 @@ def processar_municipios(geometry, nome_bacia_export):
                 'area_bacia_ha': area_bacia.divide(10000)
             })
         
-        # Processar todos os municípios que intersectam
         municipios_processados = municipios_mg.filterBounds(geometry).map(calcular_intersecao)
-        
-        # Filtrar municípios com mais de 20% de representatividade
         municipios_selecionados = municipios_processados.filter(ee.Filter.gte('percentual_na_bacia', 20))
         
-        # Converter para Pandas DataFrame
         features = municipios_selecionados.getInfo()['features']
         dados_municipios = []
         
         for feature in features:
             props = feature['properties']
-            props['geocodigo'] = int(props['geocodigo'])  # Garantir que é inteiro
+            props['geocodigo'] = int(props['geocodigo'])
             dados_municipios.append(props)
         
         df_municipios = pd.DataFrame(dados_municipios)
@@ -551,31 +248,28 @@ def processar_municipios(geometry, nome_bacia_export):
         if not df_municipios.empty:
             df_municipios = df_municipios.sort_values('percentual_na_bacia', ascending=False)
             
-            # Formatando as colunas numéricas
+            # Formatação dos dados
             df_municipios['area_intersecao_ha'] = df_municipios['area_intersecao_ha'].round(2)
             df_municipios['percentual_na_bacia'] = df_municipios['percentual_na_bacia'].round(2)
             df_municipios['area_municipio_ha'] = df_municipios['area_municipio_ha'].round(2)
             
-            # Criando DataFrame para exibição
+            # Exibição dos resultados
             df_display = df_municipios[['nome', 'area_intersecao_ha', 'percentual_na_bacia']].copy()
             df_display.columns = ['Município', 'Área na Bacia (ha)', 'Representatividade (%)']
             
             st.success(f"{len(df_municipios)} município(s) selecionado(s) com mais de 20% de área na bacia")
             
-            # Mostrar tabela detalhada
             st.write("### Detalhes dos Municípios")
             st.dataframe(df_display.sort_values('Representatividade (%)', ascending=False))
             
-            # Adicionar métricas resumidas
+            # Métricas resumidas
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric("Municípios selecionados", len(df_municipios))
             with col2:
-                st.metric("Área total na bacia (ha)", 
-                         round(df_municipios['area_intersecao_ha'].sum(), 2))
+                st.metric("Área total na bacia (ha)", round(df_municipios['area_intersecao_ha'].sum(), 2))
             with col3:
-                st.metric("Representatividade média (%)", 
-                         round(df_municipios['percentual_na_bacia'].mean(), 2))
+                st.metric("Representatividade média (%)", round(df_municipios['percentual_na_bacia'].mean(), 2))
             
             return df_municipios
         else:
@@ -587,6 +281,7 @@ def processar_municipios(geometry, nome_bacia_export):
         return None
 
 def baixar_tabela(url):
+    """Baixa tabela do Google Drive"""
     try:
         output = BytesIO()
         gdown.download(url, output, quiet=True)
@@ -597,31 +292,26 @@ def baixar_tabela(url):
         return None
 
 def processar_tabelas_agro(geocodigos):
+    """Processa todas as tabelas agropecuárias"""
     resultados = {}
     
-    # Processar todas as tabelas, incluindo IBGE
     for nome_tabela, url in TABELAS_AGRO.items():
         df = baixar_tabela(url)
         if df is None:
             continue
             
-        # Converter geocodigo para inteiro
         df['geocodigo'] = df['geocodigo'].astype(int)
-        
-        # Filtrar municípios selecionados
         df_filtrado = df[df['geocodigo'].isin(geocodigos)]
         
         if df_filtrado.empty:
             continue
             
-        # Tratamento especial para tabela IBGE
         if nome_tabela == 'IBGE_Municipios_ZAP':
-            # Remover colunas indesejadas (mas manter 'Municípios')
+            # Tratamento especial para tabela IBGE
             colunas_remover = [col for col in ['.geo', 'system:index'] if col in df_filtrado.columns]
             if colunas_remover:
                 df_filtrado = df_filtrado.drop(columns=colunas_remover)
             
-            # Renomear colunas conforme solicitado
             renomear = {
                 'População ocupada': 'População ocupada {%}',
                 'Densidade demográfica': 'Densidade demográfica (hab/km²)',
@@ -633,48 +323,30 @@ def processar_tabelas_agro(geocodigos):
             }
             df_filtrado = df_filtrado.rename(columns=renomear)
             
-            # Definir a ordem das colunas (incluindo 'Municípios')
             ordem_colunas = [
-                'Municípios',
-                'geocodigo',
-                'Gentílico',
-                'Bioma predominante',
-                'Área (km²)',
-                'População no último censo',
-                'População ocupada {%}',
-                'Densidade demográfica (hab/km²)',
-                'PIB per capita',
-                'Salário médio mensal dos trabalhadores formais',
-                'Receitas',
-                'Despesas',
-                'Esgotamento sanitário adequado {%}',
-                'Estabelecimentos de Saúde SUS',
-                'Mortalidade Infantil {%}',
-                'Taxa de escolarização de 6 a 14 anos de idade {%}',
-                'Urbanização de vias públicas {%}',
-                'Arborização de vias públicas {%}',
+                'Municípios', 'geocodigo', 'Gentílico', 'Bioma predominante', 'Área (km²)',
+                'População no último censo', 'População ocupada {%}', 'Densidade demográfica (hab/km²)',
+                'PIB per capita', 'Salário médio mensal dos trabalhadores formais', 'Receitas',
+                'Despesas', 'Esgotamento sanitário adequado {%}', 'Estabelecimentos de Saúde SUS',
+                'Mortalidade Infantil {%}', 'Taxa de escolarização de 6 a 14 anos de idade {%}',
+                'Urbanização de vias públicas {%}', 'Arborização de vias públicas {%}',
                 'Índice de Desenvolvimento Humano Municipal (IDHM)'
             ]
             
-            # Manter apenas as colunas que existem no DataFrame
             ordem_colunas = [col for col in ordem_colunas if col in df_filtrado.columns]
-            
-            # Reordenar as colunas e transpor
             df_final = df_filtrado[ordem_colunas].set_index('Municípios').T
             df_final.index.name = 'Indicador'
             resultados[nome_tabela] = df_final
             continue
             
-        # Para outras tabelas, criar uma planilha com top 10 produtos por município
+        # Processamento para outras tabelas
         municipios_dfs = {}
         for _, row in df_filtrado.iterrows():
             municipio = row['nome']
             geocodigo = row['geocodigo']
             
-            # Identificar colunas de anos (terminadas com 2 dígitos)
             colunas_ano = [col for col in row.index if col[-2:].isdigit() and col not in ['geocodigo', 'nome']]
             
-            # Agrupar por produto (prefixo antes do ano)
             produtos = {}
             for col in colunas_ano:
                 produto = col[:-2]
@@ -685,21 +357,17 @@ def processar_tabelas_agro(geocodigos):
                     produtos[produto] = {}
                 produtos[produto][ano] = valor
             
-            # Converter para DataFrame e pegar top 10 produtos com maior valor em 2023
             df_produtos = pd.DataFrame.from_dict(produtos, orient='index')
             
-            # Ordenar por 2023 (se existir) ou pelo último ano disponível
             if '23' in df_produtos.columns:
                 df_produtos = df_produtos.sort_values('23', ascending=False)
             else:
                 ultimo_ano = sorted(df_produtos.columns)[-1]
                 df_produtos = df_produtos.sort_values(ultimo_ano, ascending=False)
             
-            # Pegar top 10 e traduzir nomes
             top_10 = df_produtos.head(10)
             top_10.index = [DICIONARIO_PRODUTOS.get(p, p) for p in top_10.index]
             
-            # Adicionar município como coluna
             top_10 = top_10.reset_index()
             top_10.columns = ['Produto'] + [f'20{ano}' for ano in top_10.columns[1:]]
             
@@ -710,44 +378,36 @@ def processar_tabelas_agro(geocodigos):
     return resultados
 
 def gerar_excel_agro(dados_agro, nome_bacia_export):
+    """Gera arquivo Excel com os dados agropecuários"""
     try:
         output = BytesIO()
         workbook = Workbook()
-        workbook.remove(workbook.active)  # Remove a planilha padrão vazia
+        workbook.remove(workbook.active)
         
-        # Escrever cada planilha
         for nome_tabela, dados in dados_agro.items():
-            # Tabela IBGE tem tratamento especial
             if nome_tabela == 'IBGE_Municipios_ZAP':
                 ws = workbook.create_sheet(title='IBGE_Municipios')
                 for r in dataframe_to_rows(dados, index=True, header=True):
                     ws.append(r)
                 continue
             
-            # Para outras tabelas, criar uma planilha consolidada
             if isinstance(dados, dict):
-                # Criar nova planilha (limitando nome a 31 caracteres)
                 sheet_name = nome_tabela[:31]
                 ws = workbook.create_sheet(title=sheet_name)
                 
-                # Adicionar cabeçalho inicial
                 current_row = 1
                 
                 for municipio, df in dados.items():
-                    # Adicionar cabeçalho completo antes de cada município
                     if not df.empty:
-                        # Cabeçalho das colunas (com anos corretos)
                         header = ['Produto'] + [str(col)[-4:] if str(col).startswith('20') else col for col in df.columns[1:]]
                         ws.append(header)
                         
-                        # Formatar cabeçalho em negrito
                         for col in range(1, len(header)+1):
                             cell = ws.cell(row=current_row, column=col)
                             cell.font = cell.font.copy(bold=True)
                         
                         current_row += 1
                         
-                        # Nome do município (mesclado, em negrito e centralizado)
                         ws.append([municipio] + ['']*(len(df.columns)-1))
                         ws.merge_cells(start_row=current_row, start_column=1, 
                                       end_row=current_row, end_column=len(df.columns))
@@ -756,57 +416,27 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                         cell.alignment = Alignment(horizontal='center', vertical='center')
                         current_row += 1
                         
-                        # Dados do município
                         for _, row in df.iterrows():
                             ws.append(row.tolist())
                             current_row += 1
                         
-                        # Linha vazia de separação
                         ws.append(['']*len(df.columns))
                         current_row += 1
         
-        # Salvar o workbook no buffer
         workbook.save(output)
         output.seek(0)
-        
-        # Exportar para o Google Drive
-        try:
-            drive_service = build('drive', 'v3', credentials=st.session_state["ee_credentials"])
-            
-            # Criar metadados do arquivo
-            file_metadata = {
-                'name': f"{nome_bacia_export}_dados_agro.xlsx",
-                'parents': ['zap'],  # Pasta destino
-                'mimeType': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            }
-            
-            # Fazer o upload
-            media = MediaIoBaseUpload(output, 
-                                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                    resumable=True)
-            
-            file = drive_service.files().create(body=file_metadata,
-                                              media_body=media,
-                                              fields='id').execute()
-            
-            st.success(f"Arquivo exportado para o Google Drive na pasta 'zap' (ID: {file.get('id')})")
-        except Exception as e:
-            st.error(f"Erro ao exportar para o Google Drive: {e}")
-        
         return output
     except Exception as e:
         st.error(f"Erro ao gerar Excel: {e}")
         return None
 
-# 6. Processamento principal
 def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
+    """Processa os dados conforme o tipo especificado"""
     try:
-        # Verificar se o Earth Engine está inicializado com o projeto correto
         if "selected_project" not in st.session_state or "ee_credentials" not in st.session_state:
             st.error("Earth Engine não foi inicializado corretamente. Por favor, reconecte-se.")
             return None
             
-        # Garantir que o Earth Engine está inicializado com o projeto selecionado
         try:
             ee.Initialize(st.session_state["ee_credentials"], project=st.session_state["selected_project"])
         except Exception as e:
@@ -814,11 +444,10 @@ def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
             return None
         
         data_atual = datetime.datetime.now()
-        mes_formatado = data_atual.strftime("%b")  # Ex: "Jan"
+        mes_formatado = data_atual.strftime("%b")
         ano_atual = data_atual.year
         ano_anterior = ano_atual - 1
         
-        # Inicializar dicionário de resultados
         resultados = {
             "nome_bacia_export": nome_bacia_export,
             "mes_formatado": mes_formatado,
@@ -826,27 +455,23 @@ def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
             "ano_anterior": ano_anterior,
         }
         
-        # Processar apenas dados agro se especificado
         if process_type == "agro":
             st.info("Processando dados agro e socioeconômicos...")
             municipios_df = processar_municipios(geometry, nome_bacia_export)
             
             if municipios_df is not None:
                 geocodigos = municipios_df['geocodigo'].tolist()
-                dados_agro = processar_tabelas_agro(geocodigos)
-                return dados_agro
+                return processar_tabelas_agro(geocodigos)
             
             return None
         
-        # Processar apenas sensoriamento remoto
         elif process_type == "remoto":
-            # Calcular o bounding box da geometria
             bbox = geometry.bounds()
-            bacia = bbox.buffer(1000)  # 1000 metros = 1 km
+            bacia = bbox.buffer(1000)
             periodo_fim = ee.Date(data_atual.strftime("%Y-%m-%d"))
             periodo_inicio = periodo_fim.advance(-365, 'day')
 
-            # Carregar imagens Sentinel-2 se selecionado
+            # Processamento de imagens
             if st.session_state.get("exportar_sentinel_composite"):
                 sentinel = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
                     .select(['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12']) \
@@ -863,7 +488,6 @@ def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
                     sentinel_composite = sentinel_median.select(['B2', 'B3', 'B4', 'B8']).rename(['B2', 'B3', 'B4', 'B8'])
                     
                     try:
-                        # Criar uma FeatureCollection com as informações das imagens
                         sentinel_list = sentinel.toList(sentinel.size())
                         features = ee.FeatureCollection(sentinel_list.map(lambda img: ee.Feature(None, {
                             'id': ee.Image(img).id(),
@@ -871,7 +495,6 @@ def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
                             'cloud_cover': ee.Image(img).get('CLOUDY_PIXEL_PERCENTAGE')
                         })))
 
-                        # Exportar a lista de imagens para um arquivo CSV
                         export_task = ee.batch.Export.table.toDrive(
                             collection=features,
                             folder='zap',
@@ -879,11 +502,11 @@ def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
                             fileFormat='CSV'
                         )
                         export_task.start()
-                        st.success("Exportação da lista de imagens Sentinel-2 iniciada. Verifique seu Google Drive na pasta 'zap'.")
+                        st.success("Exportação da lista de imagens Sentinel-2 iniciada.")
                     except Exception as e:
                         st.error(f"Erro ao exportar a lista de imagens Sentinel-2: {e}")
 
-            # Gerar índices se selecionados
+            # Geração de índices
             indices = {}
             if st.session_state.get("exportar_ndvi"):
                 indices["NDVI"] = sentinel_median.normalizedDifference(['B8', 'B4'])
@@ -894,7 +517,7 @@ def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
             if st.session_state.get("exportar_ndmi"):
                 indices["NDMI"] = sentinel_median.normalizedDifference(['B8', 'B11'])
 
-            # Carregar MDE e Declividade se selecionados
+            # Modelo Digital de Elevação
             if st.session_state.get("exportar_srtm_mde") or st.session_state.get("exportar_declividade"):
                 mde_proj = ee.ImageCollection("JAXA/ALOS/AW3D30/V3_2").filterBounds(bacia).first().select(0).projection()
                 mde = ee.ImageCollection("JAXA/ALOS/AW3D30/V3_2").filterBounds(bacia).mosaic().clip(bacia).setDefaultProjection(mde_proj)
@@ -913,19 +536,18 @@ def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
                         "(b(0) > 75) ? 6 : -1"
                     )
 
-            # Carregar MapBiomas 2023 se selecionado
+            # Cobertura e uso da terra
             if st.session_state.get("exportar_mapbiomas"):
                 mapbiomas = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_integration_v1") \
                     .select('classification_2023') \
                     .clip(bacia)
 
-            # Carregar Qualidade de Pastagens se selecionado
             if st.session_state.get("exportar_pasture_quality"):
                 pasture_quality = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_pasture_quality_v1") \
                     .select('pasture_quality_2023') \
                     .clip(bacia)
 
-            # Carregar PUC (UFV, IBGE, Embrapa) se selecionados
+            # Potencial de uso
             if st.session_state.get("exportar_puc_ufv"):
                 puc_ufv = ee.ImageCollection('users/zap/puc_ufv').filterBounds(bacia).mosaic().clip(bacia)
             if st.session_state.get("exportar_puc_ibge"):
@@ -933,16 +555,16 @@ def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
             if st.session_state.get("exportar_puc_embrapa"):
                 puc_embrapa = ee.ImageCollection('users/zap/puc_embrapa').filterBounds(bacia).mosaic().clip(bacia)
 
-            # Carregar Landforms se selecionado
+            # Geomorfologia
             if st.session_state.get("exportar_landforms"):
                 landforms = ee.Image('CSP/ERGo/1_0/Global/SRTM_landforms').clip(bacia)
 
-            # Determinar o EPSG com base no fuso
+            # Determinar EPSG
             fusos_mg = ee.FeatureCollection('users/zap/fusos_mg')
             fuso_maior_area = fusos_mg.filterBounds(bacia).map(lambda f: f.set('area', f.area())).sort('area', False).first()
             epsg = fuso_maior_area.get('epsg').getInfo()
 
-            # Reprojetar todas as imagens selecionadas
+            # Reprojetar imagens selecionadas
             if st.session_state.get("exportar_srtm_mde"):
                 resultados["utm_elevation"] = reprojetarImagem(elevation, epsg, 30)
             if st.session_state.get("exportar_declividade"):
@@ -978,8 +600,584 @@ def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
         st.error(f"Erro ao processar dados: {e}")
         return None
 
-# 7. Interface do usuário (modificar apenas a parte do processamento)
-if 'token' not in st.session_state:
+# ==============================================
+# 4. COMPONENTES DE INTERFACE
+# ==============================================
+def setup_css_styles():
+    """Configura todos os estilos CSS da aplicação"""
+    st.markdown("""
+    <style>
+        /* Estilos gerais */
+        .custom-card {
+            background-color: #242434;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid #2e7d32;
+        }
+        .custom-card h3 {
+            color: #2e7d32;
+            margin-top: 0;
+        }
+        .custom-card ul {
+            padding-left: 1.2rem;
+        }
+        .custom-card a {
+            color: #1a5a96 !important;
+            font-weight: 500;
+        }
+        
+        /* Estilos para uploader de arquivos */
+        .stFileUploader > label > div:first-child {
+            font-weight: bold;
+            color: #ff4b4b;
+        }
+        .stFileUploader > label > div:nth-child(2) {
+            font-size: 0.8em;
+            color: #777;
+        }
+        
+        /* Estilos para a sidebar */
+        .sidebar-link {
+            display: block;
+            padding: 0.5rem 1rem;
+            margin: 0.25rem 0;
+            background-color: #f0f2f6;
+            border-radius: 0.5rem;
+            color: #333 !important;
+            text-decoration: none !important;
+            transition: all 0.3s;
+            border: 1px solid #ddd;
+        }
+        .sidebar-link:hover {
+            background-color: #e6e6e6;
+            transform: translateX(3px);
+        }
+        
+        /* Estilos para botões dentro de cards */
+        .card-buttons-container {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .custom-card .stButton button {
+            width: 100%;
+            text-align: center;
+            padding: 0.5rem 1rem;
+            margin: 0.75rem 0;
+            background-color: #2e7d32 !important;
+            color: white !important;
+            border-radius: 8px !important;
+            border: none !important;
+            transition: all 0.3s;
+        }
+        .custom-card .stButton button:hover {
+            background-color: #1e5e22 !important;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .card-buttons-container {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+def show_privacy_card():
+    """Exibe o card de política de privacidade"""
+    with st.container():
+        st.markdown("""
+        <div class="custom-card">
+            <h3>🔒 Política de Privacidade e Termos de Serviço ⚖️</h3>
+            <p>Antes de iniciar, leia nossa Política de Privacidade e nossos Termos de Serviço.</p>
+            <div class="card-buttons-container">
+        """, unsafe_allow_html=True)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔒 Política de Privacidade", key="card_privacy_button"):
+                show_privacy_policy()
+        with col2:
+            if st.button("⚖️ Termos de Serviço", key="card_legal_button"):
+                show_legal_terms()
+        
+        st.markdown("</div></div>", unsafe_allow_html=True)
+
+def show_about_zap_card():
+    """Exibe o card com informações sobre o ZAP"""
+    st.markdown("""
+    <div class="custom-card">
+    <h3>🌱 Sobre o ZAP</h3>
+    O Zoneamento Ambiental e Produtivo (ZAP) é um instrumento de planejamento e gestão territorial para o uso sustentável dos recursos naturais pela atividade agrossilvipastoril no estado de Minas Gerais, instituído pelo Decreto Estadual nº 46.650/2014.
+
+    <h3>🗺️ Produtos Básicos</h3>
+    <ul>
+    <li>Mapeamento da cobertura e terra</li>
+    <li>Índice de Demanda Hídrica Superficial (IDHS)</li>
+    <li>Potencial de Uso Conservacionista (PUC)</li>
+    </ul>
+
+    O ZAP busca disponibilizar informações detalhadas sobre o meio natural e produtivo por sub-bacia hidrográfica.
+
+    <h3>🔄 Evolução da Metodologia</h3>
+    Desenvolvida inicialmente pela Semad e Seapa em 2014, a metodologia do ZAP está atualmente na 5ª edição (2025). O Comitê Gestor do ZAP é a instância consultiva e deliberativa da ferramenta.
+
+    <h3>🤝 Integração com Outros Instrumentos</h3>
+    <ul>
+    <li>Indicadores de Sustentabilidade em Agroecossistemas (ISAs)</li>
+    <li>Planos de Adequação Socioeconômica e Ambiental (PASEAs)</li>
+    <li>Cadastro Ambiental Rural (CAR)</li>
+    <li>Entre outros</li>
+    </ul>
+
+    🔗 <a href="https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo" target="_blank">Mais informações no Site do Governo de MG</a>
+    </div>
+    """, unsafe_allow_html=True)
+
+def show_tool_info_card():
+    """Exibe o card com informações sobre a ferramenta"""
+    st.markdown("""
+    <div class="custom-card">
+    <h3>🛠️ Sobre esta Ferramenta</h3>
+    Esta ferramenta automatiza a obtenção de produtos e bases para os produtos utilizados no ZAP para a 5ª edição da metodologia.
+
+    <h3>🔑 Requisitos</h3>
+    <ul>
+    <li>Conexão com conta Google (para Earth Engine, Cloud Service e Drive)</li>
+    <li>Arquivo GeoJSON da bacia hidrográfica (preferencialmente em UTM)</li>
+    </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+def setup_sidebar_links():
+    """Configura os links da sidebar"""
+    st.markdown("""
+    <a href="https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo" class="sidebar-link" target="_blank">📘 Sobre o ZAP</a>
+    <a href="mailto:zap@agricultura.mg.gov.br" class="sidebar-link">🐞 Reportar um Bug</a>
+    """, unsafe_allow_html=True)
+
+def setup_sidebar_dialogs():
+    """Configura os diálogos da sidebar"""
+    @st.dialog("Política de Privacidade", width="large")
+    def show_privacy_policy():
+        st.markdown("""
+        # Política de Privacidade e Termos de Serviço para o Aplicativo ZAP Automatização
+
+        ## Política de Privacidade
+        Última atualização: 31/03/2025
+
+        **1. Informações Gerais**  
+        - O aplicativo ZAP Automatização é desenvolvido pela Secretaria de Agricultura, Pecuária e Abastecimento de Minas Gerais como ferramenta de apoio ao Zoneamento Ambiental e Produtivo (ZAP).
+
+        **2. Dados Coletados**  
+        - Autenticação Google: Utilizamos OAuth 2.0 para acessar serviços do Google (Earth Engine, Drive e Cloud) com seu consentimento explícito.
+        - Arquivos GeoJSON: Arquivos geográficos enviados para processamento são armazenados temporariamente apenas durante a sessão.
+        - Dados de Uso: Registramos operações realizadas para fins de auditoria e melhoria do serviço.
+
+        **3. Uso dos Dados**  
+        Os dados coletados são usados exclusivamente para:
+        - Processamento de informações geográficas
+        - Geração de relatórios e produtos do ZAP
+        - Melhoria contínua do aplicativo
+
+        **4. Segurança**  
+        - Implementamos medidas técnicas e organizacionais para proteger seus dados
+        - Acesso restrito a pessoal autorizado
+        - Criptografia de dados em trânsito
+        """)
+
+    @st.dialog("Termos de Serviço", width="large")
+    def show_legal_terms():
+        st.markdown("""
+        ## Termos de Serviço
+
+        **1. Aceitação dos Termos**  
+        - Ao utilizar o aplicativo ZAP Automatização, você concorda com estes Termos de Serviço.
+
+        **2. Uso Autorizado**  
+        O aplicativo destina-se exclusivamente a:
+        - Técnicos e gestores públicos envolvidos com o ZAP
+        - Usuários autorizados pela Secretaria de Agricultura de MG
+
+        **3. Responsabilidades do Usuário**  
+        Você concorda em:
+        - Fornecer apenas informações precisas e atualizadas
+        - Não utilizar o aplicativo para fins ilegais
+        - Manter suas credenciais de acesso em sigilo
+
+        **4. Propriedade Intelectual**  
+        - Todo o conteúdo e funcionalidades do aplicativo são propriedade do Governo de Minas Gerais
+
+        **5. Jurisdição**  
+        - Qualquer disputa será resolvida no foro da Comarca de Belo Horizonte/MG.
+        """)
+
+    if st.button("🔒 Política de Privacidade", key="privacy_button"):
+        show_privacy_policy()
+    
+    if st.button("⚖️ Termos de Serviço", key="legal_button"):
+        show_legal_terms()
+
+# ==============================================
+# 5. GERENCIAMENTO DE ESTADO E AUTENTICAÇÃO
+# ==============================================
+def initialize_earth_engine():
+    """Inicializa o Earth Engine com verificações de estado"""
+    try:
+        if "ee_credentials" not in st.session_state:
+            setup_earth_engine_credentials()
+            
+        if "selected_project" not in st.session_state:
+            return select_earth_engine_project()
+            
+        return initialize_ee_session()
+        
+    except Exception as e:
+        st.error(f"Erro ao inicializar o Earth Engine: {str(e)}")
+        st.stop()
+        return False
+
+def setup_earth_engine_credentials():
+    """Configura as credenciais do Earth Engine"""
+    token = st.session_state['token']
+    st.session_state["ee_credentials"] = Credentials(
+        token=token['access_token'],
+        refresh_token=token.get('refresh_token'),
+        token_uri=TOKEN_URL,
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        scopes=SCOPES
+    )
+
+def select_earth_engine_project():
+    """Seleciona o projeto do Earth Engine"""
+    try:
+        service = build('cloudresourcemanager', 'v1', credentials=st.session_state["ee_credentials"])
+        projects = service.projects().list().execute().get('projects', [])
+        project_ids = [project['projectId'] for project in projects]
+
+        if not project_ids:
+            st.warning("Nenhum projeto encontrado na sua conta do Google Cloud.")
+            st.stop()
+            return False
+
+        # Tentar encontrar projeto com EE ativado
+        selected_project = None
+        for project in project_ids:
+            try:
+                ee.Initialize(st.session_state["ee_credentials"], project=project)
+                selected_project = project
+                break
+            except:
+                continue
+        
+        if selected_project:
+            st.session_state["selected_project"] = selected_project
+            st.session_state["ee_initialized"] = True
+            st.success(f"Earth Engine inicializado com sucesso no projeto: {selected_project}")
+            return True
+        else:
+            # Se nenhum projeto tiver EE ativado, pedir para selecionar
+            selected_project = st.selectbox(
+                "Selecione um projeto com Earth Engine ativado:", 
+                project_ids,
+                key="project_selection"
+            )
+            if st.button("Confirmar Projeto"):
+                try:
+                    ee.Initialize(st.session_state["ee_credentials"], project=selected_project)
+                    st.session_state["selected_project"] = selected_project
+                    st.session_state["ee_initialized"] = True
+                    st.success(f"Earth Engine inicializado com sucesso no projeto: {selected_project}")
+                    st.rerun()
+                    return True
+                except Exception as e:
+                    st.error(f"Erro ao inicializar Earth Engine: {e}. Verifique se a API está ativada para este projeto.")
+                    st.stop()
+                    return False
+        return False
+    except Exception as e:
+        st.error(f"Erro ao listar projetos: {e}")
+        st.stop()
+        return False
+
+def initialize_ee_session():
+    """Inicializa a sessão do Earth Engine"""
+    try:
+        ee.Initialize(st.session_state["ee_credentials"], project=st.session_state["selected_project"])
+        st.session_state["ee_initialized"] = True
+        st.success(f"Earth Engine inicializado com sucesso no projeto: {st.session_state['selected_project']}")
+        return True
+    except Exception as e:
+        st.error(f"Erro ao inicializar Earth Engine: {e}")
+        st.stop()
+        return False
+
+# ==============================================
+# 6. FLUXO PRINCIPAL DA APLICAÇÃO
+# ==============================================
+def handle_file_upload_and_processing():
+    """Gerencia todo o fluxo de upload e processamento"""
+    uploaded_file = st.file_uploader(
+        "Carregue o arquivo GeoJSON da bacia (apenas 1 polígono/multipolígono, SIRGAS 2000 (4674), máximo 1 MB)",
+        type=["geojson"],
+        accept_multiple_files=False,
+        help="Seu arquivo tem de estar projetado em SIRGAS 2000 (4674). Use ferramentas como QGIS ou geojson.io para garantir que seu arquivo tem apenas UMA geometria"
+    )
+    
+    if uploaded_file is None:
+        return
+        
+    geometry, crs = load_geojson(uploaded_file)
+    if geometry is None:
+        return
+        
+    nome_bacia_export = st.text_input(
+        "Digite o nome para exportação (sem espaços ou caracteres especiais). "
+        "Esse nome deve seguir o padrão utilizado para todos os produtos SIG do ZAP "
+        "(Ex.: Para o Ribeirão Santa Juliana foi utilizado o nome Rib_Santa_Juliana):",
+        placeholder="Ex: Rib_Santa_Juliana",
+        help="⚠️ Este campo é obrigatório e deve seguir o padrão de nomenclatura do ZAP"
+    )
+    
+    if not nome_bacia_export:
+        st.warning("Por favor, preencha o nome para exportação antes de selecionar os produtos.")
+        return
+        
+    show_product_selection(geometry, crs, nome_bacia_export)
+
+def show_product_selection(geometry, crs, nome_bacia_export):
+    """Exibe a seleção de produtos e inicia o processamento"""
+    col1, col2 = st.columns([4,1])
+    with col2:
+        if st.button("✅ Marcar Todos"):
+            st.session_state.select_all = not st.session_state.get('select_all', False)
+            st.session_state.select_ibge = st.session_state.select_all
+            st.rerun()
+    
+    with st.form(key='product_selection_form'):
+        st.subheader("📡 Produtos de Sensoriamento Remoto (Imagens/Raster)")
+        st.caption(f"Sistema de referência espacial: {crs}")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("**Índices Espectrais**")
+            exportar_ndvi = st.checkbox("NDVI (10m)", value=st.session_state.get('select_all', False))
+            exportar_gndvi = st.checkbox("GNDVI (10m)", value=st.session_state.get('select_all', False))
+            exportar_ndwi = st.checkbox("NDWI (10m)", value=st.session_state.get('select_all', False))
+            exportar_ndmi = st.checkbox("NDMI (10m)", value=st.session_state.get('select_all', False))
+            
+            st.markdown("**Modelo Digital de Elevação**")
+            exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=st.session_state.get('select_all', False))
+            exportar_declividade = st.checkbox("Declividade (30m)", value=st.session_state.get('select_all', False))
+
+        with col2:
+            st.markdown("**Cobertura e Uso da Terra**")
+            exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=st.session_state.get('select_all', False))
+            exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=st.session_state.get('select_all', False))
+            exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=st.session_state.get('select_all', False))
+            
+            st.markdown("**Potencial de Uso**")
+            exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=st.session_state.get('select_all', False))
+            exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=st.session_state.get('select_all', False))
+            exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=st.session_state.get('select_all', False))
+            
+            st.markdown("**Geomorfologia**")
+            exportar_landforms = st.checkbox("Landforms (30m)", value=st.session_state.get('select_all', False))
+        
+        st.markdown("---")
+        
+        st.subheader("📊 Dados Agro e Socioeconômicos")
+        st.caption("Municípios com representatividade >20% na bacia hidrográfica")
+        exportar_dados_agro = st.checkbox("Ativar processamento de dados do IBGE", value=st.session_state.get('select_ibge', False))
+        
+        st.markdown("---")                    
+        submit_button = st.form_submit_button(label='✅ Confirmar Seleção')
+
+    if submit_button:
+        st.session_state.update({
+            "exportar_srtm_mde": exportar_srtm_mde,
+            "exportar_declividade": exportar_declividade,
+            "exportar_ndvi": exportar_ndvi,
+            "exportar_gndvi": exportar_gndvi,
+            "exportar_ndwi": exportar_ndwi,
+            "exportar_ndmi": exportar_ndmi,
+            "exportar_mapbiomas": exportar_mapbiomas,
+            "exportar_pasture_quality": exportar_pasture_quality,
+            "exportar_sentinel_composite": exportar_sentinel_composite,
+            "exportar_puc_ufv": exportar_puc_ufv,
+            "exportar_puc_ibge": exportar_puc_ibge,
+            "exportar_puc_embrapa": exportar_puc_embrapa,
+            "exportar_landforms": exportar_landforms,
+            "exportar_dados_agro": exportar_dados_agro
+        })
+        st.success("Seleção de produtos confirmada!")
+
+    if st.session_state.get("exportar_srtm_mde") is not None and nome_bacia_export:
+        if st.button("Processar Dados"):
+            with st.spinner("Processando dados, por favor aguarde..."):
+                process_selected_data(geometry, crs, nome_bacia_export)
+
+def process_selected_data(geometry, crs, nome_bacia_export):
+    """Processa os dados conforme selecionado pelo usuário"""
+    # Verificar se deve processar sensoriamento remoto
+    process_remoto = any([
+        st.session_state.get("exportar_srtm_mde"),
+        st.session_state.get("exportar_declividade"), 
+        st.session_state.get("exportar_ndvi"),
+        st.session_state.get("exportar_gndvi"),
+        st.session_state.get("exportar_ndwi"),
+        st.session_state.get("exportar_ndmi"),
+        st.session_state.get("exportar_sentinel_composite"),
+        st.session_state.get("exportar_mapbiomas"),
+        st.session_state.get("exportar_pasture_quality"),
+        st.session_state.get("exportar_landforms"),
+        st.session_state.get("exportar_puc_ufv"),
+        st.session_state.get("exportar_puc_ibge"),
+        st.session_state.get("exportar_puc_embrapa")
+    ])
+    
+    # Verificar se deve processar dados agro
+    process_agro = st.session_state.get("exportar_dados_agro")
+    
+    # Processar apenas agro se for o único selecionado
+    if not process_remoto and process_agro:
+        process_agro_data(geometry, crs, nome_bacia_export)
+        return
+    
+    # Processar sensoriamento remoto (e agro depois, se selecionado)
+    if process_remoto:
+        resultados = process_data(geometry, crs, nome_bacia_export, "remoto")
+        
+        if resultados:
+            st.session_state["resultados"] = resultados
+            st.success("Dados de sensoriamento processados com sucesso!")
+            
+            # Exportar produtos de sensoriamento remoto
+            tasks_remoto = []
+            if st.session_state.get("exportar_srtm_mde") and "utm_elevation" in resultados:
+                tasks_remoto.append(exportarImagem(resultados["utm_elevation"], "06_", "_SRTM_MDE", 30, geometry, nome_bacia_export))
+            if st.session_state.get("exportar_declividade") and "utm_declividade" in resultados:
+                tasks_remoto.append(exportarImagem(resultados["utm_declividade"], "02_", "_Declividade", 30, geometry, nome_bacia_export))
+            if st.session_state.get("exportar_ndvi") and "utm_ndvi" in resultados:
+                tasks_remoto.append(exportarImagem(resultados["utm_ndvi"], "06_", f"_NDVImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
+            if st.session_state.get("exportar_gndvi") and "utm_gndvi" in resultados:
+                tasks_remoto.append(exportarImagem(resultados["utm_gndvi"], "06_", f"_GNDVI_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
+            if st.session_state.get("exportar_ndwi") and "utm_ndwi" in resultados:
+                tasks_remoto.append(exportarImagem(resultados["utm_ndwi"], "06_", f"_NDWI_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
+            if st.session_state.get("exportar_ndmi") and "utm_ndmi" in resultados:
+                tasks_remoto.append(exportarImagem(resultados["utm_ndmi"], "06_", f"_NDMI_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
+            if st.session_state.get("exportar_sentinel_composite") and "utm_sentinel2" in resultados:
+                tasks_remoto.append(exportarImagem(resultados["utm_sentinel2"], "06_", f"_S2_B2B3B4B8_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
+            if st.session_state.get("exportar_mapbiomas") and "utm_mapbiomas" in resultados:
+                tasks_remoto.append(exportarImagem(resultados["utm_mapbiomas"], "06_", "_MapBiomas_col9_2023", 30, geometry, nome_bacia_export))
+            if st.session_state.get("exportar_pasture_quality") and "utm_pasture_quality" in resultados:
+                tasks_remoto.append(exportarImagem(resultados["utm_pasture_quality"], "06_", "_Vigor_Pastagem_col9_2023", 30, geometry, nome_bacia_export))
+            if st.session_state.get("exportar_landforms") and "utm_landforms" in resultados:
+                tasks_remoto.append(exportarImagem(resultados["utm_landforms"], "06_", "_Landforms", 30, geometry, nome_bacia_export))
+            if st.session_state.get("exportar_puc_ufv") and "utm_puc_ufv" in resultados:
+                tasks_remoto.append(exportarImagem(resultados["utm_puc_ufv"], "02_", "_PUC_UFV", 30, geometry, nome_bacia_export))
+            if st.session_state.get("exportar_puc_ibge") and "utm_puc_ibge" in resultados:
+                tasks_remoto.append(exportarImagem(resultados["utm_puc_ibge"], "02_", "_PUC_IBGE", 30, geometry, nome_bacia_export))
+            if st.session_state.get("exportar_puc_embrapa") and "utm_puc_embrapa" in resultados:
+                tasks_remoto.append(exportarImagem(resultados["utm_puc_embrapa"], "02_", "_PUC_Embrapa", 30, geometry, nome_bacia_export))
+            
+            # Monitorar tarefas
+            if tasks_remoto:
+                monitor_tasks(tasks_remoto)
+        
+        # Processar dados agro APÓS o sensoriamento, se selecionado
+        if process_agro:
+            process_agro_data(geometry, crs, nome_bacia_export)
+    
+    st.success("Todos os processamentos foram concluídos com sucesso!")
+    st.info("ℹ️ Os dados estão disponíveis em: (1) Seu download local e (2) Pasta 'zap' no Google Drive")
+    st.markdown(
+        f"[Abrir pasta 'zap' no Google Drive](https://drive.google.com/drive/folders/zap)",
+        unsafe_allow_html=True)
+
+def process_agro_data(geometry, crs, nome_bacia_export):
+    """Processa os dados agropecuários"""
+    st.write("Iniciando processamento de dados agro/socioeconômicos...")
+    municipios_df = processar_municipios(geometry, nome_bacia_export)
+    
+    if municipios_df is not None:
+        dados_agro = processar_tabelas_agro([int(x) for x in municipios_df['geocodigo'].tolist()])
+        
+        if dados_agro:
+            excel_agro = gerar_excel_agro(dados_agro, nome_bacia_export)
+            if excel_agro:
+                st.download_button(
+                    label="📥 Baixar Dados Agro e Socioeconômicos",
+                    data=excel_agro,
+                    file_name=f"{nome_bacia_export}_dados_agro.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"download_agro_{int(time.time())}"
+                )
+                st.success("✅ Os dados também foram enviados automaticamente para a pasta 'zap' no seu Google Drive")
+
+def monitor_tasks(tasks):
+    """Monitora o progresso das tarefas no Earth Engine"""
+    status_container = st.empty()
+    
+    with status_container:
+        st.write("⏳ Processando produtos de sensoriamento remoto na Earth Engine...")
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+    
+    todas_concluidas = False
+    last_update = time.time()
+    
+    while not todas_concluidas:
+        todas_concluidas = True
+        completed_tasks = 0
+        
+        with status_container:
+            progress_bar.empty()
+            status_text.empty()
+            
+            for i, task in enumerate(tasks):
+                state = check_task_status(task)
+                status_text.write(f"Tarefa {i+1}/{len(tasks)}: {state}")
+                
+                if state != "COMPLETED":
+                    todas_concluidas = False
+                else:
+                    completed_tasks += 1
+            
+            progress = completed_tasks / len(tasks)
+            progress_bar.progress(progress)
+            
+            if todas_concluidas:
+                st.success("✅ Todos os produtos de sensoriamento foram processados!")
+                break
+            else:
+                st.warning(f"⌛ Progresso: {completed_tasks}/{len(tasks)} tarefas concluídas")
+        
+        time.sleep(60)
+
+# ==============================================
+# 7. FUNÇÃO PRINCIPAL
+# ==============================================
+def main():
+    """Função principal da aplicação"""
+    # Inicializar componente OAuth2
+    oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, 
+                            AUTHORIZE_URL, TOKEN_URL, 
+                            REFRESH_TOKEN_URL, REVOKE_TOKEN_URL)
+    
+    # Verificar estado de autenticação
+    if 'token' not in st.session_state:
+        show_login(oauth2)
+    else:
+        show_authenticated_interface()
+
+def show_login(oauth2):
+    """Exibe a interface de login"""
     st.write("Para começar, conecte-se à sua conta Google:")
     result = oauth2.authorize_button(
         "🔵 Conectar com Google",
@@ -990,307 +1188,23 @@ if 'token' not in st.session_state:
     if result and 'token' in result:
         st.session_state.token = result.get('token')
         st.rerun()
-else:
-    token = st.session_state['token']
+
+def show_authenticated_interface():
+    """Exibe a interface após autenticação"""
     st.success("Você está conectado à sua conta Google!")
+    
+    # Configurar interface
+    setup_logo()
+    setup_sidebar()
+    setup_main_content()
+    
+    # Inicializar Earth Engine
+    if not initialize_earth_engine():
+        return
+    
+    # Processar arquivos
+    handle_file_upload_and_processing()
 
-    # Verificar se já temos credenciais e projeto inicializados
-    if "ee_credentials" not in st.session_state or "selected_project" not in st.session_state:
-        try:
-            credentials = Credentials(
-                token=token['access_token'],
-                refresh_token=token.get('refresh_token'),
-                token_uri=TOKEN_URL,
-                client_id=CLIENT_ID,
-                client_secret=CLIENT_SECRET,
-                scopes=SCOPES
-            )
-
-            service = build('cloudresourcemanager', 'v1', credentials=credentials)
-            projects = service.projects().list().execute().get('projects', [])
-            project_ids = [project['projectId'] for project in projects]
-
-            if not project_ids:
-                st.warning("Nenhum projeto encontrado na sua conta do Google Cloud.")
-                st.stop()
-            else:
-                # Armazenar as credenciais e projetos na sessão
-                st.session_state["ee_credentials"] = credentials
-                st.session_state["available_projects"] = project_ids
-                
-                # Verificar se já temos um projeto selecionado
-                if "selected_project" not in st.session_state:
-                    # Tentar encontrar um projeto com Earth Engine ativado
-                    selected_project = None
-                    for project in project_ids:
-                        try:
-                            ee.Initialize(credentials, project=project)
-                            selected_project = project
-                            break
-                        except:
-                            continue
-                    
-                    if selected_project:
-                        st.session_state["selected_project"] = selected_project
-                        st.session_state["ee_initialized"] = True
-                        st.success(f"Earth Engine inicializado com sucesso no projeto: {selected_project}")
-                    else:
-                        # Se nenhum projeto tiver EE ativado, pedir para selecionar
-                        selected_project = st.selectbox(
-                            "Selecione um projeto com Earth Engine ativado:", 
-                            project_ids,
-                            key="project_selection"
-                        )
-                        if st.button("Confirmar Projeto"):
-                            try:
-                                ee.Initialize(credentials, project=selected_project)
-                                st.session_state["selected_project"] = selected_project
-                                st.session_state["ee_initialized"] = True
-                                st.success(f"Earth Engine inicializado com sucesso no projeto: {selected_project}")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Erro ao inicializar Earth Engine: {e}. Verifique se a API está ativada para este projeto.")
-                                st.stop()
-                else:
-                    # Já temos um projeto selecionado, inicializar
-                    try:
-                        ee.Initialize(credentials, project=st.session_state["selected_project"])
-                        st.session_state["ee_initialized"] = True
-                        st.success(f"Earth Engine inicializado com sucesso no projeto: {st.session_state['selected_project']}")
-                    except Exception as e:
-                        st.error(f"Erro ao inicializar Earth Engine: {e}")
-                        st.stop()
-        except Exception as e:
-            st.error(f"Erro ao inicializar o Earth Engine: {e}")
-            st.stop()
-
-    if st.session_state.get("ee_initialized"):
-        uploaded_file = st.file_uploader(
-            "Carregue o arquivo GeoJSON da bacia (apenas 1 polígono/multipolígono, SIRGAS 2000 (4674), máximo 1 MB)",
-            type=["geojson"],
-            accept_multiple_files=False,
-            help="Seu arquivo tem de estar projetado em SIRGAS 2000 (4674). Use ferramentas como QGIS ou geojson.io para garantir que seu arquivo tem apenas UMA geometria"
-        )
-        if uploaded_file is not None:
-            geometry, crs = load_geojson(uploaded_file)
-            if geometry:
-                nome_bacia_export = st.text_input(
-                    "Digite o nome para exportação (sem espaços ou caracteres especiais). "
-                    "Esse nome deve seguir o padrão utilizado para todos os produtos SIG do ZAP "
-                    "(Ex.: Para o Ribeirão Santa Juliana foi utilizado o nome Rib_Santa_Juliana):",
-                    placeholder="Ex: Rib_Santa_Juliana",
-                    help="⚠️ Este campo é obrigatório e deve seguir o padrão de nomenclatura do ZAP"
-                )
-                
-                if nome_bacia_export:
-                    col1, col2 = st.columns([4,1])
-                    with col2:
-                        if st.button("✅ Marcar Todos"):
-                            st.session_state.select_all = not st.session_state.get('select_all', False)
-                            st.session_state.select_ibge = st.session_state.select_all
-                            st.rerun()
-                    
-                    with st.form(key='product_selection_form'):
-                        st.subheader("📡 Produtos de Sensoriamento Remoto (Imagens/Raster)")
-                        st.caption(f"Sistema de referência espacial: {crs}")
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.markdown("**Índices Espectrais**")
-                            exportar_ndvi = st.checkbox("NDVI (10m)", value=st.session_state.get('select_all', False))
-                            exportar_gndvi = st.checkbox("GNDVI (10m)", value=st.session_state.get('select_all', False))
-                            exportar_ndwi = st.checkbox("NDWI (10m)", value=st.session_state.get('select_all', False))
-                            exportar_ndmi = st.checkbox("NDMI (10m)", value=st.session_state.get('select_all', False))
-                            
-                            st.markdown("**Modelo Digital de Elevação**")
-                            exportar_srtm_mde = st.checkbox("SRTM MDE (30m)", value=st.session_state.get('select_all', False))
-                            exportar_declividade = st.checkbox("Declividade (30m)", value=st.session_state.get('select_all', False))
-
-                        with col2:
-                            st.markdown("**Cobertura e Uso da Terra**")
-                            exportar_mapbiomas = st.checkbox("MapBiomas 2023 (30m)", value=st.session_state.get('select_all', False))
-                            exportar_pasture_quality = st.checkbox("Qualidade de Pastagem 2023 (30m)", value=st.session_state.get('select_all', False))
-                            exportar_sentinel_composite = st.checkbox("Sentinel-2 B2/B3/B4/B8 (10m)", value=st.session_state.get('select_all', False))
-                            
-                            st.markdown("**Potencial de Uso**")
-                            exportar_puc_ufv = st.checkbox("PUC UFV (30m)", value=st.session_state.get('select_all', False))
-                            exportar_puc_ibge = st.checkbox("PUC IBGE (30m)", value=st.session_state.get('select_all', False))
-                            exportar_puc_embrapa = st.checkbox("PUC Embrapa (30m)", value=st.session_state.get('select_all', False))
-                            
-                            st.markdown("**Geomorfologia**")
-                            exportar_landforms = st.checkbox("Landforms (30m)", value=st.session_state.get('select_all', False))
-                        
-                        st.markdown("---")
-                        
-                        st.subheader("📊 Dados Agro e Socioeconômicos")
-                        st.caption("Municípios com representatividade >20% na bacia hidrográfica")
-                        exportar_dados_agro = st.checkbox("Ativar processamento de dados do IBGE", value=st.session_state.get('select_ibge', False))
-                        
-                        st.markdown("---")                    
-                        submit_button = st.form_submit_button(label='✅ Confirmar Seleção')
-
-                    if submit_button:
-                        st.session_state.update({
-                            "exportar_srtm_mde": exportar_srtm_mde,
-                            "exportar_declividade": exportar_declividade,
-                            "exportar_ndvi": exportar_ndvi,
-                            "exportar_gndvi": exportar_gndvi,
-                            "exportar_ndwi": exportar_ndwi,
-                            "exportar_ndmi": exportar_ndmi,
-                            "exportar_mapbiomas": exportar_mapbiomas,
-                            "exportar_pasture_quality": exportar_pasture_quality,
-                            "exportar_sentinel_composite": exportar_sentinel_composite,
-                            "exportar_puc_ufv": exportar_puc_ufv,
-                            "exportar_puc_ibge": exportar_puc_ibge,
-                            "exportar_puc_embrapa": exportar_puc_embrapa,
-                            "exportar_landforms": exportar_landforms,
-                            "exportar_dados_agro": exportar_dados_agro
-                        })
-                        st.success("Seleção de produtos confirmada!")
-
-                    if st.session_state.get("exportar_srtm_mde") is not None and nome_bacia_export:
-                        if st.button("Processar Dados"):
-                            with st.spinner("Processando dados, por favor aguarde..."):
-                                # Verificar se deve processar sensoriamento remoto
-                                process_remoto = any([
-                                    st.session_state.get("exportar_srtm_mde"),
-                                    st.session_state.get("exportar_declividade"), 
-                                    st.session_state.get("exportar_ndvi"),
-                                    st.session_state.get("exportar_gndvi"),
-                                    st.session_state.get("exportar_ndwi"),
-                                    st.session_state.get("exportar_ndmi"),
-                                    st.session_state.get("exportar_sentinel_composite"),
-                                    st.session_state.get("exportar_mapbiomas"),
-                                    st.session_state.get("exportar_pasture_quality"),
-                                    st.session_state.get("exportar_landforms"),
-                                    st.session_state.get("exportar_puc_ufv"),
-                                    st.session_state.get("exportar_puc_ibge"),
-                                    st.session_state.get("exportar_puc_embrapa")
-                                ])
-                                
-                                # Verificar se deve processar dados agro
-                                process_agro = st.session_state.get("exportar_dados_agro")
-                                
-                                # Processar apenas agro se for o único selecionado
-                                if not process_remoto and process_agro:
-                                    dados_agro = process_data(geometry, crs, nome_bacia_export, "agro")
-                                    if dados_agro:
-                                        excel_agro = gerar_excel_agro(dados_agro, nome_bacia_export)
-                                        if excel_agro:
-                                            st.download_button(
-                                                label="📥 Baixar Dados Agro e Socioeconômicos",
-                                                data=excel_agro,
-                                                file_name=f"{nome_bacia_export}_dados_agro.xlsx",
-                                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                                key=f"download_agro_{int(time.time())}"
-                                            )
-                                            # Mensagem sobre o Drive (opcional)
-                                            st.success("✅ Os dados também foram enviados automaticamente para a pasta **'zap'** no seu Google Drive")
-                                
-                                # Processar sensoriamento remoto (e agro depois, se selecionado)
-                                elif process_remoto:
-                                    resultados = process_data(geometry, crs, nome_bacia_export, "remoto")
-                                    
-                                    if resultados:
-                                        st.session_state["resultados"] = resultados
-                                        st.success("Dados de sensoriamento processados com sucesso!")
-                                        
-                                        # Exportar produtos de sensoriamento remoto
-                                        tasks_remoto = []
-                                        if st.session_state.get("exportar_srtm_mde") and "utm_elevation" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_elevation"], "06_", "_SRTM_MDE", 30, geometry, nome_bacia_export))
-                                        if st.session_state.get("exportar_declividade") and "utm_declividade" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_declividade"], "02_", "_Declividade", 30, geometry, nome_bacia_export))
-                                        if st.session_state.get("exportar_ndvi") and "utm_ndvi" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_ndvi"], "06_", f"_NDVImediana_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
-                                        if st.session_state.get("exportar_gndvi") and "utm_gndvi" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_gndvi"], "06_", f"_GNDVI_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
-                                        if st.session_state.get("exportar_ndwi") and "utm_ndwi" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_ndwi"], "06_", f"_NDWI_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
-                                        if st.session_state.get("exportar_ndmi") and "utm_ndmi" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_ndmi"], "06_", f"_NDMI_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
-                                        if st.session_state.get("exportar_sentinel_composite") and "utm_sentinel2" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_sentinel2"], "06_", f"_S2_B2B3B4B8_{resultados['mes_formatado']}{resultados['ano_anterior']}-{resultados['ano_atual']}", 10, geometry, nome_bacia_export))
-                                        if st.session_state.get("exportar_mapbiomas") and "utm_mapbiomas" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_mapbiomas"], "06_", "_MapBiomas_col9_2023", 30, geometry, nome_bacia_export))
-                                        if st.session_state.get("exportar_pasture_quality") and "utm_pasture_quality" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_pasture_quality"], "06_", "_Vigor_Pastagem_col9_2023", 30, geometry, nome_bacia_export))
-                                        if st.session_state.get("exportar_landforms") and "utm_landforms" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_landforms"], "06_", "_Landforms", 30, geometry, nome_bacia_export))
-                                        if st.session_state.get("exportar_puc_ufv") and "utm_puc_ufv" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_puc_ufv"], "02_", "_PUC_UFV", 30, geometry, nome_bacia_export))
-                                        if st.session_state.get("exportar_puc_ibge") and "utm_puc_ibge" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_puc_ibge"], "02_", "_PUC_IBGE", 30, geometry, nome_bacia_export))
-                                        if st.session_state.get("exportar_puc_embrapa") and "utm_puc_embrapa" in resultados:
-                                            tasks_remoto.append(exportarImagem(resultados["utm_puc_embrapa"], "02_", "_PUC_Embrapa", 30, geometry, nome_bacia_export))
-                                        
-                                        # Verifica conclusão das tarefas de sensoriamento
-                                        if tasks_remoto:
-                                            status_container = st.empty()  # Container fixo para as mensagens
-                                            
-                                            with status_container:
-                                                st.write("⏳ Processando produtos de sensoriamento remoto na Earth Engine...")
-                                                
-                                                progress_bar = st.progress(0)
-                                                status_text = st.empty()
-                                            
-                                            todas_concluidas = False
-                                            last_update = time.time()
-                                            
-                                            while not todas_concluidas:
-                                                todas_concluidas = True
-                                                completed_tasks = 0
-                                                
-                                                # Atualiza status dentro do mesmo container
-                                                with status_container:
-                                                    progress_bar.empty()
-                                                    status_text.empty()
-                                                    
-                                                    for i, task in enumerate(tasks_remoto):
-                                                        state = check_task_status(task)
-                                                        status_text.write(f"Tarefa {i+1}/{len(tasks_remoto)}: {state}")
-                                                        
-                                                        if state != "COMPLETED":
-                                                            todas_concluidas = False
-                                                        else:
-                                                            completed_tasks += 1
-                                                    
-                                                    # Barra de progresso
-                                                    progress = completed_tasks / len(tasks_remoto)
-                                                    progress_bar.progress(progress)
-                                                    
-                                                    if todas_concluidas:
-                                                        st.success("✅ Todos os produtos de sensoriamento foram processados!")
-                                                        break
-                                                    else:
-                                                        st.warning(f"⌛ Progresso: {completed_tasks}/{len(tasks_remoto)} tarefas concluídas")
-                                                
-                                                # Espera 60 segundos entre verificações
-                                                time.sleep(60)
-                                        
-                                        # Processar dados agro APÓS o sensoriamento, se selecionado
-                                        if process_agro:
-                                            st.write("Iniciando processamento de dados agro/socioeconômicos...")
-                                            municipios_df = processar_municipios(geometry, nome_bacia_export)
-                                            
-                                            if municipios_df is not None:
-                                                dados_agro = processar_tabelas_agro([int(x) for x in municipios_df['geocodigo'].tolist()])
-                                                
-                                                if dados_agro:
-                                                    excel_agro = gerar_excel_agro(dados_agro, nome_bacia_export)
-                                                    if excel_agro:
-                                                        st.download_button(
-                                                            label="📥 Baixar Dados Agro e Socioeconômicos",
-                                                            data=excel_agro,
-                                                            file_name=f"{nome_bacia_export}_dados_agro.xlsx",
-                                                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                                            key=f"download_agro_{int(time.time())}"
-                                                        )
-                                
-                                st.success("Todos os processamentos foram concluídos com sucesso!")
-                                st.info("ℹ️ Os dados estão disponíveis em: (1) Seu download local e (2) Pasta 'zap' no Google Drive")
-                                st.markdown(
-                                    f"[Abrir pasta 'zap' no Google Drive](https://drive.google.com/drive/folders/zap)",
-                                    unsafe_allow_html=True)
-                else:
-                    st.warning("Por favor, preencha o nome para exportação antes de selecionar os produtos.")
+# Executar a aplicação
+if __name__ == "__main__":
+    main()

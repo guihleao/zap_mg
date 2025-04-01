@@ -262,7 +262,7 @@ oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL, REF
 # Logo Sidebar
 sidebar_logo = "https://i.postimg.cc/c4VZ0fQw/zap-logo.png"
 main_body_logo = "https://i.postimg.cc/65qGpMc8/zap-logo-sb.png"
-st.sidebar.image(sidebar_logo, use_column_width=True)
+st.sidebar.image(sidebar_logo, use_container_width=True) 
 
 # Links de navegação
 with st.sidebar:
@@ -280,16 +280,6 @@ with st.sidebar:
             mostrar_politica_privacidade()
         if st.button("Termos de Serviço", key="legal_button"):
             mostrar_termos_servico()
-    
-    # Template GeoJSON
-    with st.expander("🗺️ Template"):
-        st.download_button(
-            label="📥 Baixar Modelo GeoJSON",
-            data=open("template_bacia.geojson", "rb"),
-            file_name="template_bacia.geojson",
-            mime="application/geo+json",
-            help="Modelo de arquivo GeoJSON para upload"
-        )
     
     st.markdown("---")
     st.markdown("### Versão 1.0")
@@ -1056,10 +1046,14 @@ else:
     # 2. Upload do arquivo GeoJSON
     if st.session_state.get("ee_initialized"):
         uploaded_file = st.file_uploader(
-            "Carregue o arquivo GeoJSON da bacia (apenas 1 polígono/multipolígono, SIRGAS 2000 (4674), máximo 1 MB)",
+            "Carregue o arquivo GeoJSON da bacia hidrográfica (SIRGAS 2000 - EPSG:4674):",
             type=["geojson"],
             accept_multiple_files=False,
-            help="Seu arquivo tem de estar projetado em SIRGAS 2000 (4674). Use o template disponível na sidebar se necessário."
+            help="Requisitos do arquivo:\n"
+                 "- Apenas 1 polígono/multipolígono\n"
+                 "- CRS SIRGAS 2000 (EPSG:4674)\n"
+                 "- Tamanho máximo: 1MB\n"
+                 "Obs: Técnicos devem preparar o arquivo previamente em seu software SIG"
         )
         
         if uploaded_file is not None:

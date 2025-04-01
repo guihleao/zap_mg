@@ -278,22 +278,20 @@ with st.container():
         <h3>🔒 Política de Privacidade e Termos de Serviço ⚖️</h3>
         <p style="margin-bottom: 1.5rem;">Antes de iniciar, leia nossa Política de Privacidade e nossos Termos de Serviço.</p>
         
-        <div class="card-button-container">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; width: 100%;">
     """, unsafe_allow_html=True)
     
-    # Botões centralizados
-    col1, col2 = st.columns([1,1], gap="medium")
-    with col1:
-        if st.button("🔒 Política de Privacidade", 
-                    key="card_privacy_button",
-                    help="Clique para ver nossa política de privacidade"):
-            show_privacy_policy()
+    if st.button("🔒 Política de Privacidade", 
+                key="card_privacy_button",
+                help="Clique para ver nossa política de privacidade",
+                style={"width": "80%"}):
+        show_privacy_policy()
     
-    with col2:
-        if st.button("⚖️ Termos de Serviço", 
-                    key="card_legal_button",
-                    help="Clique para ver os termos legais"):
-            show_legal_terms()
+    if st.button("⚖️ Termos de Serviço", 
+                key="card_legal_button",
+                help="Clique para ver os termos legais",
+                style={"width": "80%"}):
+        show_legal_terms()
     
     st.markdown("</div></div>", unsafe_allow_html=True)
 

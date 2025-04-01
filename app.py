@@ -56,6 +56,27 @@ with st.sidebar:
             background-color: #e6e6e6;
             transform: translateX(3px);
         }
+        
+        /* Estilo dos botões para parecerem com os links */
+        div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div > button {
+            width: 100%;
+            text-align: left;
+            padding: 0.5rem 1rem;
+            margin: 0.25rem 0;
+            background-color: #f0f2f6 !important;
+            border-radius: 0.5rem !important;
+            color: #333 !important;
+            border: 1px solid #ddd !important;
+            box-shadow: none !important;
+            transition: all 0.3s;
+        }
+        div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div > button:hover {
+            background-color: #e6e6e6 !important;
+            transform: translateX(3px);
+        }
+        div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div > button div p {
+            font-weight: normal !important;
+        }
     </style>
     """, unsafe_allow_html=True)
 
@@ -165,7 +186,7 @@ with st.sidebar:
     if st.button("🔒 Política de Privacidade", key="privacy_button"):
         show_privacy_policy()
     
-    if st.button("⚖️ Aspectos Legais", key="legal_button"):
+    if st.button("⚖️ Termos de Serviço", key="legal_button"):
         show_legal_terms()
 
     st.markdown("---")
@@ -211,8 +232,59 @@ st.markdown("""
         font-size: 0.8em;
         color: #777;
     }
+    /* Estilo específico para os botões dentro do .custom-card */
+    .custom-card .stButton button {
+        width: 100%;
+        text-align: center;
+        padding: 0.5rem 1rem;
+        margin: 0.75rem 0;
+        background-color: #2e7d32 !important;
+        color: white !important;
+        border-radius: 8px !important;
+        border: none !important;
+        transition: all 0.3s;
+    }
+    .custom-card .stButton button:hover {
+        background-color: #1e5e22 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .card-buttons-container {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    @media (max-width: 768px) {
+        .card-buttons-container {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
+
+# Card Política de Privacidade e Termo de Serviço
+st.markdown("""
+<div class="custom-card">
+    <h3>🔒 Política de Privacidade e Termos de Serviço ⚖️</h3>
+    <p>Antes de iniciar, leia nossa Política de Privacidade e nossos Termos de Serviço.</p>
+    <div class="card-buttons-container">
+""", unsafe_allow_html=True)
+
+# Botões dentro do card (usando columns para layout responsivo)
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("🔒 Política de Privacidade", 
+                key="card_privacy_button",
+                help="Clique para ver nossa política de privacidade"):
+        show_privacy_policy()
+with col2:
+    if st.button("⚖️ Termos de Serviço", 
+                key="card_legal_button",
+                help="Clique para ver os termos legais"):
+        show_legal_terms()
+
+st.markdown("</div></div>", unsafe_allow_html=True)
 
 # Card 1 - Sobre o ZAP
 st.markdown("""

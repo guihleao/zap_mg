@@ -42,7 +42,6 @@ def local_css():
         /* Estilos gerais */      
         /* Cards personalizados */
         .custom-card {
-            background-color: #ffffff;
             border-radius: 10px;
             padding: 1.5rem;
             margin: 1rem 0;

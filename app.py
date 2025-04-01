@@ -39,11 +39,7 @@ def local_css():
     """Carrega estilos CSS personalizados"""
     st.markdown("""
     <style>
-        /* Estilos gerais */
-        .stApp {
-            background-color: #f5f5f5;
-        }
-        
+        /* Estilos gerais */      
         /* Cards personalizados */
         .custom-card {
             background-color: #ffffff;

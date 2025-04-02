@@ -729,13 +729,20 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                 sheet_name = nome_tabela[:31]
                 ws = workbook.create_sheet(title=sheet_name)
                 
-                # Adicionar cabeçalho inicial
                 current_row = 1
                 
                 for municipio, df in dados.items():
-                    # Adicionar cabeçalho completo antes de cada município
                     if not df.empty:
-                        # Cabeçalho das colunas (com anos corretos)
+                        # 1. Primeiro escrever o nome do município (mesclado, em negrito e centralizado)
+                        ws.append([municipio] + ['']*(len(df.columns)-1))
+                        ws.merge_cells(start_row=current_row, start_column=1, 
+                                      end_row=current_row, end_column=len(df.columns))
+                        cell = ws.cell(row=current_row, column=1)
+                        cell.font = cell.font.copy(bold=True)
+                        cell.alignment = Alignment(horizontal='center', vertical='center')
+                        current_row += 1
+                        
+                        # 2. Depois escrever o cabeçalho das colunas (com anos corretos)
                         header = ['Produto'] + [str(col)[-4:] if str(col).startswith('20') else col for col in df.columns[1:]]
                         ws.append(header)
                         
@@ -746,16 +753,7 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                         
                         current_row += 1
                         
-                        # Nome do município (mesclado, em negrito e centralizado)
-                        ws.append([municipio] + ['']*(len(df.columns)-1))
-                        ws.merge_cells(start_row=current_row, start_column=1, 
-                                      end_row=current_row, end_column=len(df.columns))
-                        cell = ws.cell(row=current_row, column=1)
-                        cell.font = cell.font.copy(bold=True)
-                        cell.alignment = Alignment(horizontal='center', vertical='center')
-                        current_row += 1
-                        
-                        # Dados do município
+                        # 3. Agora escrever os dados do município
                         for _, row in df.iterrows():
                             ws.append(row.tolist())
                             current_row += 1

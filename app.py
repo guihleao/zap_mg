@@ -18,6 +18,10 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Alignment
 import gdown
 import webbrowser
+import matplotlib.pyplot as plt
+import traceback
+from PIL import Image
+import io
 
 # Configuração de layout
 st.set_page_config(

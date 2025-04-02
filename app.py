@@ -772,25 +772,47 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
         try:
             drive_service = build('drive', 'v3', credentials=st.session_state["ee_credentials"])
             
-            # Criar metadados do arquivo
+            # 1. Verificar/Criar pasta ZAP se não existir
+            # Verificar se a pasta já existe
+            query = "name='ZAP' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+            results = drive_service.files().list(q=query, fields="files(id, name)").execute()
+            items = results.get('files', [])
+            
+            if items:
+                zap_folder_id = items[0]['id']
+            else:
+                # Criar a pasta se não existir
+                file_metadata = {
+                    'name': 'ZAP',
+                    'mimeType': 'application/vnd.google-apps.folder'
+                }
+                folder = drive_service.files().create(body=file_metadata, fields='id').execute()
+                zap_folder_id = folder.get('id')
+                st.success(f"Pasta 'ZAP' criada no Google Drive (ID: {zap_folder_id})")
+            
+            # 2. Criar metadados do arquivo
             file_metadata = {
                 'name': f"{nome_bacia_export}_dados_agro.xlsx",
-                'parents': ['zap'],  # Pasta destino
+                'parents': [zap_folder_id],  # Usar o ID da pasta encontrada/criada
                 'mimeType': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             }
             
-            # Fazer o upload
+            # 3. Fazer o upload
             media = MediaIoBaseUpload(output, 
                                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                                     resumable=True)
             
-            file = drive_service.files().create(body=file_metadata,
-                                              media_body=media,
-                                              fields='id').execute()
+            file = drive_service.files().create(
+                body=file_metadata,
+                media_body=media,
+                fields='id'
+            ).execute()
             
-            st.success(f"Arquivo exportado para o Google Drive na pasta 'zap' (ID: {file.get('id')})")
+            st.success(f"✅ Arquivo exportado para a pasta 'ZAP' no Google Drive (ID: {file.get('id')})")
+            st.markdown(f"[Abrir pasta 'ZAP' no Google Drive](https://drive.google.com/drive/folders/{zap_folder_id})", unsafe_allow_html=True)
+            
         except Exception as e:
-            st.error(f"Erro ao exportar para o Google Drive: {e}")
+            st.error(f"❌ Erro ao exportar para o Google Drive: {str(e)}")
         
         return output
     except Exception as e:

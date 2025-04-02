@@ -7,6 +7,7 @@ import datetime
 import folium
 from streamlit_folium import st_folium
 from streamlit_oauth import OAuth2Component
+from streamlit.components.v1 import html
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload

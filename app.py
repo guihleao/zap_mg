@@ -731,35 +731,66 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado):
         # Criar figura
         fig, ax = plt.subplots(figsize=(12, 8))
         
-        # Configurar cores (usando um mapa de cores)
-        cores = plt.cm.tab20.colors
+        # Configurar estilo
+        plt.style.use('seaborn')  # Estilo mais clean
+        cores = plt.cm.tab20.colors  # Paleta de cores
         
         # Plotar cada produto
         for i, (_, row) in enumerate(df_municipio.iterrows()):
             produto = row['Produto']
             valores = [row[ano] for ano in anos_colunas]
             
-            # Verificar se há valores válidos
-            if any(pd.isna(valores)):
-                continue
+            # Verificar se tem PELO MENOS UM valor não-nulo
+            if all(pd.isna(valores)):
+                continue  # Pula produtos completamente vazios
                 
-            ax.plot(anos_int, valores, 
-                   marker='o', linestyle='-', 
+            # Converter para numpy array para manipulação
+            valores_arr = np.array(valores)
+            anos_arr = np.array(anos_int)
+            
+            # Mascarar valores nulos
+            mask = ~pd.isna(valores_arr)
+            
+            # Estilo diferente para linhas com gaps
+            line_style = '-' if all(mask) else '--'
+            
+            # Plotar linha principal
+            ax.plot(anos_arr[mask], valores_arr[mask], 
+                   marker='o', linestyle=line_style, 
                    color=cores[i % len(cores)],
-                   label=produto)
+                   label=produto,
+                   linewidth=2)
+            
+            # Plotar gaps (se houver)
+            if not all(mask):
+                # Encontrar segmentos contínuos
+                segments = np.where(np.diff(mask))[0] + 1
+                segments = np.concatenate([[0], segments, [len(mask)]])
+                
+                for j in range(len(segments)-1):
+                    start, end = segments[j], segments[j+1]
+                    if mask[start:end].any():
+                        ax.plot(anos_arr[start:end], valores_arr[start:end],
+                               marker='o', linestyle=line_style,
+                               color=cores[i % len(cores)],
+                               linewidth=2)
         
-        # Configurações do gráfico (só se tivermos linhas plotadas)
+        # Configurações do gráfico
         if len(ax.lines) > 0:
             ax.set_title(f'Evolução {tipo_dado} - {municipio}', fontsize=14, pad=20)
             ax.set_xlabel('Ano', fontsize=12)
             ax.set_ylabel(tipo_dado, fontsize=12)
-            ax.grid(True, linestyle='--', alpha=0.7)
+            
+            # Melhorar eixos
             ax.set_xticks(anos_int)
+            ax.grid(True, linestyle=':', alpha=0.6)
             ax.tick_params(axis='both', which='major', labelsize=10)
             
-            # Adicionar legenda fora do gráfico
-            ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+            # Adicionar legenda
+            ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', 
+                     fontsize=8, framealpha=0.9)
             
+            # Ajustar layout
             plt.tight_layout()
             
             # Converter para imagem PNG
@@ -775,7 +806,7 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado):
             return None
             
     except Exception as e:
-        print(f"Erro ao criar gráfico para {municipio}: {e}")
+        print(f"Erro ao criar gráfico para {municipio}: {str(e)}")
         plt.close()
         return None
 

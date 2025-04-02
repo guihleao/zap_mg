@@ -711,8 +711,18 @@ def processar_tabelas_agro(geocodigos):
 def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado):
     """Cria um único gráfico com a evolução de todos os produtos para um município."""
     try:
-        # Extrair anos (assumindo que todas as colunas que começam com '20' são anos)
-        anos = sorted([col for col in df_municipio.columns if col.startswith('20')])
+        # Verificar se há dados suficientes
+        if len(df_municipio) == 0:
+            return None
+            
+        # Extrair anos (colunas que começam com '20')
+        anos_colunas = [col for col in df_municipio.columns if col.startswith('20')]
+        if not anos_colunas:
+            return None
+            
+        # Ordenar anos cronologicamente
+        anos_colunas = sorted(anos_colunas, key=lambda x: int(x[-2:]))
+        anos_int = [int(ano[-2:]) for ano in anos_colunas]
         
         # Criar figura
         fig, ax = plt.subplots(figsize=(12, 8))
@@ -723,39 +733,46 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado):
         # Plotar cada produto
         for i, (_, row) in enumerate(df_municipio.iterrows()):
             produto = row['Produto']
-            valores = [row[ano] for ano in anos]
+            valores = [row[ano] for ano in anos_colunas]
             
-            # Converter anos para inteiros (removendo o '20' prefixo)
-            anos_int = [int(ano[-2:]) for ano in anos]
-            
+            # Verificar se há valores válidos
+            if any(pd.isna(valores)):
+                continue
+                
             ax.plot(anos_int, valores, 
                    marker='o', linestyle='-', 
                    color=cores[i % len(cores)],
                    label=produto)
         
-        # Configurações do gráfico
-        ax.set_title(f'Evolução {tipo_dado} - {municipio}', fontsize=14, pad=20)
-        ax.set_xlabel('Ano', fontsize=12)
-        ax.set_ylabel(tipo_dado, fontsize=12)
-        ax.grid(True, linestyle='--', alpha=0.7)
-        ax.set_xticks(anos_int)
-        ax.tick_params(axis='both', which='major', labelsize=10)
-        
-        # Adicionar legenda fora do gráfico
-        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
-        
-        plt.tight_layout()
-        
-        # Converter para imagem PNG
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=120, bbox_inches='tight')
-        buf.seek(0)
-        img = Image.open(buf)
-        plt.close()
-        
-        return img
+        # Configurações do gráfico (só se tivermos linhas plotadas)
+        if len(ax.lines) > 0:
+            ax.set_title(f'Evolução {tipo_dado} - {municipio}', fontsize=14, pad=20)
+            ax.set_xlabel('Ano', fontsize=12)
+            ax.set_ylabel(tipo_dado, fontsize=12)
+            ax.grid(True, linestyle='--', alpha=0.7)
+            ax.set_xticks(anos_int)
+            ax.tick_params(axis='both', which='major', labelsize=10)
+            
+            # Adicionar legenda fora do gráfico
+            ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+            
+            plt.tight_layout()
+            
+            # Converter para imagem PNG
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', dpi=120, bbox_inches='tight')
+            buf.seek(0)
+            img = Image.open(buf)
+            plt.close()
+            
+            return img
+        else:
+            plt.close()
+            return None
+            
     except Exception as e:
         print(f"Erro ao criar gráfico para {municipio}: {e}")
+        plt.close()
         return None
 
 def gerar_excel_agro(dados_agro, nome_bacia_export):
@@ -778,10 +795,8 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
             
             # Para outras tabelas, criar uma planilha consolidada
             if isinstance(dados, dict):
-                # Criar nova planilha (limitando nome a 31 caracteres)
                 sheet_name = nome_tabela[:31]
                 ws = workbook.create_sheet(title=sheet_name)
-                
                 current_row = 1
                 
                 # Determinar o tipo de dados da tabela
@@ -791,7 +806,7 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                 
                 for municipio, df in dados.items():
                     if not df.empty:
-                        # 1. Primeiro escrever o nome do município
+                        # Escrever dados na planilha
                         ws.append([municipio] + ['']*(len(df.columns)-1))
                         ws.merge_cells(start_row=current_row, start_column=1, 
                                       end_row=current_row, end_column=len(df.columns))
@@ -800,23 +815,19 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                         cell.alignment = Alignment(horizontal='center', vertical='center')
                         current_row += 1
                         
-                        # 2. Escrever cabeçalho
                         header = ['Produto'] + [str(col)[-4:] if str(col).startswith('20') else col for col in df.columns[1:]]
                         ws.append(header)
                         
-                        # Formatar cabeçalho em negrito
                         for col in range(1, len(header)+1):
                             cell = ws.cell(row=current_row, column=col)
                             cell.font = cell.font.copy(bold=True)
                         
                         current_row += 1
                         
-                        # 3. Escrever dados
                         for _, row in df.iterrows():
                             ws.append(row.tolist())
                             current_row += 1
                         
-                        # Linha vazia de separação
                         ws.append(['']*len(df.columns))
                         current_row += 1
                         
@@ -825,7 +836,7 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                         if img:
                             graficos_por_municipio[(nome_tabela, municipio)] = img
         
-        # Salvar o workbook no buffer
+        # Salvar o workbook
         workbook.save(output)
         output.seek(0)
         
@@ -838,16 +849,7 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
             results = drive_service.files().list(q=query, fields="files(id, name)").execute()
             items = results.get('files', [])
             
-            if items:
-                zap_folder_id = items[0]['id']
-            else:
-                file_metadata = {
-                    'name': 'ZAP',
-                    'mimeType': 'application/vnd.google-apps.folder'
-                }
-                folder = drive_service.files().create(body=file_metadata, fields='id').execute()
-                zap_folder_id = folder.get('id')
-                st.success(f"Pasta 'ZAP' criada no Google Drive (ID: {zap_folder_id})")
+            zap_folder_id = items[0]['id'] if items else None
             
             # 2. Criar subpasta para os gráficos
             subfolder_name = f"{nome_bacia_export}_graficos"
@@ -865,9 +867,38 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                 }
                 folder = drive_service.files().create(body=file_metadata, fields='id').execute()
                 graficos_folder_id = folder.get('id')
-                st.success(f"Subpasta '{subfolder_name}' criada no Google Drive (ID: {graficos_folder_id})")
             
-            # 3. Upload do arquivo Excel
+            # 3. Upload dos gráficos
+            uploaded_graphs = 0
+            for (tabela, municipio), img in graficos_por_municipio.items():
+                try:
+                    img_bytes = io.BytesIO()
+                    img.save(img_bytes, format='PNG')
+                    img_bytes.seek(0)
+                    
+                    nome_arquivo = f"{tabela[:20]}_{municipio[:30]}.png".replace("/", "_").replace("\\", "_")
+                    
+                    file_metadata = {
+                        'name': nome_arquivo,
+                        'parents': [graficos_folder_id],
+                        'mimeType': 'image/png'
+                    }
+                    
+                    media = MediaIoBaseUpload(img_bytes, mimetype='image/png')
+                    
+                    drive_service.files().create(
+                        body=file_metadata,
+                        media_body=media,
+                        fields='id'
+                    ).execute()
+                    
+                    uploaded_graphs += 1
+                except Exception as e:
+                    print(f"Erro ao enviar gráfico {nome_arquivo}: {e}")
+            
+            st.success(f"✅ {uploaded_graphs} gráficos salvos na pasta '{subfolder_name}' no Google Drive")
+            
+            # 4. Upload do arquivo Excel
             file_metadata = {
                 'name': f"{nome_bacia_export}_dados_agro.xlsx",
                 'parents': [zap_folder_id],
@@ -878,47 +909,20 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                                     resumable=True)
             
-            file = drive_service.files().create(
+            drive_service.files().create(
                 body=file_metadata,
                 media_body=media,
                 fields='id'
             ).execute()
             
-            # 4. Upload dos gráficos para a subpasta
-            for (tabela, municipio), img in graficos_por_municipio.items():
-                # Converter imagem para bytes
-                img_bytes = io.BytesIO()
-                img.save(img_bytes, format='PNG')
-                img_bytes.seek(0)
-                
-                # Nome do arquivo (removendo caracteres inválidos)
-                nome_arquivo = f"{tabela[:20]}_{municipio[:30]}.png".replace("/", "_")
-                
-                # Upload da imagem
-                file_metadata = {
-                    'name': nome_arquivo,
-                    'parents': [graficos_folder_id],
-                    'mimeType': 'image/png'
-                }
-                
-                media = MediaIoBaseUpload(img_bytes, 
-                                        mimetype='image/png',
-                                        resumable=True)
-                
-                drive_service.files().create(
-                    body=file_metadata,
-                    media_body=media,
-                    fields='id'
-                ).execute()
-            
-            st.success(f"✅ Gráficos salvos na subpasta '{subfolder_name}' no Google Drive")
-            
         except Exception as e:
             st.error(f"❌ Erro ao exportar para o Google Drive: {str(e)}")
+            print(f"Erro detalhado: {traceback.format_exc()}")
         
         return output
     except Exception as e:
         st.error(f"Erro ao gerar Excel: {e}")
+        print(f"Erro detalhado: {traceback.format_exc()}")
         return None
 
 # 6. Processamento principal

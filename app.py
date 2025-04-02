@@ -1,26 +1,9 @@
 import ee
 import streamlit as st
-import geopandas as gpd
-import pandas as pd
-import numpy as np
-import datetime
-import folium
-from streamlit_folium import st_folium
-from streamlit_oauth import OAuth2Component
 from streamlit.components.v1 import html
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
 import time
-import requests
-from io import BytesIO
-from openpyxl import Workbook
-from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.styles import Alignment
-import gdown
-import webbrowser
 
-# Configuração de layout
+# DEVE SER O PRIMEIRO COMANDO STREAMLIT
 st.set_page_config(
     page_title="ZAP - Automatização",
     page_icon="🗺️",
@@ -32,41 +15,66 @@ st.set_page_config(
     }
 )
 
-def inject_optimized_auto_scroll():
-    """Versão otimizada com MutationObserver"""
-    optimized_js = """
+# Função para injetar JavaScript de scroll automático
+def auto_scroll():
+    # Usamos um timestamp para forçar atualização do componente
+    scroll_js = f"""
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const container = parent.document.querySelector('section.main');
-        if (!container) return;
-        
-        let lastScrollTime = 0;
-        
-        const observer = new MutationObserver(function(mutations) {
-            const now = Date.now();
-            // Limita para no máximo 1 scroll por 300ms
-            if (now - lastScrollTime > 300) {
-                container.scrollTo({
+        // Verifica se já temos um observer
+        if (!window.autoScrollInitialized) {{
+            const container = parent.document.querySelector('section.main');
+            
+            function scrollToBottom() {{
+                container.scrollTo({{
                     top: container.scrollHeight,
                     behavior: 'smooth'
-                });
-                lastScrollTime = now;
-            }
-        });
-        
-        observer.observe(container, {
-            childList: true,
-            subtree: true
-        });
-    });
+                }});
+            }}
+            
+            // Observer para novas mensagens
+            const observer = new MutationObserver(function(mutations) {{
+                // Scroll apenas se houver mudanças visíveis
+                if (mutations.some(m => m.addedNodes.length > 0)) {{
+                    scrollToBottom();
+                }}
+            }});
+            
+            // Observa todo o container principal
+            observer.observe(container, {{
+                childList: true,
+                subtree: true
+            }});
+            
+            // Scroll inicial
+            scrollToBottom();
+            
+            window.autoScrollInitialized = true;
+        }}
     </script>
     """
-    
-    if '_optimized_scroll_injected' not in st.session_state:
-        html(optimized_js, height=0)
-        st.session_state._optimized_scroll_injected = True
+    html(scroll_js, height=0, key=f"auto_scroll_{time.time()}")
 
-inject_optimized_auto_scroll()
+# Injetar o scroll automático no início
+auto_scroll()
+
+# Restante das suas importações...
+import geopandas as gpd
+import pandas as pd
+import numpy as np
+import datetime
+import folium
+from streamlit_folium import st_folium
+from streamlit_oauth import OAuth2Component
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
+import requests
+from io import BytesIO
+from openpyxl import Workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.styles import Alignment
+import gdown
+import webbrowser
 
 #Logo Sidebar e Sidebar
 sidebar_logo = "https://i.postimg.cc/c4VZ0fQw/zap-logo.png"

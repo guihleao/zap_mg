@@ -20,6 +20,18 @@ from openpyxl.styles import Alignment
 import gdown
 import webbrowser
 
+# Configuração de layout
+st.set_page_config(
+    page_title="ZAP - Automatização",
+    page_icon="🗺️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get help': 'https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo',
+        'Report a Bug': "mailto:zap@agricultura.mg.gov.br"
+    }
+)
+
 def inject_optimized_auto_scroll():
     """Versão otimizada com MutationObserver"""
     optimized_js = """
@@ -55,18 +67,6 @@ def inject_optimized_auto_scroll():
         st.session_state._optimized_scroll_injected = True
 
 inject_optimized_auto_scroll()
-
-# Configuração de layout
-st.set_page_config(
-    page_title="ZAP - Automatização",
-    page_icon="🗺️",
-    layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={
-        'Get help': 'https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo',
-        'Report a Bug': "mailto:zap@agricultura.mg.gov.br"
-    }
-)
 
 #Logo Sidebar e Sidebar
 sidebar_logo = "https://i.postimg.cc/c4VZ0fQw/zap-logo.png"

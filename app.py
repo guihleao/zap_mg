@@ -808,9 +808,6 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                 fields='id'
             ).execute()
             
-            st.success(f"✅ Arquivo exportado para a pasta 'ZAP' no Google Drive (ID: {file.get('id')})")
-            st.markdown(f"[Abrir pasta 'ZAP' no Google Drive](https://drive.google.com/drive/)", unsafe_allow_html=True)
-            
         except Exception as e:
             st.error(f"❌ Erro ao exportar para o Google Drive: {str(e)}")
         
@@ -1311,7 +1308,7 @@ else:
                                 st.success("Todos os processamentos foram concluídos com sucesso!")
                                 st.info("ℹ️ Os dados estão disponíveis em: (1) Seu download local e (2) Pasta 'zap' no Google Drive")
                                 st.markdown(
-                                    f"[Abrir pasta 'zap' no Google Drive](https://drive.google.com/drive/folders/zap)",
+                                    f"[Abrir pasta 'zap' no Google Drive](https://drive.google.com/drive/)",
                                     unsafe_allow_html=True)
                 else:
                     st.warning("Por favor, preencha o nome para exportação antes de selecionar os produtos.")

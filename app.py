@@ -3,7 +3,6 @@ import streamlit as st
 from streamlit.components.v1 import html
 import time
 
-# DEVE SER O PRIMEIRO COMANDO STREAMLIT
 st.set_page_config(
     page_title="ZAP - Automatização",
     page_icon="🗺️",
@@ -17,7 +16,6 @@ st.set_page_config(
 
 # Função para injetar JavaScript de scroll automático
 def auto_scroll():
-    # Usamos um timestamp para forçar atualização do componente
     scroll_js = f"""
     <script>
         // Verifica se já temos um observer
@@ -52,12 +50,11 @@ def auto_scroll():
         }}
     </script>
     """
-    html(scroll_js, height=0, key=f"auto_scroll_{time.time()}")
+    html(scroll_js, height=0)
 
-# Injetar o scroll automático no início
 auto_scroll()
 
-# Restante das suas importações...
+
 import geopandas as gpd
 import pandas as pd
 import numpy as np

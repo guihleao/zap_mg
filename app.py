@@ -19,6 +19,42 @@ from openpyxl.styles import Alignment
 import gdown
 import webbrowser
 
+def inject_optimized_auto_scroll():
+    """Versão otimizada com MutationObserver"""
+    optimized_js = """
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = parent.document.querySelector('section.main');
+        if (!container) return;
+        
+        let lastScrollTime = 0;
+        
+        const observer = new MutationObserver(function(mutations) {
+            const now = Date.now();
+            // Limita para no máximo 1 scroll por 300ms
+            if (now - lastScrollTime > 300) {
+                container.scrollTo({
+                    top: container.scrollHeight,
+                    behavior: 'smooth'
+                });
+                lastScrollTime = now;
+            }
+        });
+        
+        observer.observe(container, {
+            childList: true,
+            subtree: true
+        });
+    });
+    </script>
+    """
+    
+    if '_optimized_scroll_injected' not in st.session_state:
+        html(optimized_js, height=0)
+        st.session_state._optimized_scroll_injected = True
+
+inject_optimized_auto_scroll()
+
 # Configuração de layout
 st.set_page_config(
     page_title="ZAP - Automatização",

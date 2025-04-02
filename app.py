@@ -24,7 +24,7 @@ st.set_page_config(
     page_title="ZAP - Automatização",
     page_icon="🗺️",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
     menu_items={
         'Get help': 'https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo',
         'Report a Bug': "mailto:zap@agricultura.mg.gov.br"

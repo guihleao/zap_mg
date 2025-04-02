@@ -1,60 +1,5 @@
 import ee
 import streamlit as st
-from streamlit.components.v1 import html
-import time
-
-st.set_page_config(
-    page_title="ZAP - Automatização",
-    page_icon="🗺️",
-    layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={
-        'Get help': 'https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo',
-        'Report a Bug': "mailto:zap@agricultura.mg.gov.br"
-    }
-)
-
-# Função para injetar JavaScript de scroll automático
-def auto_scroll():
-    scroll_js = f"""
-    <script>
-        // Verifica se já temos um observer
-        if (!window.autoScrollInitialized) {{
-            const container = parent.document.querySelector('section.main');
-            
-            function scrollToBottom() {{
-                container.scrollTo({{
-                    top: container.scrollHeight,
-                    behavior: 'smooth'
-                }});
-            }}
-            
-            // Observer para novas mensagens
-            const observer = new MutationObserver(function(mutations) {{
-                // Scroll apenas se houver mudanças visíveis
-                if (mutations.some(m => m.addedNodes.length > 0)) {{
-                    scrollToBottom();
-                }}
-            }});
-            
-            // Observa todo o container principal
-            observer.observe(container, {{
-                childList: true,
-                subtree: true
-            }});
-            
-            // Scroll inicial
-            scrollToBottom();
-            
-            window.autoScrollInitialized = true;
-        }}
-    </script>
-    """
-    html(scroll_js, height=0)
-
-auto_scroll()
-
-
 import geopandas as gpd
 import pandas as pd
 import numpy as np
@@ -65,6 +10,7 @@ from streamlit_oauth import OAuth2Component
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
+import time
 import requests
 from io import BytesIO
 from openpyxl import Workbook
@@ -72,6 +18,18 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Alignment
 import gdown
 import webbrowser
+
+# Configuração de layout
+st.set_page_config(
+    page_title="ZAP - Automatização",
+    page_icon="🗺️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get help': 'https://www.mg.gov.br/agricultura/pagina/zoneamento-ambiental-e-produtivo',
+        'Report a Bug': "mailto:zap@agricultura.mg.gov.br"
+    }
+)
 
 #Logo Sidebar e Sidebar
 sidebar_logo = "https://i.postimg.cc/c4VZ0fQw/zap-logo.png"

@@ -9,6 +9,7 @@ from streamlit_folium import st_folium
 from streamlit_oauth import OAuth2Component
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
 import time
 import requests
 from io import BytesIO
@@ -90,10 +91,7 @@ with st.sidebar:
     @st.dialog("Política de Privacidade", width="large")
     def show_privacy_policy():
         st.markdown("""
-        # Política de Privacidade e Termos de Serviço para o Aplicativo ZAP Automatização
-
-        ## Política de Privacidade
-        Última atualização: 31/03/2025
+        *Última atualização: 31/03/2025*
 
         **1. Informações Gerais**
         - O aplicativo ZAP Automatização ("nós", "nosso" ou "aplicativo") é desenvolvido pela a Secretaria de Agricultura, Pecuária e Abastecimento de Minas Gerais como ferramenta de apoio ao Zoneamento Ambiental e Produtivo (ZAP). Esta política descreve como coletamos, usamos e protegemos suas informações.
@@ -132,10 +130,10 @@ with st.sidebar:
         """)
     
     # Botão para Aspectos Legais (abre modal)
-    @st.dialog("Aspectos Legais", width="large")
+    @st.dialog("Termos de Serviço", width="large")
     def show_legal_terms():
         st.markdown("""
-        ## Termos de Serviço
+        *Última atualização: 31/03/2025*
 
         **1. Aceitação dos Termos**
         - Ao utilizar o aplicativo ZAP Automatização, você concorda com estes Termos de Serviço.
@@ -324,6 +322,7 @@ Esta ferramenta automatiza a obtenção de produtos e bases para os produtos uti
 <h3>🔑 Requisitos</h3>
 <ul>
 <li>Conexão com conta Google (para Earth Engine, Cloud Service e Drive)</li>
+<li>Projeto na Google Cloud Service com acesso à API da Earth Engine</li>
 <li>Arquivo GeoJSON da bacia hidrográfica (preferencialmente em UTM)</li>
 </ul>
 </div>

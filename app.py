@@ -830,12 +830,18 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
         # Dicionário para armazenar os gráficos
         graficos_por_municipio = {}
         
+        # Função auxiliar para obter apenas o nome do produto
+        def get_nome_produto(valor):
+            return valor[0] if isinstance(valor, tuple) else valor
+            
         # Escrever cada planilha
         for nome_tabela, dados in dados_agro.items():
             # Tabela IBGE tem tratamento especial (sem gráficos)
             if nome_tabela == 'IBGE_Municipios_ZAP':
                 ws = workbook.create_sheet(title='IBGE_Municipios')
                 for r in dataframe_to_rows(dados, index=True, header=True):
+                    # Ajustar para pegar apenas nomes se for tupla
+                    r = [get_nome_produto(cell) if isinstance(cell, str) and cell in DICIONARIO_PRODUTOS else cell for cell in r]
                     ws.append(r)
                 continue
             
@@ -852,16 +858,19 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                 
                 for municipio, df in dados.items():
                     if not df.empty:
-                        # Escrever dados na planilha
-                        ws.append([municipio] + ['']*(len(df.columns)-1))
+                        # Escrever dados na planilha (ajustando para pegar apenas nomes)
+                        df_display = df.copy()
+                        df_display['Produto'] = df_display['Produto'].apply(get_nome_produto)
+                        
+                        ws.append([municipio] + ['']*(len(df_display.columns)-1))
                         ws.merge_cells(start_row=current_row, start_column=1, 
-                                      end_row=current_row, end_column=len(df.columns))
+                                      end_row=current_row, end_column=len(df_display.columns))
                         cell = ws.cell(row=current_row, column=1)
                         cell.font = cell.font.copy(bold=True)
                         cell.alignment = Alignment(horizontal='center', vertical='center')
                         current_row += 1
                         
-                        header = ['Produto'] + [str(col)[-4:] if str(col).startswith('20') else col for col in df.columns[1:]]
+                        header = ['Produto'] + [str(col)[-4:] if str(col).startswith('20') else col for col in df_display.columns[1:]]
                         ws.append(header)
                         
                         for col in range(1, len(header)+1):
@@ -870,14 +879,14 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                         
                         current_row += 1
                         
-                        for _, row in df.iterrows():
+                        for _, row in df_display.iterrows():
                             ws.append(row.tolist())
                             current_row += 1
                         
-                        ws.append(['']*len(df.columns))
+                        ws.append(['']*len(df_display.columns))
                         current_row += 1
                         
-                        # Criar gráfico único para o município
+                        # Criar gráfico único para o município (usando o df original com as cores)
                         img = criar_grafico_unico_municipio(df, municipio, tipo_dado)
                         if img:
                             graficos_por_municipio[(nome_tabela, municipio)] = img

@@ -849,38 +849,51 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado, tabela_ori
         config = unidades_config.get(tabela_origem, {'unidade': 'Unidade', 'divisor': 1})
         titulo_base = titulos_por_tabela.get(tabela_origem, f"Evolução {tipo_dado}")
 
-        # Função para agrupar produtos por unidade
-        def agrupar_por_unidade(df):
-            grupos = {}
-            if 'unidades_especificas' in config:
-                for _, row in df.iterrows():
-                    produto_info = row['Produto']
-                    produto_nome = produto_info[0] if isinstance(produto_info, tuple) else produto_info
-                    produto_key = produto_nome.lower().replace(' ', '').replace('-', '').replace('_', '')
-                    
-                    # Encontrar a unidade correspondente
-                    unidade_config = next(
-                        (v for k, v in config['unidades_especificas'].items() if produto_key.startswith(k)),
-                        config['default']
-                    )
-                    
-                    if unidade_config['unidade'] not in grupos:
-                        grupos[unidade_config['unidade']] = {
-                            'dados': [],
-                            'divisor': unidade_config['divisor']
-                        }
-                    grupos[unidade_config['unidade']]['dados'].append(row)
-            
-            return grupos if grupos else {'Único': {'dados': df.to_dict('records'), 'divisor': config.get('divisor', 1)}}
+        # Função para extrair o nome e chave do produto
+        def get_produto_info(produto_info):
+            if isinstance(produto_info, tuple):
+                produto_nome = produto_info[0]
+                produto_key = produto_nome.lower().replace(' ', '').replace('-', '').replace('_', '')
+                cor = produto_info[1]
+            else:
+                produto_nome = produto_info
+                produto_key = produto_nome.lower().replace(' ', '').replace('-', '').replace('_', '')
+                cor_info = DICIONARIO_PRODUTOS.get(produto_key, ('', '#A9A9A9'))
+                cor = cor_info[1] if isinstance(cor_info, tuple) else '#A9A9A9'
+            return produto_nome, produto_key, cor
 
-        # Agrupar os dados por unidade de medida (quando aplicável)
-        grupos = agrupar_por_unidade(df_municipio)
+        # Função para determinar a unidade de cada produto
+        def get_unidade_produto(produto_key):
+            if 'unidades_especificas' in config:
+                for k, v in config['unidades_especificas'].items():
+                    if produto_key.startswith(k):
+                        return v['unidade'], v['divisor']
+            return config.get('unidade', 'Unidade'), config.get('divisor', 1)
+
+        # Agrupar produtos por unidade de medida
+        grupos = {}
+        for _, row in df_municipio.iterrows():
+            produto_info = row['Produto']
+            produto_nome, produto_key, _ = get_produto_info(produto_info)
+            unidade, divisor = get_unidade_produto(produto_key)
+            
+            if unidade not in grupos:
+                grupos[unidade] = {
+                    'dados': [],
+                    'divisor': divisor
+                }
+            grupos[unidade]['dados'].append(row)
 
         # Criar uma figura com subplots
         n_grupos = len(grupos)
         fig, axs = plt.subplots(n_grupos, 1, figsize=(14, 6 * n_grupos))
         if n_grupos == 1:
             axs = [axs]  # Garantir que axs seja sempre uma lista
+
+        # Extrair anos uma única vez (assumindo que todos os produtos têm os mesmos anos)
+        anos_colunas = [col for col in df_municipio.columns if isinstance(col, str) and col.startswith('20')]
+        anos_colunas = sorted(anos_colunas, key=lambda x: int(x[-2:]))
+        anos_int = [int(ano[-2:]) for ano in anos_colunas]
 
         # Plotar cada grupo em um subplot
         for i, (unidade, grupo) in enumerate(grupos.items()):
@@ -890,21 +903,8 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado, tabela_ori
             
             for row in dados_grupo:
                 produto_info = row['Produto']
+                produto_nome, _, cor = get_produto_info(produto_info)
                 
-                # Extrair nome do produto e cor
-                if isinstance(produto_info, tuple):
-                    produto_nome = produto_info[0]
-                    cor = produto_info[1]
-                else:
-                    produto_nome = produto_info
-                    produto_key = produto_nome.lower().replace(' ', '').replace('-', '').replace('_', '')
-                    cor_info = DICIONARIO_PRODUTOS.get(produto_key, ('', '#A9A9A9'))
-                    cor = cor_info[1] if isinstance(cor_info, tuple) else '#A9A9A9'
-                
-                # Extrair valores e anos
-                anos_colunas = [col for col in row.keys() if isinstance(col, str) and col.startswith('20')]
-                anos_colunas = sorted(anos_colunas, key=lambda x: int(x[-2:]))
-                anos_int = [int(ano[-2:]) for ano in anos_colunas]
                 valores = [row[ano]/divisor if pd.notna(row[ano]) else None for ano in anos_colunas]
                 
                 if all(pd.isna(valores)):
@@ -930,8 +930,8 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado, tabela_ori
             titulo_grupo = f"{titulo_base} - {municipio}" if i == 0 else ""
             ax.set_title(titulo_grupo, fontsize=16, pad=20, fontweight='bold')
             
-            # Label do eixo Y personalizado para PEVS_Area_silv_14-23
-            ylabel = config.get('ylabel', tipo_dado) if i == 0 and 'ylabel' in config else tipo_dato
+            # Label do eixo Y personalizado
+            ylabel = config.get('ylabel', tipo_dato) if i == 0 and 'ylabel' in config else tipo_dado
             ax.set_ylabel(f"{ylabel} ({unidade})", fontsize=12)
             
             ax.set_xlabel('Ano', fontsize=12)

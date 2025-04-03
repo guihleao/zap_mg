@@ -845,6 +845,18 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado, tabela_ori
             'PEVS_Valor_prod_silv_14-23': {'unidade': 'Mil Reais', 'divisor': 1}
         }
 
+        # Lista de tabelas com gráficos únicos (que precisam de altura maior)
+        tabelas_com_grafico_unico = [
+            'PAM_Quantidade_produzida_14-23',
+            'PAM_Valor_da_producao_14-23',
+            'PPM_Efetivo_dos_rebanhos_14-23',
+            'PPM_Valor_da_producao_prod_anim',
+            'PPM_Producao_aquicultura_14-23',
+            'PPM_Valor_producao_aquicultura_',
+            'PEVS_Area_silv_14-23',
+            'PEVS_Valor_prod_silv_14-23'
+        ]
+
         # Obter configurações da tabela
         config = unidades_config.get(tabela_origem, {'unidade': 'Unidade', 'divisor': 1})
         titulo_base = titulos_por_tabela.get(tabela_origem, f"Evolução {tipo_dado}")
@@ -884,9 +896,17 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado, tabela_ori
                 }
             grupos[unidade]['dados'].append(row)
 
-        # Criar uma figura com subplots
+        # Definir altura da figura baseado no tipo de gráfico
         n_grupos = len(grupos)
-        fig, axs = plt.subplots(n_grupos, 1, figsize=(14, 6 * n_grupos))
+        
+        # Ajustar altura para gráficos únicos (maior) e múltiplos (padrão)
+        if tabela_origem in tabelas_com_grafico_unico:
+            figsize = (14, 10)  # Altura maior para gráficos únicos (1000px)
+        else:
+            figsize = (14, 6 * n_grupos)  # Altura padrão para múltiplos gráficos
+
+        # Criar figura com o tamanho apropriado
+        fig, axs = plt.subplots(n_grupos, 1, figsize=figsize)
         if n_grupos == 1:
             axs = [axs]  # Garantir que axs seja sempre uma lista
 
@@ -931,7 +951,7 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado, tabela_ori
             ax.set_title(titulo_grupo, fontsize=16, pad=20, fontweight='bold')
             
             # Label do eixo Y personalizado
-            ylabel = config.get('ylabel', tipo_dato) if i == 0 and 'ylabel' in config else tipo_dado
+            ylabel = config.get('ylabel', tipo_dado) if i == 0 and 'ylabel' in config else tipo_dado
             ax.set_ylabel(f"{ylabel} ({unidade})", fontsize=12)
             
             ax.set_xlabel('Ano', fontsize=12)
@@ -946,13 +966,19 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado, tabela_ori
             handles, labels = ax.get_legend_handles_labels()
             ax.legend(handles, labels,
                      loc='upper center',
-                     bbox_to_anchor=(0.5, -0.2),
+                     bbox_to_anchor=(0.5, -0.15),  # Ajustado para melhor posicionamento
                      fontsize=10,
                      framealpha=0.9,
                      ncol=2)
         
-        fig.patch.set_facecolor('white')
+        # Ajustar layout para acomodar a legenda
         plt.tight_layout()
+        if tabela_origem in tabelas_com_grafico_unico:
+            plt.subplots_adjust(bottom=0.25)  # Mais espaço para legenda em gráficos únicos
+        else:
+            plt.subplots_adjust(bottom=0.1 + 0.05 * n_grupos)  # Espaço proporcional para múltiplos gráficos
+        
+        fig.patch.set_facecolor('white')
         
         # Salvar para buffer
         buf = io.BytesIO()

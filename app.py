@@ -833,7 +833,7 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado, tabela_ori
             # Lógica para tabelas com múltiplas unidades
             unidade_texto = []
             for produto in df_municipio['Produto']:
-                produto_key = produto.lower().replace(' ', '').replace('-', '').replace('_', '')
+                produto_key = produto[0].lower().replace(' ', '').replace('-', '').replace('_', '') if isinstance(produto, tuple) else produto.lower().replace(' ', '').replace('-', '').replace('_', '')
                 unidade_produto = unidade.get(produto_key, unidade['default'])
                 unidade_texto.append(unidade_produto)
             
@@ -852,11 +852,20 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado, tabela_ori
         # Paleta de cores baseada no dicionário de produtos
         for idx, (_, row) in enumerate(df_municipio.iterrows()):
             produto_info = row['Produto']
-            produto_nome = produto_info[0] if isinstance(produto_info, tuple) else produto_info
-            produto_key = produto_nome.lower().replace(' ', '').replace('-', '').replace('_', '')
             
-            # Obter cor do dicionário ou usar padrão
-            cor = DICIONARIO_PRODUTOS.get(produto_key, ('', '#A9A9A9'))[1]
+            # Extrair nome do produto e chave para o dicionário
+            if isinstance(produto_info, tuple):
+                # Se for tupla (nome, cor)
+                produto_nome = produto_info[0]
+                produto_key = produto_nome.lower().replace(' ', '').replace('-', '').replace('_', '')
+                cor = produto_info[1]  # Já temos a cor na tupla
+            else:
+                # Se for string (nome apenas)
+                produto_nome = produto_info
+                produto_key = produto_nome.lower().replace(' ', '').replace('-', '').replace('_', '')
+                # Obter cor do dicionário
+                cor_info = DICIONARIO_PRODUTOS.get(produto_key, ('', '#A9A9A9'))
+                cor = cor_info[1] if isinstance(cor_info, tuple) else '#A9A9A9'
             
             # Extrair valores e anos
             anos_colunas = [col for col in row.index if col.startswith('20')]

@@ -726,19 +726,25 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado):
         anos_int = [int(ano[-2:]) for ano in anos_colunas]
         
         fig, ax = plt.subplots(figsize=(12, 8))
-        plt.style.use('seaborn-v0_8')  # Usando a versão mais recente do estilo
+        plt.style.use('seaborn-v0_8')
 
         for _, row in df_municipio.iterrows():
-            produto_nome = row['Produto']
+            # Extrai o nome do produto corretamente (pode ser string ou tupla)
+            produto_info = row['Produto']
+            produto_nome = produto_info[0] if isinstance(produto_info, tuple) else produto_info
+            
             valores = [row[ano] for ano in anos_colunas]
             
             if all(pd.isna(valores)):
                 continue
                 
-            # Obter cor do DICIONARIO_PRODUTOS
+            # Obter cor do DICIONARIO_PRODUTOS corretamente
             cor = '#A9A9A9'  # Cor padrão
             for cod, (nome, cor_hex) in DICIONARIO_PRODUTOS.items():
                 if nome == produto_nome:
+                    cor = cor_hex
+                    break
+                elif cod == produto_nome.lower().replace(' ', '').replace('-', '').replace('_', ''):
                     cor = cor_hex
                     break
             
@@ -751,7 +757,7 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado):
             ax.plot(anos_arr[mask], valores_arr[mask], 
                    marker='o', linestyle=line_style, 
                    color=cor,
-                   label=produto_nome,
+                   label=produto_nome,  # Usar apenas o nome
                    linewidth=2)
             
             if not all(mask):

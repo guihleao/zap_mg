@@ -715,64 +715,45 @@ def processar_tabelas_agro(geocodigos):
 def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado):
     """Cria um único gráfico com a evolução de todos os produtos para um município."""
     try:
-        # Verificar se há dados suficientes
         if len(df_municipio) == 0:
             return None
             
-        # Extrair anos (colunas que começam com '20')
         anos_colunas = [col for col in df_municipio.columns if col.startswith('20')]
         if not anos_colunas:
             return None
             
-        # Ordenar anos cronologicamente
         anos_colunas = sorted(anos_colunas, key=lambda x: int(x[-2:]))
         anos_int = [int(ano[-2:]) for ano in anos_colunas]
         
-        # Criar figura
         fig, ax = plt.subplots(figsize=(12, 8))
-        
-        # Configurar estilo
-        plt.style.use('seaborn')
+        plt.style.use('seaborn-v0_8')  # Usando a versão mais recente do estilo
 
-        # Plotar cada produto
         for _, row in df_municipio.iterrows():
             produto_nome = row['Produto']
-            valores = [row[ano] for ano in anos_colunas]  # Esta linha estava faltando!
+            valores = [row[ano] for ano in anos_colunas]
             
-            # Verificar se tem PELO MENOS UM valor não-nulo
             if all(pd.isna(valores)):
                 continue
                 
             # Obter cor do DICIONARIO_PRODUTOS
-            cor = '#A9A9A9'  # Cor padrão (cinza)
-            
-            # Buscar a cor no dicionário (verificando tanto por chave quanto por valor)
+            cor = '#A9A9A9'  # Cor padrão
             for cod, (nome, cor_hex) in DICIONARIO_PRODUTOS.items():
                 if nome == produto_nome:
                     cor = cor_hex
                     break
-                elif cod == produto_nome.lower().replace(' ', '').replace('-', ''):
-                    cor = cor_hex
-                    break
             
-            # Converter para numpy array para manipulação
             valores_arr = np.array(valores)
             anos_arr = np.array(anos_int)
-            
-            # Mascarar valores nulos
             mask = ~pd.isna(valores_arr)
             
-            # Estilo diferente para linhas com gaps
             line_style = '-' if all(mask) else '--'
             
-            # Plotar linha principal
             ax.plot(anos_arr[mask], valores_arr[mask], 
                    marker='o', linestyle=line_style, 
                    color=cor,
-                   label=produto_nome,  # Usar produto_nome diretamente
+                   label=produto_nome,
                    linewidth=2)
             
-            # Plotar gaps (se houver)
             if not all(mask):
                 segments = np.where(np.diff(mask))[0] + 1
                 segments = np.concatenate([[0], segments, [len(mask)]])
@@ -785,36 +766,31 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado):
                                color=cor,
                                linewidth=2)
         
-        # Configurações do gráfico
         if len(ax.lines) > 0:
             ax.set_title(f'Evolução {tipo_dado} - {municipio}', fontsize=14, pad=20)
             ax.set_xlabel('Ano', fontsize=12)
             ax.set_ylabel(tipo_dado, fontsize=12)
-            
             ax.set_xticks(anos_int)
             ax.grid(True, linestyle=':', alpha=0.6)
             ax.tick_params(axis='both', which='major', labelsize=10)
             
-            # Remover duplicatas na legenda
             handles, labels = ax.get_legend_handles_labels()
-            by_label = dict(zip(labels, handles))  # Remove duplicatas mantendo a ordem
+            by_label = dict(zip(labels, handles))
             ax.legend(by_label.values(), by_label.keys(),
                      bbox_to_anchor=(1.05, 1), loc='upper left', 
                      fontsize=8, framealpha=0.9)
             
             plt.tight_layout()
             
-            # Converter para imagem PNG
             buf = io.BytesIO()
             plt.savefig(buf, format='png', dpi=120, bbox_inches='tight')
             buf.seek(0)
             img = Image.open(buf)
             plt.close()
-            
             return img
-        else:
-            plt.close()
-            return None
+            
+        plt.close()
+        return None
             
     except Exception as e:
         print(f"Erro ao criar gráfico para {municipio}: {str(e)}")
@@ -825,40 +801,32 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
     try:
         output = BytesIO()
         workbook = Workbook()
-        workbook.remove(workbook.active)  # Remove a planilha padrão vazia
+        workbook.remove(workbook.active)
         
-        # Dicionário para armazenar os gráficos
         graficos_por_municipio = {}
         
-        # Função auxiliar para obter apenas o nome do produto
         def get_nome_produto(valor):
             return valor[0] if isinstance(valor, tuple) else valor
             
-        # Escrever cada planilha
         for nome_tabela, dados in dados_agro.items():
-            # Tabela IBGE tem tratamento especial (sem gráficos)
             if nome_tabela == 'IBGE_Municipios_ZAP':
                 ws = workbook.create_sheet(title='IBGE_Municipios')
                 for r in dataframe_to_rows(dados, index=True, header=True):
-                    # Ajustar para pegar apenas nomes se for tupla
                     r = [get_nome_produto(cell) if isinstance(cell, str) and cell in DICIONARIO_PRODUTOS else cell for cell in r]
                     ws.append(r)
                 continue
             
-            # Para outras tabelas, criar uma planilha consolidada
             if isinstance(dados, dict):
                 sheet_name = nome_tabela[:31]
                 ws = workbook.create_sheet(title=sheet_name)
                 current_row = 1
                 
-                # Determinar o tipo de dados da tabela
                 tipo_dado = "Quantidade Produzida" if "Quantidade" in nome_tabela else \
                            "Valor da Produção" if "Valor" in nome_tabela else \
                            "Efetivo" if "Efetivo" in nome_tabela else "Dados"
                 
                 for municipio, df in dados.items():
                     if not df.empty:
-                        # Escrever dados na planilha (ajustando para pegar apenas nomes)
                         df_display = df.copy()
                         df_display['Produto'] = df_display['Produto'].apply(get_nome_produto)
                         
@@ -866,7 +834,11 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                         ws.merge_cells(start_row=current_row, start_column=1, 
                                       end_row=current_row, end_column=len(df_display.columns))
                         cell = ws.cell(row=current_row, column=1)
-                        cell.font = cell.font.copy(bold=True)
+                        # Corrigindo o warning de depreciação:
+                        from copy import copy
+                        font = copy(cell.font)
+                        font.bold = True
+                        cell.font = font
                         cell.alignment = Alignment(horizontal='center', vertical='center')
                         current_row += 1
                         
@@ -875,7 +847,9 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                         
                         for col in range(1, len(header)+1):
                             cell = ws.cell(row=current_row, column=col)
-                            cell.font = cell.font.copy(bold=True)
+                            font = copy(cell.font)
+                            font.bold = True
+                            cell.font = font
                         
                         current_row += 1
                         
@@ -886,12 +860,10 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                         ws.append(['']*len(df_display.columns))
                         current_row += 1
                         
-                        # Criar gráfico único para o município (usando o df original com as cores)
                         img = criar_grafico_unico_municipio(df, municipio, tipo_dado)
                         if img:
                             graficos_por_municipio[(nome_tabela, municipio)] = img
         
-        # Salvar o workbook
         workbook.save(output)
         output.seek(0)
         

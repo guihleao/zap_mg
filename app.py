@@ -360,39 +360,121 @@ oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL, REF
 
 # 2. Dicionário de produtos (completo)
 DICIONARIO_PRODUTOS = {
-    'abacate': ('Abacate', '#568203'), 'abacaxi': ('Abacaxi', '#FEE347'), 'algodaa': ('Algodão arbóreo', '#F5F5F5'),
-    'algodah': ('Algodão herbáceo', '#FFFFFF'), 'alho': ('Alho', '#F8F8FF'), 'amendoi': ('Amendoim', '#D2B48C'),
-    'arroz': ('Arroz', '#FFF8DC'), 'aveia': ('Aveia', '#D0C487'), 'azeiton': ('Azeitona', '#808000'), 'acai': ('Açaí', '#4B0082'),
-    'banana': ('Banana', '#FFE135'), 'batatad': ('Batata-doce', '#D2691E'), 'batatai': ('Batata-inglesa', '#EED9C4'),
-    'borrach': ('Borracha', '#696969'), 'cacau': ('Cacau', '#4B3621'), 'cafeara': ('Café Arábica', '#6F4E37'),
-    'cafecan': ('Café Canephora', '#8B4513'), 'cafetot': ('Café Total', '#A0522D'), 'cana': ('Cana-de-açúcar', '#3A913F'),
-    'caqui': ('Caqui', '#FFA07A'), 'castcaj': ('Castanha de caju', '#FFD700'), 'cebola': ('Cebola', '#9F4576'),
-    'centeio': ('Centeio', '#D2B48C'), 'cevada': ('Cevada', '#F0E68C'), 'chaind': ('Chá-da-índia', '#D8BFD8'),
-    'cocobai': ('Coco-da-baía', '#F5DEB3'), 'dende': ('Dendê', '#6B8E23'), 'ervamat': ('Erva-mate', '#556B2F'),
-    'ervilha': ('Ervilha', '#90EE90'), 'fava': ('Fava', '#8FBC8F'), 'feijao': ('Feijão', '#8B4513'), 'figo': ('Figo', '#9400D3'),
-    'fumo': ('Fumo', '#708090'), 'girass': ('Girassol', '#FFD700'), 'goiaba': ('Goiaba', '#FF6347'), 'guarana': ('Guaraná', '#8B0000'),
-    'juta': ('Juta', '#F5DEB3'), 'laranja': ('Laranja', '#FFA500'), 'limao': ('Limão', '#F5F5DC'), 'linho': ('Linho', '#FAF0E6'),
-    'mamona': ('Mamona', '#8B008B'), 'mamao': ('Mamão', '#FF6347'), 'mandioc': ('Mandioca', '#F5DEB3'), 'manga': ('Manga', '#FF8243'),
-    'maracuj': ('Maracujá', '#9370DB'), 'marmelo': ('Marmelo', '#DAA520'), 'maca': ('Maçã', '#FF0800'), 'melanci': ('Melancia', '#FC6C85'),
-    'melao': ('Melão', '#FDBE02'), 'milho': ('Milho', '#F2D024'), 'noz': ('Noz', '#800000'), 'palmito': ('Palmito', '#6B8E23'),
-    'pera': ('Pera', '#D1E231'), 'pimrein': ('Pimenta-do-reino', '#A0522D'), 'pessego': ('Pêssego', '#FFDAB9'),
-    'rami': ('Rami', '#6B8E23'), 'sisal': ('Sisal', '#F5F5DC'), 'soja': ('Soja', '#D4A017'), 'sorgo': ('Sorgo', '#D2B48C'),
-    'tangeri': ('Tangerina', '#F28500'), 'tomate': ('Tomate', '#FF6347'), 'trigo': ('Trigo', '#F5DEB3'), 
-    'tritica': ('Triticale', '#D8BFD8'), 'tungue': ('Tungue', '#8B4513'), 'urucum': ('Urucum', '#B22222'), 'uva': ('Uva', '#6F2DA8'),
-    'bovino': ('Bovino', '#8B4513'), 'bubalin': ('Bubalino', '#A0522D'), 'caprino': ('Caprino', '#D2B48C'), 
-    'codorna': ('Codornas', '#F5DEB3'), 'equino': ('Equino', '#A0522D'), 'galin': ('Galináceos', '#FFD700'),
-    'ovino': ('Ovino', '#F0E68C'), 'suino': ('Suíno', '#FFC0CB'), 'bichsed': ('Casulos do bicho-da-seda', '#F5F5DC'),
-    'leite': ('Leite', '#F8F8FF'), 'la': ('Lã', '#FFFFFF'), 'mel': ('Mel', '#DAA520'), 'ovocod': ('Ovos de codorna', '#F5DEB3'),
-    'ovogal': ('Ovos de galinha', '#FFD700'), 'alevino': ('Alevinos', '#87CEEB'), 'camarao': ('Camarão', '#E2725B'),
-    'carpa': ('Carpa', '#FFA500'), 'curimat': ('Curimatã', '#4682B4'), 'dourado': ('Dourado', '#FFD700'),
-    'jatuara': ('Jatuarana', '#1E90FF'), 'lambari': ('Lambari', '#00BFFF'), 'camlarv': ('Larvas de camarão', '#FF6347'),
-    'matrinx': ('Matrinxã', '#4169E1'), 'mexilh': ('Mexilhões', '#778899'), 'outpeix': ('Outros peixes', '#87CEEB'),
-    'pacu': ('Pacu', '#00BFFF'), 'piau': ('Piau', '#1E90FF'), 'pintado': ('Pintado', '#483D8B'), 'pirapi': ('Pirapitinga', '#4682B4'),
-    'piraruc': ('Pirarucu', '#1E90FF'), 'semmol': ('Sementes de moluscos', '#F5DEB3'), 'tambacu': ('Tambacu', '#6495ED'),
-    'tambaqu': ('Tambaqui', '#4169E1'), 'tilapia': ('Tilápia', '#4682B4'), 'traira': ('Traíra', '#2F4F4F'), 'truta': ('Truta', '#ADD8E6'),
-    'tucuna': ('Tucunaré', '#000080'), 'eucalip': ('Eucalipto', '#228B22'), 'outesp': ('Outras espécies', '#D3D3D3'),
-    'pinus': ('Pinus', '#01796F'), 'carveg': ('Carvão vegetal', '#36454F'), 'lenha': ('Lenha', '#8B4513'),
-    'cenoura': ('Cenoura', '#ED9121'), 'morango': ('Morango', '#D53032'), 'madtor': ('Madeira em tora', '#8B4513'), 'outprod': ('Outros produtos', '#A9A9A9')
+    #PAM (Produção Agrícola Municipal)
+    'abacate': ('Abacate', '#568203'),
+    'abacaxi': ('Abacaxi', '#FEE347'),
+    'algodaa': ('Algodão arbóreo', '#D3D3D3'),
+    'algodah': ('Algodão herbáceo', '#E6E6E6'),
+    'alho': ('Alho', '#B19CD9'),
+    'amendoi': ('Amendoim', '#D2B48C'),
+    'arroz': ('Arroz', '#FFF8DC'),
+    'aveia': ('Aveia', '#D0C487'),
+    'azeiton': ('Azeitona', '#808000'),
+    'acai': ('Açaí', '#4B0082'),
+    'banana': ('Banana', '#FFE135'),
+    'batatad': ('Batata-doce', '#D2691E'),
+    'batatai': ('Batata-inglesa', '#EED9C4'),
+    'borrach': ('Borracha', '#696969'),
+    'cacau': ('Cacau', '#4B3621'),
+    'cafeara': ('Café Arábica', '#6F4E37'),
+    'cafecan': ('Café Canephora', '#8B4513'),
+    'cafetot': ('Café Total', '#A0522D'),
+    'cana': ('Cana-de-açúcar', '#3A913F'),
+    'caqui': ('Caqui', '#FFA07A'),
+    'castcaj': ('Castanha de caju', '#FFD700'),
+    'cebola': ('Cebola', '#9F4576'),
+    'cenoura': ('Cenoura', '#ED9121'),
+    'centeio': ('Centeio', '#D2B48C'),
+    'cevada': ('Cevada', '#F0E68C'),
+    'chaind': ('Chá-da-índia', '#D8BFD8'),
+    'cocobai': ('Coco-da-baía', '#F5DEB3'),
+    'dende': ('Dendê', '#6B8E23'),
+    'ervamat': ('Erva-mate', '#556B2F'),
+    'ervilha': ('Ervilha', '#90EE90'),
+    'fava': ('Fava', '#8FBC8F'),
+    'feijao': ('Feijão', '#8B4513'),
+    'figo': ('Figo', '#9400D3'),
+    'fumo': ('Fumo', '#708090'),
+    'girass': ('Girassol', '#FFD700'),
+    'goiaba': ('Goiaba', '#FF6347'),
+    'guarana': ('Guaraná', '#8B0000'),
+    'juta': ('Juta', '#F5DEB3'),
+    'laranja': ('Laranja', '#FFA500'),
+    'limao': ('Limão', '#F5F5DC'),
+    'linho': ('Linho', '#FAF0E6'),
+    'mamona': ('Mamona', '#8B008B'),
+    'mamao': ('Mamão', '#FF6347'),
+    'mandioc': ('Mandioca', '#F5DEB3'),
+    'manga': ('Manga', '#FF8243'),
+    'maracuj': ('Maracujá', '#9370DB'),
+    'marmelo': ('Marmelo', '#DAA520'),
+    'maca': ('Maçã', '#FF0800'),
+    'melanci': ('Melancia', '#FC6C85'),
+    'melao': ('Melão', '#FDBE02'),
+    'milho': ('Milho', '#F2D024'),
+    'morango': ('Morango', '#D53032'),
+    'noz': ('Noz', '#800000'),
+    'palmito': ('Palmito', '#6B8E23'),
+    'pera': ('Pera', '#D1E231'),
+    'pimrein': ('Pimenta-do-reino', '#A0522D'),
+    'pessego': ('Pêssego', '#FFDAB9'),
+    'rami': ('Rami', '#6B8E23'),
+    'sisal': ('Sisal', '#F5F5DC'),
+    'soja': ('Soja', '#D4A017'),
+    'sorgo': ('Sorgo', '#D2B48C'),
+    'tangeri': ('Tangerina', '#F28500'),
+    'tomate': ('Tomate', '#FF6347'),
+    'trigo': ('Trigo', '#F5DEB3'),
+    'tritica': ('Triticale', '#D8BFD8'),
+    'tungue': ('Tungue', '#8B4513'),
+    'urucum': ('Urucum', '#B22222'),
+    'uva': ('Uva', '#6F2DA8'),
+    #PPM (Pecuária Municipal)
+    'bovino': ('Bovino', '#8B4513'),
+    'bubalin': ('Bubalino', '#A0522D'),
+    'caprino': ('Caprino', '#CD853F'),
+    'codorna': ('Codornas', '#F5DEB3'),
+    'equino': ('Equino', '#D2691E'),
+    'galin': ('Galináceos', '#FFD700'),
+    'ovino': ('Ovino', '#F0E68C'),
+    'suino': ('Suíno', '#FFC0CB'),
+    'bichsed': ('Casulos do bicho-da-seda', '#F5F5DC'),
+    'leite': ('Leite', '#ADD8E6'),
+    'la': ('Lã', '#E6E6FA'),
+    'mel': ('Mel', '#DAA520'),
+    'ovocod': ('Ovos de codorna', '#F5DEB3'),
+    'ovogal': ('Ovos de galinha', '#FFD700'),
+    'alevino': ('Alevinos', '#87CEEB'),
+    'camarao': ('Camarão', '#E2725B'),
+    'carpa': ('Carpa', '#FFA500'),
+    'curimat': ('Curimatã', '#4682B4'),
+    'dourado': ('Dourado', '#FFD700'),
+    'jatuara': ('Jatuarana', '#1E90FF'),
+    'lambari': ('Lambari', '#00BFFF'),
+    'camlarv': ('Larvas de camarão', '#FF6347'),
+    'matrinx': ('Matrinxã', '#4169E1'),
+    'mexilh': ('Mexilhões', '#778899'),
+    'outpeix': ('Outros peixes', '#87CEEB'),
+    'pacu': ('Pacu', '#00BFFF'),
+    'piau': ('Piau', '#1E90FF'),
+    'pintado': ('Pintado', '#483D8B'),
+    'pirapi': ('Pirapitinga', '#4682B4'),
+    'piraruc': ('Pirarucu', '#1E90FF'),
+    'semmol': ('Sementes de moluscos', '#F5DEB3'),
+    'tambacu': ('Tambacu', '#6495ED'),
+    'tambaqu': ('Tambaqui', '#4169E1'),
+    'tilapia': ('Tilápia', '#4682B4'),
+    'traira': ('Traíra', '#2F4F4F'),
+    'truta': ('Truta', '#ADD8E6'),
+    'tucuna': ('Tucunaré', '#000080'),
+    #PEVS (Produção da Extração Vegetal e Silvicultura)
+    'eucalip': ('Eucalipto', '#228B22'),
+    'outesp': ('Outras espécies', '#D3D3D3'),
+    'pinus': ('Pinus', '#2E8B57'),
+    'carveg': ('Carvão vegetal', '#36454F'),
+    'lenha': ('Lenha', '#A0522D'),
+    'madtor': ('Madeira em tora', '#8B0000'),
+    'outprod': ('Outros produtos', '#A9A9A9')
 }
 
 # 3. URLs das tabelas (convertidas para links diretos do Google Drive)
@@ -712,91 +794,130 @@ def processar_tabelas_agro(geocodigos):
     
     return resultados
 
-def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado):
-    """Cria um único gráfico com a evolução de todos os produtos para um município."""
+def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado, tabela_origem):
+    """Cria um gráfico com a evolução dos produtos para um município, com formatação específica por tabela."""
     try:
         if len(df_municipio) == 0:
             return None
             
-        anos_colunas = [col for col in df_municipio.columns if col.startswith('20')]
-        if not anos_colunas:
-            return None
-            
-        anos_colunas = sorted(anos_colunas, key=lambda x: int(x[-2:]))
-        anos_int = [int(ano[-2:]) for ano in anos_colunas]
+        # Determinar unidade do eixo Y baseado na tabela de origem
+        unidades = {
+            'PAM_Quantidade_produzida_14-23': 'Toneladas',
+            'PAM_Valor_da_producao_14-23': 'Mil Reais',
+            'PPM_Efetivo_dos_rebanhos_14-23': 'Cabeças',
+            'PPM_Prod_origem_animal_14-23': {
+                'leite': 'Mil Litros',
+                'ovogal': 'Mil Dúzias',
+                'ovocod': 'Mil Dúzias',
+                'mel': 'Quilogramas',
+                'bichsed': 'Quilogramas',
+                'default': 'Unidade'
+            },
+            'PPM_Valor_da_producao_prod_anim': 'Mil Reais',
+            'PPM_Producao_aquicultura_14-23': 'Quilogramas',
+            'PPM_Valor_producao_aquicultura_': 'Mil Reais',
+            'PEVS_Area_silv_14-23': 'Hectares',
+            'PEVS_Qnt_prod_silv_14-23': {
+                'carveg': 'Toneladas',
+                'outprod': 'Toneladas',
+                'lenha': 'Metros Cúbicos',
+                'madtor': 'Metros Cúbicos',
+                'default': 'Unidade'
+            },
+            'PEVS_Valor_prod_silv_14-23': 'Mil Reais'
+        }
         
-        fig, ax = plt.subplots(figsize=(12, 8))
-        plt.style.use('seaborn-v0_8')
-
-        for _, row in df_municipio.iterrows():
-            # Extrai o nome do produto corretamente (pode ser string ou tupla)
+        # Obter unidade correta
+        unidade = unidades.get(tabela_origem, 'Unidade')
+        if isinstance(unidade, dict):
+            # Lógica para tabelas com múltiplas unidades
+            unidade_texto = []
+            for produto in df_municipio['Produto']:
+                produto_key = produto.lower().replace(' ', '').replace('-', '').replace('_', '')
+                unidade_produto = unidade.get(produto_key, unidade['default'])
+                unidade_texto.append(unidade_produto)
+            
+            # Se todos os produtos têm a mesma unidade, usamos essa
+            if len(set(unidade_texto)) == 1:
+                unidade = unidade_texto[0]
+            else:
+                unidade = "Várias Unidades"
+        else:
+            unidade_texto = unidade
+        
+        # Configuração do gráfico
+        plt.style.use('default')  # Fundo branco
+        fig, ax = plt.subplots(figsize=(14, 8))
+        
+        # Paleta de cores baseada no dicionário de produtos
+        for idx, (_, row) in enumerate(df_municipio.iterrows()):
             produto_info = row['Produto']
             produto_nome = produto_info[0] if isinstance(produto_info, tuple) else produto_info
+            produto_key = produto_nome.lower().replace(' ', '').replace('-', '').replace('_', '')
             
+            # Obter cor do dicionário ou usar padrão
+            cor = DICIONARIO_PRODUTOS.get(produto_key, ('', '#A9A9A9'))[1]
+            
+            # Extrair valores e anos
+            anos_colunas = [col for col in row.index if col.startswith('20')]
+            anos_colunas = sorted(anos_colunas, key=lambda x: int(x[-2:]))
+            anos_int = [int(ano[-2:]) for ano in anos_colunas]
             valores = [row[ano] for ano in anos_colunas]
             
             if all(pd.isna(valores)):
                 continue
                 
-            # Obter cor do DICIONARIO_PRODUTOS corretamente
-            cor = '#A9A9A9'  # Cor padrão
-            for cod, (nome, cor_hex) in DICIONARIO_PRODUTOS.items():
-                if nome == produto_nome:
-                    cor = cor_hex
-                    break
-                elif cod == produto_nome.lower().replace(' ', '').replace('-', '').replace('_', ''):
-                    cor = cor_hex
-                    break
-            
+            # Converter para arrays numpy
             valores_arr = np.array(valores)
             anos_arr = np.array(anos_int)
             mask = ~pd.isna(valores_arr)
             
-            line_style = '-' if all(mask) else '--'
-            
+            # Plotar linha
             ax.plot(anos_arr[mask], valores_arr[mask], 
-                   marker='o', linestyle=line_style, 
+                   marker='o', 
+                   linestyle='-',
                    color=cor,
-                   label=produto_nome,  # Usar apenas o nome
-                   linewidth=2)
-            
-            if not all(mask):
-                segments = np.where(np.diff(mask))[0] + 1
-                segments = np.concatenate([[0], segments, [len(mask)]])
-                
-                for j in range(len(segments)-1):
-                    start, end = segments[j], segments[j+1]
-                    if mask[start:end].any():
-                        ax.plot(anos_arr[start:end], valores_arr[start:end],
-                               marker='o', linestyle=line_style,
-                               color=cor,
-                               linewidth=2)
+                   label=produto_nome,
+                   linewidth=2.5,
+                   markersize=8,
+                   markeredgecolor='white',
+                   markeredgewidth=1)
         
-        if len(ax.lines) > 0:
-            ax.set_title(f'Evolução {tipo_dado} - {municipio}', fontsize=14, pad=20)
-            ax.set_xlabel('Ano', fontsize=12)
-            ax.set_ylabel(tipo_dado, fontsize=12)
-            ax.set_xticks(anos_int)
-            ax.grid(True, linestyle=':', alpha=0.6)
-            ax.tick_params(axis='both', which='major', labelsize=10)
-            
-            handles, labels = ax.get_legend_handles_labels()
-            by_label = dict(zip(labels, handles))
-            ax.legend(by_label.values(), by_label.keys(),
-                     bbox_to_anchor=(1.05, 1), loc='upper left', 
-                     fontsize=8, framealpha=0.9)
-            
-            plt.tight_layout()
-            
-            buf = io.BytesIO()
-            plt.savefig(buf, format='png', dpi=120, bbox_inches='tight')
-            buf.seek(0)
-            img = Image.open(buf)
-            plt.close()
-            return img
-            
+        # Configurações do gráfico
+        titulo = f"Evolução {tipo_dado} - {municipio}"
+        ax.set_title(titulo, fontsize=16, pad=20, fontweight='bold')
+        
+        ax.set_xlabel('Ano', fontsize=12)
+        ax.set_ylabel(f"{tipo_dado} ({unidade})", fontsize=12)
+        
+        # Ajustar eixo X
+        ax.set_xticks(anos_int)
+        ax.set_xticklabels([f"20{ano}" for ano in anos_int], rotation=45 if len(anos_int) > 5 else 0)
+        
+        # Grid e fundo branco
+        ax.grid(True, linestyle=':', alpha=0.6)
+        ax.set_facecolor('white')
+        fig.patch.set_facecolor('white')
+        
+        # Legenda
+        handles, labels = ax.get_legend_handles_labels()
+        ncol = 1 if len(labels) < 10 else 2
+        ax.legend(handles, labels,
+                 bbox_to_anchor=(1.05, 1), 
+                 loc='upper left',
+                 fontsize=10,
+                 framealpha=0.9,
+                 ncol=ncol)
+        
+        plt.tight_layout()
+        
+        # Salvar para buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', facecolor=fig.get_facecolor())
+        buf.seek(0)
+        img = Image.open(buf)
         plt.close()
-        return None
+        return img
             
     except Exception as e:
         print(f"Erro ao criar gráfico para {municipio}: {str(e)}")

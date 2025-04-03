@@ -795,129 +795,163 @@ def processar_tabelas_agro(geocodigos):
     return resultados
 
 def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado, tabela_origem):
-    """Cria um gráfico com a evolução dos produtos para um município, com formatação específica por tabela."""
+    """Cria gráficos com a evolução dos produtos para um município, com formatação específica."""
     try:
         if len(df_municipio) == 0:
             return None
-            
-        # Determinar unidade do eixo Y baseado na tabela de origem
-        unidades = {
-            'PAM_Quantidade_produzida_14-23': 'Toneladas',
-            'PAM_Valor_da_producao_14-23': 'Mil Reais',
-            'PPM_Efetivo_dos_rebanhos_14-23': 'Cabeças',
-            'PPM_Prod_origem_animal_14-23': {
-                'leite': 'Mil Litros',
-                'ovogal': 'Mil Dúzias',
-                'ovocod': 'Mil Dúzias',
-                'mel': 'Quilogramas',
-                'bichsed': 'Quilogramas',
-                'default': 'Unidade'
-            },
-            'PPM_Valor_da_producao_prod_anim': 'Mil Reais',
-            'PPM_Producao_aquicultura_14-23': 'Quilogramas',
-            'PPM_Valor_producao_aquicultura_': 'Mil Reais',
-            'PEVS_Area_silv_14-23': 'Hectares',
-            'PEVS_Qnt_prod_silv_14-23': {
-                'carveg': 'Toneladas',
-                'outprod': 'Toneladas',
-                'lenha': 'Metros Cúbicos',
-                'madtor': 'Metros Cúbicos',
-                'default': 'Unidade'
-            },
-            'PEVS_Valor_prod_silv_14-23': 'Mil Reais'
+
+        # Dicionário de títulos personalizados
+        titulos_por_tabela = {
+            'PAM_Quantidade_produzida_14-23': 'PAM - Evolução da Quantidade Produzida',
+            'PAM_Valor_da_producao_14-23': 'PAM - Evolução do Valor da Produção',
+            'PPM_Efetivo_dos_rebanhos_14-23': 'PPM - Evolução do Efetivo dos Rebanhos',
+            'PPM_Prod_origem_animal_14-23': 'Evolução da Quantidade de Produtos de Origem Animal',
+            'PPM_Valor_da_producao_prod_anim': 'Evolução do Valor/Receita dos Produtos de Origem Animal',
+            'PPM_Producao_aquicultura_14-23': 'Evolução da Quantidade Produzida na Aquicultura',
+            'PPM_Valor_producao_aquicultura_': 'Evolução do Valor/Receita da Produção na Aquicultura',
+            'PEVS_Area_silv_14-23': 'Evolução da Área de Silvicultura',
+            'PEVS_Qnt_prod_silv_14-23': 'Evolução da Quantidade Produzida na Silvicultura',
+            'PEVS_Valor_prod_silv_14-23': 'Evolução do Valor da Produção na Silvicultura'
         }
-        
-        # Obter unidade correta
-        unidade = unidades.get(tabela_origem, 'Unidade')
-        if isinstance(unidade, dict):
-            # Lógica para tabelas com múltiplas unidades
-            unidade_texto = []
-            for produto in df_municipio['Produto']:
-                produto_key = produto[0].lower().replace(' ', '').replace('-', '').replace('_', '') if isinstance(produto, tuple) else produto.lower().replace(' ', '').replace('-', '').replace('_', '')
-                unidade_produto = unidade.get(produto_key, unidade['default'])
-                unidade_texto.append(unidade_produto)
+
+        # Dicionário de unidades e ajustes de escala
+        unidades_config = {
+            'PAM_Quantidade_produzida_14-23': {'unidade': 'Mil Toneladas', 'divisor': 1000},
+            'PAM_Valor_da_producao_14-23': {'unidade': 'Mil Reais', 'divisor': 1},
+            'PPM_Efetivo_dos_rebanhos_14-23': {'unidade': 'Cabeças', 'divisor': 1},
+            'PPM_Prod_origem_animal_14-23': {
+                'unidades_especificas': {
+                    'leite': {'unidade': 'Mil Litros', 'divisor': 1},
+                    'ovogal': {'unidade': 'Mil Dúzias', 'divisor': 1},
+                    'ovocod': {'unidade': 'Mil Dúzias', 'divisor': 1},
+                    'mel': {'unidade': 'Quilogramas', 'divisor': 1},
+                    'bichsed': {'unidade': 'Quilogramas', 'divisor': 1}
+                },
+                'default': {'unidade': 'Unidade', 'divisor': 1}
+            },
+            'PPM_Valor_da_producao_prod_anim': {'unidade': 'Mil Reais', 'divisor': 1},
+            'PPM_Producao_aquicultura_14-23': {'unidade': 'Quilogramas', 'divisor': 1},
+            'PPM_Valor_producao_aquicultura_': {'unidade': 'Mil Reais', 'divisor': 1},
+            'PEVS_Area_silv_14-23': {'unidade': 'Hectares', 'divisor': 1, 'ylabel': 'Área'},
+            'PEVS_Qnt_prod_silv_14-23': {
+                'unidades_especificas': {
+                    'carveg': {'unidade': 'Toneladas', 'divisor': 1},
+                    'outprod': {'unidade': 'Toneladas', 'divisor': 1},
+                    'lenha': {'unidade': 'Metros Cúbicos', 'divisor': 1},
+                    'madtor': {'unidade': 'Metros Cúbicos', 'divisor': 1}
+                },
+                'default': {'unidade': 'Unidade', 'divisor': 1}
+            },
+            'PEVS_Valor_prod_silv_14-23': {'unidade': 'Mil Reais', 'divisor': 1}
+        }
+
+        # Obter configurações da tabela
+        config = unidades_config.get(tabela_origem, {'unidade': 'Unidade', 'divisor': 1})
+        titulo_base = titulos_por_tabela.get(tabela_origem, f"Evolução {tipo_dado}")
+
+        # Função para agrupar produtos por unidade
+        def agrupar_por_unidade(df):
+            grupos = {}
+            if 'unidades_especificas' in config:
+                for _, row in df.iterrows():
+                    produto_info = row['Produto']
+                    produto_nome = produto_info[0] if isinstance(produto_info, tuple) else produto_info
+                    produto_key = produto_nome.lower().replace(' ', '').replace('-', '').replace('_', '')
+                    
+                    # Encontrar a unidade correspondente
+                    unidade_config = next(
+                        (v for k, v in config['unidades_especificas'].items() if produto_key.startswith(k)),
+                        config['default']
+                    )
+                    
+                    if unidade_config['unidade'] not in grupos:
+                        grupos[unidade_config['unidade']] = {
+                            'dados': [],
+                            'divisor': unidade_config['divisor']
+                        }
+                    grupos[unidade_config['unidade']]['dados'].append(row)
             
-            # Se todos os produtos têm a mesma unidade, usamos essa
-            if len(set(unidade_texto)) == 1:
-                unidade = unidade_texto[0]
-            else:
-                unidade = "Várias Unidades"
-        else:
-            unidade_texto = unidade
-        
-        # Configuração do gráfico
-        plt.style.use('default')  # Fundo branco
-        fig, ax = plt.subplots(figsize=(14, 8))
-        
-        # Paleta de cores baseada no dicionário de produtos
-        for idx, (_, row) in enumerate(df_municipio.iterrows()):
-            produto_info = row['Produto']
+            return grupos if grupos else {'Único': {'dados': df.to_dict('records'), 'divisor': config.get('divisor', 1)}}
+
+        # Agrupar os dados por unidade de medida (quando aplicável)
+        grupos = agrupar_por_unidade(df_municipio)
+
+        # Criar uma figura com subplots
+        n_grupos = len(grupos)
+        fig, axs = plt.subplots(n_grupos, 1, figsize=(14, 6 * n_grupos))
+        if n_grupos == 1:
+            axs = [axs]  # Garantir que axs seja sempre uma lista
+
+        # Plotar cada grupo em um subplot
+        for i, (unidade, grupo) in enumerate(grupos.items()):
+            ax = axs[i]
+            dados_grupo = grupo['dados']
+            divisor = grupo['divisor']
             
-            # Extrair nome do produto e chave para o dicionário
-            if isinstance(produto_info, tuple):
-                # Se for tupla (nome, cor)
-                produto_nome = produto_info[0]
-                produto_key = produto_nome.lower().replace(' ', '').replace('-', '').replace('_', '')
-                cor = produto_info[1]  # Já temos a cor na tupla
-            else:
-                # Se for string (nome apenas)
-                produto_nome = produto_info
-                produto_key = produto_nome.lower().replace(' ', '').replace('-', '').replace('_', '')
-                # Obter cor do dicionário
-                cor_info = DICIONARIO_PRODUTOS.get(produto_key, ('', '#A9A9A9'))
-                cor = cor_info[1] if isinstance(cor_info, tuple) else '#A9A9A9'
-            
-            # Extrair valores e anos
-            anos_colunas = [col for col in row.index if col.startswith('20')]
-            anos_colunas = sorted(anos_colunas, key=lambda x: int(x[-2:]))
-            anos_int = [int(ano[-2:]) for ano in anos_colunas]
-            valores = [row[ano] for ano in anos_colunas]
-            
-            if all(pd.isna(valores)):
-                continue
+            for row in dados_grupo:
+                produto_info = row['Produto']
                 
-            # Converter para arrays numpy
-            valores_arr = np.array(valores)
-            anos_arr = np.array(anos_int)
-            mask = ~pd.isna(valores_arr)
+                # Extrair nome do produto e cor
+                if isinstance(produto_info, tuple):
+                    produto_nome = produto_info[0]
+                    cor = produto_info[1]
+                else:
+                    produto_nome = produto_info
+                    produto_key = produto_nome.lower().replace(' ', '').replace('-', '').replace('_', '')
+                    cor_info = DICIONARIO_PRODUTOS.get(produto_key, ('', '#A9A9A9'))
+                    cor = cor_info[1] if isinstance(cor_info, tuple) else '#A9A9A9'
+                
+                # Extrair valores e anos
+                anos_colunas = [col for col in row.keys() if isinstance(col, str) and col.startswith('20')]
+                anos_colunas = sorted(anos_colunas, key=lambda x: int(x[-2:]))
+                anos_int = [int(ano[-2:]) for ano in anos_colunas]
+                valores = [row[ano]/divisor if pd.notna(row[ano]) else None for ano in anos_colunas]
+                
+                if all(pd.isna(valores)):
+                    continue
+                
+                # Converter para arrays numpy
+                valores_arr = np.array(valores)
+                anos_arr = np.array(anos_int)
+                mask = ~pd.isna(valores_arr)
+                
+                # Plotar linha
+                ax.plot(anos_arr[mask], valores_arr[mask], 
+                       marker='o', 
+                       linestyle='-',
+                       color=cor,
+                       label=produto_nome,
+                       linewidth=2.5,
+                       markersize=8,
+                       markeredgecolor='white',
+                       markeredgewidth=1)
             
-            # Plotar linha
-            ax.plot(anos_arr[mask], valores_arr[mask], 
-                   marker='o', 
-                   linestyle='-',
-                   color=cor,
-                   label=produto_nome,
-                   linewidth=2.5,
-                   markersize=8,
-                   markeredgecolor='white',
-                   markeredgewidth=1)
+            # Configurações do gráfico
+            titulo_grupo = f"{titulo_base} - {municipio}" if i == 0 else ""
+            ax.set_title(titulo_grupo, fontsize=16, pad=20, fontweight='bold')
+            
+            # Label do eixo Y personalizado para PEVS_Area_silv_14-23
+            ylabel = config.get('ylabel', tipo_dado) if i == 0 and 'ylabel' in config else tipo_dato
+            ax.set_ylabel(f"{ylabel} ({unidade})", fontsize=12)
+            
+            ax.set_xlabel('Ano', fontsize=12)
+            ax.set_xticks(anos_int)
+            ax.set_xticklabels([f"20{ano}" for ano in anos_int], rotation=45 if len(anos_int) > 5 else 0)
+            
+            # Grid e fundo branco
+            ax.grid(True, linestyle=':', alpha=0.6)
+            ax.set_facecolor('white')
+            
+            # Legenda na parte inferior
+            handles, labels = ax.get_legend_handles_labels()
+            ax.legend(handles, labels,
+                     loc='upper center',
+                     bbox_to_anchor=(0.5, -0.2),
+                     fontsize=10,
+                     framealpha=0.9,
+                     ncol=2)
         
-        # Configurações do gráfico
-        titulo = f"Evolução {tipo_dado} - {municipio}"
-        ax.set_title(titulo, fontsize=16, pad=20, fontweight='bold')
-        
-        ax.set_xlabel('Ano', fontsize=12)
-        ax.set_ylabel(f"{tipo_dado} ({unidade})", fontsize=12)
-        
-        # Ajustar eixo X
-        ax.set_xticks(anos_int)
-        ax.set_xticklabels([f"20{ano}" for ano in anos_int], rotation=45 if len(anos_int) > 5 else 0)
-        
-        # Grid e fundo branco
-        ax.grid(True, linestyle=':', alpha=0.6)
-        ax.set_facecolor('white')
         fig.patch.set_facecolor('white')
-        
-        # Legenda
-        handles, labels = ax.get_legend_handles_labels()
-        ncol = 1 if len(labels) < 10 else 2
-        ax.legend(handles, labels,
-                 bbox_to_anchor=(1.05, 1), 
-                 loc='upper left',
-                 fontsize=10,
-                 framealpha=0.9,
-                 ncol=ncol)
-        
         plt.tight_layout()
         
         # Salvar para buffer

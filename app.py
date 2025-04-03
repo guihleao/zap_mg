@@ -948,6 +948,7 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                 ws = workbook.create_sheet(title=sheet_name)
                 current_row = 1
                 
+                # Determinar o tipo de dado para o título do gráfico
                 tipo_dado = "Quantidade Produzida" if "Quantidade" in nome_tabela else \
                            "Valor da Produção" if "Valor" in nome_tabela else \
                            "Efetivo" if "Efetivo" in nome_tabela else "Dados"
@@ -961,7 +962,6 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                         ws.merge_cells(start_row=current_row, start_column=1, 
                                       end_row=current_row, end_column=len(df_display.columns))
                         cell = ws.cell(row=current_row, column=1)
-                        # Corrigindo o warning de depreciação:
                         from copy import copy
                         font = copy(cell.font)
                         font.bold = True
@@ -987,7 +987,8 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                         ws.append(['']*len(df_display.columns))
                         current_row += 1
                         
-                        img = criar_grafico_unico_municipio(df, municipio, tipo_dado)
+                        # CORREÇÃO AQUI: Passando o nome_tabela como tabela_origem
+                        img = criar_grafico_unico_municipio(df, municipio, tipo_dado, nome_tabela)
                         if img:
                             graficos_por_municipio[(nome_tabela, municipio)] = img
         
@@ -1074,6 +1075,7 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
             print(f"Erro detalhado: {traceback.format_exc()}")
         
         return output
+        
     except Exception as e:
         st.error(f"Erro ao gerar Excel: {e}")
         print(f"Erro detalhado: {traceback.format_exc()}")

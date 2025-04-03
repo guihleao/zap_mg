@@ -360,39 +360,39 @@ oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL, REF
 
 # 2. Dicionário de produtos (completo)
 DICIONARIO_PRODUTOS = {
-    'abacate': 'Abacate', 'abacaxi': 'Abacaxi', 'algodaa': 'Algodão arbóreo', 
-    'algodah': 'Algodão herbáceo', 'alho': 'Alho', 'amendoi': 'Amendoim', 
-    'arroz': 'Arroz', 'aveia': 'Aveia', 'azeiton': 'Azeitona', 'acai': 'Açaí',
-    'banana': 'Banana', 'batatad': 'Batata-doce', 'batatai': 'Batata-inglesa',
-    'borrach': 'Borracha', 'cacau': 'Cacau', 'cafeara': 'Café Arábica',
-    'cafecan': 'Café Canephora', 'cafetot': 'Café Total', 'cana': 'Cana-de-açúcar',
-    'caqui': 'Caqui', 'castcaj': 'Castanha de caju', 'cebola': 'Cebola',
-    'centeio': 'Centeio', 'cevada': 'Cevada', 'chaind': 'Chá-da-índia',
-    'cocobai': 'Coco-da-baía', 'dende': 'Dendê', 'ervamat': 'Erva-mate',
-    'ervilha': 'Ervilha', 'fava': 'Fava', 'feijao': 'Feijão', 'figo': 'Figo',
-    'fumo': 'Fumo', 'girass': 'Girassol', 'goiaba': 'Goiaba', 'guarana': 'Guaraná',
-    'juta': 'Juta', 'laranja': 'Laranja', 'limao': 'Limão', 'linho': 'Linho',
-    'mamona': 'Mamona', 'mamao': 'Mamão', 'mandioc': 'Mandioca', 'manga': 'Manga',
-    'maracuj': 'Maracujá', 'marmelo': 'Marmelo', 'maca': 'Maçã', 'melanci': 'Melancia',
-    'melao': 'Melão', 'milho': 'Milho', 'noz': 'Noz', 'palmito': 'Palmito',
-    'pera': 'Pera', 'pimrein': 'Pimenta-do-reino', 'pessego': 'Pêssego',
-    'rami': 'Rami', 'sisal': 'Sisal', 'soja': 'Soja', 'sorgo': 'Sorgo',
-    'tangeri': 'Tangerina', 'tomate': 'Tomate', 'trigo': 'Trigo', 
-    'tritica': 'Triticale', 'tungue': 'Tungue', 'urucum': 'Urucum', 'uva': 'Uva',
-    'bovino': 'Bovino', 'bubalin': 'Bubalino', 'caprino': 'Caprino', 
-    'codorna': 'Codornas', 'equino': 'Equino', 'galin': 'Galináceos',
-    'ovino': 'Ovino', 'suino': 'Suíno', 'bichsed': 'Casulos do bicho-da-seda',
-    'leite': 'Leite', 'la': 'Lã', 'mel': 'Mel', 'ovocod': 'Ovos de codorna',
-    'ovogal': 'Ovos de galinha', 'alevino': 'Alevinos', 'camarao': 'Camarão',
-    'carpa': 'Carpa', 'curimat': 'Curimatã', 'dourado': 'Dourado',
-    'jatuara': 'Jatuarana', 'lambari': 'Lambari', 'camlarv': 'Larvas de camarão',
-    'matrinx': 'Matrinxã', 'mexilh': 'Mexilhões', 'outpeix': 'Outros peixes',
-    'pacu': 'Pacu', 'piau': 'Piau', 'pintado': 'Pintado', 'pirapi': 'Pirapitinga',
-    'piraruc': 'Pirarucu', 'semmol': 'Sementes de moluscos', 'tambacu': 'Tambacu',
-    'tambaqu': 'Tambaqui', 'tilapia': 'Tilápia', 'traira': 'Traíra', 'truta': 'Truta',
-    'tucuna': 'Tucunaré', 'eucalip': 'Eucalipto', 'outesp': 'Outras espécies',
-    'pinus': 'Pinus', 'carveg': 'Carvão vegetal', 'lenha': 'Lenha',
-    'cenoura': 'Cenoura', 'morango': 'Morango', 'madtor': 'Madeira em tora', 'outprod': 'Outros produtos'
+    'abacate': ('Abacate', '#568203'), 'abacaxi': ('Abacaxi', '#FEE347'), 'algodaa': ('Algodão arbóreo', '#F5F5F5'),
+    'algodah': ('Algodão herbáceo', '#FFFFFF'), 'alho': ('Alho', '#F8F8FF'), 'amendoi': ('Amendoim', '#D2B48C'),
+    'arroz': ('Arroz', '#FFF8DC'), 'aveia': ('Aveia', '#D0C487'), 'azeiton': ('Azeitona', '#808000'), 'acai': ('Açaí', '#4B0082'),
+    'banana': ('Banana', '#FFE135'), 'batatad': ('Batata-doce', '#D2691E'), 'batatai': ('Batata-inglesa', '#EED9C4'),
+    'borrach': ('Borracha', '#696969'), 'cacau': ('Cacau', '#4B3621'), 'cafeara': ('Café Arábica', '#6F4E37'),
+    'cafecan': ('Café Canephora', '#8B4513'), 'cafetot': ('Café Total', '#A0522D'), 'cana': ('Cana-de-açúcar', '#3A913F'),
+    'caqui': ('Caqui', '#FFA07A'), 'castcaj': ('Castanha de caju', '#FFD700'), 'cebola': ('Cebola', '#9F4576'),
+    'centeio': ('Centeio', '#D2B48C'), 'cevada': ('Cevada', '#F0E68C'), 'chaind': ('Chá-da-índia', '#D8BFD8'),
+    'cocobai': ('Coco-da-baía', '#F5DEB3'), 'dende': ('Dendê', '#6B8E23'), 'ervamat': ('Erva-mate', '#556B2F'),
+    'ervilha': ('Ervilha', '#90EE90'), 'fava': ('Fava', '#8FBC8F'), 'feijao': ('Feijão', '#8B4513'), 'figo': ('Figo', '#9400D3'),
+    'fumo': ('Fumo', '#708090'), 'girass': ('Girassol', '#FFD700'), 'goiaba': ('Goiaba', '#FF6347'), 'guarana': ('Guaraná', '#8B0000'),
+    'juta': ('Juta', '#F5DEB3'), 'laranja': ('Laranja', '#FFA500'), 'limao': ('Limão', '#F5F5DC'), 'linho': ('Linho', '#FAF0E6'),
+    'mamona': ('Mamona', '#8B008B'), 'mamao': ('Mamão', '#FF6347'), 'mandioc': ('Mandioca', '#F5DEB3'), 'manga': ('Manga', '#FF8243'),
+    'maracuj': ('Maracujá', '#9370DB'), 'marmelo': ('Marmelo', '#DAA520'), 'maca': ('Maçã', '#FF0800'), 'melanci': ('Melancia', '#FC6C85'),
+    'melao': ('Melão', '#FDBE02'), 'milho': ('Milho', '#F2D024'), 'noz': ('Noz', '#800000'), 'palmito': ('Palmito', '#6B8E23'),
+    'pera': ('Pera', '#D1E231'), 'pimrein': ('Pimenta-do-reino', '#A0522D'), 'pessego': ('Pêssego', '#FFDAB9'),
+    'rami': ('Rami', '#6B8E23'), 'sisal': ('Sisal', '#F5F5DC'), 'soja': ('Soja', '#D4A017'), 'sorgo': ('Sorgo', '#D2B48C'),
+    'tangeri': ('Tangerina', '#F28500'), 'tomate': ('Tomate', '#FF6347'), 'trigo': ('Trigo', '#F5DEB3'), 
+    'tritica': ('Triticale', '#D8BFD8'), 'tungue': ('Tungue', '#8B4513'), 'urucum': ('Urucum', '#B22222'), 'uva': ('Uva', '#6F2DA8'),
+    'bovino': ('Bovino', '#8B4513'), 'bubalin': ('Bubalino', '#A0522D'), 'caprino': ('Caprino', '#D2B48C'), 
+    'codorna': ('Codornas', '#F5DEB3'), 'equino': ('Equino', '#A0522D'), 'galin': ('Galináceos', '#FFD700'),
+    'ovino': ('Ovino', '#F0E68C'), 'suino': ('Suíno', '#FFC0CB'), 'bichsed': ('Casulos do bicho-da-seda', '#F5F5DC'),
+    'leite': ('Leite', '#F8F8FF'), 'la': ('Lã', '#FFFFFF'), 'mel': ('Mel', '#DAA520'), 'ovocod': ('Ovos de codorna', '#F5DEB3'),
+    'ovogal': ('Ovos de galinha', '#FFD700'), 'alevino': ('Alevinos', '#87CEEB'), 'camarao': ('Camarão', '#E2725B'),
+    'carpa': ('Carpa', '#FFA500'), 'curimat': ('Curimatã', '#4682B4'), 'dourado': ('Dourado', '#FFD700'),
+    'jatuara': ('Jatuarana', '#1E90FF'), 'lambari': ('Lambari', '#00BFFF'), 'camlarv': ('Larvas de camarão', '#FF6347'),
+    'matrinx': ('Matrinxã', '#4169E1'), 'mexilh': ('Mexilhões', '#778899'), 'outpeix': ('Outros peixes', '#87CEEB'),
+    'pacu': ('Pacu', '#00BFFF'), 'piau': ('Piau', '#1E90FF'), 'pintado': ('Pintado', '#483D8B'), 'pirapi': ('Pirapitinga', '#4682B4'),
+    'piraruc': ('Pirarucu', '#1E90FF'), 'semmol': ('Sementes de moluscos', '#F5DEB3'), 'tambacu': ('Tambacu', '#6495ED'),
+    'tambaqu': ('Tambaqui', '#4169E1'), 'tilapia': ('Tilápia', '#4682B4'), 'traira': ('Traíra', '#2F4F4F'), 'truta': ('Truta', '#ADD8E6'),
+    'tucuna': ('Tucunaré', '#000080'), 'eucalip': ('Eucalipto', '#228B22'), 'outesp': ('Outras espécies', '#D3D3D3'),
+    'pinus': ('Pinus', '#01796F'), 'carveg': ('Carvão vegetal', '#36454F'), 'lenha': ('Lenha', '#8B4513'),
+    'cenoura': ('Cenoura', '#ED9121'), 'morango': ('Morango', '#D53032'), 'madtor': ('Madeira em tora', '#8B4513'), 'outprod': ('Outros produtos', '#A9A9A9')
 }
 
 # 3. URLs das tabelas (convertidas para links diretos do Google Drive)
@@ -733,36 +733,27 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado):
         
         # Configurar estilo
         plt.style.use('seaborn')
-        
-        # Dicionário de cores fixas para produtos
-        cores_produtos = {
-            # Culturas
-            'Soja': '#1f77b4',
-            'Milho': '#ff7f0e',
-            'Café Arábica': '#2ca02c',
-            'Cana-de-açúcar': '#d62728',
-            'Feijão': '#9467bd',
-            'Algodão': '#8c564b',
-            'Trigo': '#e377c2',
-            # Pecuária
-            'Bovino': '#17becf',
-            'Galináceos': '#bcbd22',
-            'Suíno': '#7f7f7f',
-            # Padrão para outros produtos
-            '_default': '#1f77b4'
-        }
-        
+
         # Plotar cada produto
         for _, row in df_municipio.iterrows():
-            produto = row['Produto']
-            valores = [row[ano] for ano in anos_colunas]
+            produto_nome = row['Produto']
+            valores = [row[ano] for ano in anos_colunas]  # Esta linha estava faltando!
             
             # Verificar se tem PELO MENOS UM valor não-nulo
             if all(pd.isna(valores)):
                 continue
                 
-            # Obter cor fixa para o produto ou usar padrão
-            cor = cores_produtos.get(produto, cores_produtos['_default'])
+            # Obter cor do DICIONARIO_PRODUTOS
+            cor = '#A9A9A9'  # Cor padrão (cinza)
+            
+            # Buscar a cor no dicionário (verificando tanto por chave quanto por valor)
+            for cod, (nome, cor_hex) in DICIONARIO_PRODUTOS.items():
+                if nome == produto_nome:
+                    cor = cor_hex
+                    break
+                elif cod == produto_nome.lower().replace(' ', '').replace('-', ''):
+                    cor = cor_hex
+                    break
             
             # Converter para numpy array para manipulação
             valores_arr = np.array(valores)
@@ -778,7 +769,7 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado):
             ax.plot(anos_arr[mask], valores_arr[mask], 
                    marker='o', linestyle=line_style, 
                    color=cor,
-                   label=produto,
+                   label=produto_nome,  # Usar produto_nome diretamente
                    linewidth=2)
             
             # Plotar gaps (se houver)

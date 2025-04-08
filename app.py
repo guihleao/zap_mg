@@ -82,6 +82,26 @@ with st.sidebar:
         div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div > button div p {
             font-weight: normal !important;
         }
+        
+        /* Estilo do botão de conexão */
+        div[data-testid="stVerticalBlock"] > div[data-testid="stMarkdownContainer"] > div > p {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Estilo do selectbox de projetos */
+        div[data-testid="stSelectbox"] > div > div {
+            background-color: #f0f2f6;
+            border-radius: 8px;
+            padding: 8px;
+        }
+        
+        /* Botão de confirmação */
+        div[data-testid="stButton"] > button {
+            background-color: #2e7d32 !important;
+            color: white !important;
+            margin-top: 1.8rem;
+        }
     </style>
     """, unsafe_allow_html=True)
 
@@ -1331,9 +1351,8 @@ def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
         return None
 
 # 7. Interface do usuário (modificar apenas a parte do processamento)
-# 7. Interface do usuário (modificar apenas a parte do processamento)
 if 'token' not in st.session_state:
-    # Botão de conexão original
+    # Botão de conexão original - NÃO ALTERAR ESSA PARTE
     st.write("Para começar, conecte-se à sua conta Google:")
     result = oauth2.authorize_button(
         "🔵 Conectar com Google",
@@ -1348,7 +1367,7 @@ else:
     token = st.session_state['token']
     st.success("Você está conectado à sua conta Google!")
 
-    # Verificação de projetos com Earth Engine ativado
+    # NOVA VERIFICAÇÃO DE PROJETOS (TUDO ABAIXO É NOVO)
     try:
         credentials = Credentials(
             token=token['access_token'],

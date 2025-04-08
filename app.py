@@ -1331,19 +1331,35 @@ def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
         return None
 
 # 7. Interface do usuário (modificar apenas a parte do processamento)
-# No início da verificação de autenticação (após obter o token)
-if 'token' in st.session_state:
+# 7. Interface do usuário (modificar apenas a parte do processamento)
+if 'token' not in st.session_state:
+    # Botão de conexão original
+    st.write("Para começar, conecte-se à sua conta Google:")
+    result = oauth2.authorize_button(
+        "🔵 Conectar com Google",
+        REDIRECT_URI, 
+        SCOPE,
+        icon="https://www.google.com/favicon.ico"
+    )
+    if result and 'token' in result:
+        st.session_state.token = result.get('token')
+        st.rerun()
+else:
+    token = st.session_state['token']
+    st.success("Você está conectado à sua conta Google!")
+
+    # Verificação de projetos com Earth Engine ativado
     try:
         credentials = Credentials(
-            token=st.session_state.token['access_token'],
-            refresh_token=st.session_state.token.get('refresh_token'),
+            token=token['access_token'],
+            refresh_token=token.get('refresh_token'),
             token_uri=TOKEN_URL,
             client_id=CLIENT_ID,
             client_secret=CLIENT_SECRET,
             scopes=SCOPES
         )
 
-        # Lista todos os projetos
+        # Listar todos os projetos
         service = build('cloudresourcemanager', 'v1', credentials=credentials)
         projects = service.projects().list().execute().get('projects', [])
         
@@ -1351,11 +1367,10 @@ if 'token' in st.session_state:
             st.error("Nenhum projeto encontrado na sua conta Google Cloud")
             st.stop()
 
-        # Verifica quais projetos têm EE ativado
+        # Verificar quais projetos têm Earth Engine ativado
         ee_projects = []
         for project in projects:
             try:
-                # Teste rápido para ver se a API está ativada
                 ee.Initialize(credentials, project=project['projectId'])
                 ee_projects.append(project['projectId'])
             except:
@@ -1371,12 +1386,12 @@ if 'token' in st.session_state:
             """)
             st.stop()
 
-        # Se já tiver um projeto válido selecionado, mantém
+        # Se já tiver um projeto válido selecionado, manter
         if 'selected_project' in st.session_state and st.session_state.selected_project in ee_projects:
             ee.Initialize(credentials, project=st.session_state.selected_project)
             st.session_state.ee_initialized = True
         else:
-            # Interface de seleção robusta
+            # Interface de seleção de projeto
             col1, col2 = st.columns([3,1])
             with col1:
                 selected = st.selectbox(
@@ -1395,13 +1410,8 @@ if 'token' in st.session_state:
             st.warning("Por favor, selecione e confirme o projeto antes de continuar")
             st.stop()
 
-        # Verificação final
-        if 'selected_project' not in st.session_state:
-            st.error("Erro na seleção do projeto. Por favor, recarregue a página.")
-            st.stop()
-
     except Exception as e:
-        st.error(f"Erro de inicialização: {str(e)}")
+        st.error(f"Erro na conexão: {str(e)}")
         st.stop()
 
     if st.session_state.get("ee_initialized"):

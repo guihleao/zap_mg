@@ -1330,7 +1330,7 @@ def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
         st.error(f"Erro ao processar dados: {e}")
         return None
 
-# 7. Interface do usuário - Autenticação e seleção de projeto
+# 7. Interface do usuário (modificar apenas a parte do processamento)
 if 'token' not in st.session_state:
     st.write("Para começar, conecte-se à sua conta Google:")
     result = oauth2.authorize_button(
@@ -1346,89 +1346,75 @@ else:
     token = st.session_state['token']
     st.success("Você está conectado à sua conta Google!")
 
-    try:
-        # Inicializa credenciais
-        credentials = Credentials(
-            token=token['access_token'],
-            refresh_token=token.get('refresh_token'),
-            token_uri=TOKEN_URL,
-            client_id=CLIENT_ID,
-            client_secret=CLIENT_SECRET,
-            scopes=SCOPES
-        )
-
-        # Lista todos os projetos
-        service = build('cloudresourcemanager', 'v1', credentials=credentials)
-        projects = service.projects().list().execute().get('projects', [])
-        project_list = [p['projectId'] for p in projects]
-
-        if not project_list:
-            st.error("Nenhum projeto encontrado na sua conta Google Cloud")
-            st.stop()
-
-        # Verifica quais projetos têm EE ativado
-        ee_projects = []
-        for project in project_list:
-            try:
-                ee.Initialize(credentials, project=project)
-                ee_projects.append(project)
-            except:
-                continue
-
-        if not ee_projects:
-            st.error("""
-            Nenhum projeto com Earth Engine ativado encontrado. Por favor:
-            1. Acesse [Google Cloud Console](https://console.cloud.google.com/)
-            2. Selecione um projeto
-            3. Ative a API Earth Engine
-            4. Recarregue esta página
-            """)
-            st.stop()
-
-        # Se já temos um projeto válido selecionado, usa ele
-        if 'selected_project' in st.session_state and st.session_state.selected_project in ee_projects:
-            try:
-                ee.Initialize(credentials, project=st.session_state.selected_project)
-                st.session_state.ee_initialized = True
-                st.session_state.ee_credentials = credentials
-            except Exception as e:
-                st.error(f"Erro ao acessar o projeto {st.session_state.selected_project}: {str(e)}")
-                del st.session_state.selected_project
-                st.rerun()
-        else:
-            # Interface de seleção de projeto
-            st.write("### Selecione seu projeto Google Cloud")
-            
-            # Usar índice para manter a seleção
-            default_index = 0
-            if 'selected_project' in st.session_state and st.session_state.selected_project in ee_projects:
-                default_index = ee_projects.index(st.session_state.selected_project)
-            
-            selected_project = st.selectbox(
-                "Projetos com Earth Engine ativado:",
-                ee_projects,
-                index=default_index,
-                key='project_selection'
+    # Verificar se já temos credenciais e projeto inicializados
+    if "ee_credentials" not in st.session_state or "selected_project" not in st.session_state:
+        try:
+            credentials = Credentials(
+                token=token['access_token'],
+                refresh_token=token.get('refresh_token'),
+                token_uri=TOKEN_URL,
+                client_id=CLIENT_ID,
+                client_secret=CLIENT_SECRET,
+                scopes=SCOPES
             )
 
-            if st.button("🔒 Confirmar Projeto", key='confirm_project'):
-                try:
-                    ee.Initialize(credentials, project=selected_project)
-                    st.session_state.selected_project = selected_project
-                    st.session_state.ee_initialized = True
-                    st.session_state.ee_credentials = credentials
-                    st.success(f"Projeto selecionado: {selected_project}")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erro ao inicializar Earth Engine: {str(e)}")
-                    st.stop()
+            service = build('cloudresourcemanager', 'v1', credentials=credentials)
+            projects = service.projects().list().execute().get('projects', [])
+            project_ids = [project['projectId'] for project in projects]
 
-            st.warning("Por favor, selecione e confirme um projeto antes de continuar")
+            if not project_ids:
+                st.warning("Nenhum projeto encontrado na sua conta do Google Cloud.")
+                st.stop()
+            else:
+                # Armazenar as credenciais e projetos na sessão
+                st.session_state["ee_credentials"] = credentials
+                st.session_state["available_projects"] = project_ids
+                
+                # Verificar se já temos um projeto selecionado
+                if "selected_project" not in st.session_state:
+                    # Tentar encontrar um projeto com Earth Engine ativado
+                    selected_project = None
+                    for project in project_ids:
+                        try:
+                            ee.Initialize(credentials, project=project)
+                            selected_project = project
+                            break
+                        except:
+                            continue
+                    
+                    if selected_project:
+                        st.session_state["selected_project"] = selected_project
+                        st.session_state["ee_initialized"] = True
+                        st.success(f"Earth Engine inicializado com sucesso no projeto: {selected_project}")
+                    else:
+                        # Se nenhum projeto tiver EE ativado, pedir para selecionar
+                        selected_project = st.selectbox(
+                            "Selecione um projeto com Earth Engine ativado:", 
+                            project_ids,
+                            key="project_selection"
+                        )
+                        if st.button("Confirmar Projeto"):
+                            try:
+                                ee.Initialize(credentials, project=selected_project)
+                                st.session_state["selected_project"] = selected_project
+                                st.session_state["ee_initialized"] = True
+                                st.success(f"Earth Engine inicializado com sucesso no projeto: {selected_project}")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro ao inicializar Earth Engine: {e}. Verifique se a API está ativada para este projeto.")
+                                st.stop()
+                else:
+                    # Já temos um projeto selecionado, inicializar
+                    try:
+                        ee.Initialize(credentials, project=st.session_state["selected_project"])
+                        st.session_state["ee_initialized"] = True
+                        st.success(f"Earth Engine inicializado com sucesso no projeto: {st.session_state['selected_project']}")
+                    except Exception as e:
+                        st.error(f"Erro ao inicializar Earth Engine: {e}")
+                        st.stop()
+        except Exception as e:
+            st.error(f"Erro ao inicializar o Earth Engine: {e}")
             st.stop()
-
-    except Exception as e:
-        st.error(f"Erro na conexão: {str(e)}")
-        st.stop()
 
     if st.session_state.get("ee_initialized"):
         uploaded_file = st.file_uploader(

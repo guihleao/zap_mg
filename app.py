@@ -1330,9 +1330,8 @@ def process_data(geometry, crs, nome_bacia_export="bacia", process_type="all"):
         st.error(f"Erro ao processar dados: {e}")
         return None
 
-# 7. Interface do usuário (modificar apenas a parte do processamento)
+# 7. Interface do usuário - Autenticação e seleção de projeto
 if 'token' not in st.session_state:
-    # Botão de conexão original - NÃO ALTERAR ESSA PARTE
     st.write("Para começar, conecte-se à sua conta Google:")
     result = oauth2.authorize_button(
         "🔵 Conectar com Google",
@@ -1347,8 +1346,8 @@ else:
     token = st.session_state['token']
     st.success("Você está conectado à sua conta Google!")
 
-    # NOVA VERIFICAÇÃO DE PROJETOS (TUDO ABAIXO É NOVO)
     try:
+        # Inicializa credenciais
         credentials = Credentials(
             token=token['access_token'],
             refresh_token=token.get('refresh_token'),
@@ -1358,20 +1357,21 @@ else:
             scopes=SCOPES
         )
 
-        # Listar todos os projetos
+        # Lista todos os projetos
         service = build('cloudresourcemanager', 'v1', credentials=credentials)
         projects = service.projects().list().execute().get('projects', [])
-        
-        if not projects:
+        project_list = [p['projectId'] for p in projects]
+
+        if not project_list:
             st.error("Nenhum projeto encontrado na sua conta Google Cloud")
             st.stop()
 
-        # Verificar quais projetos têm Earth Engine ativado
+        # Verifica quais projetos têm EE ativado
         ee_projects = []
-        for project in projects:
+        for project in project_list:
             try:
-                ee.Initialize(credentials, project=project['projectId'])
-                ee_projects.append(project['projectId'])
+                ee.Initialize(credentials, project=project)
+                ee_projects.append(project)
             except:
                 continue
 
@@ -1385,28 +1385,45 @@ else:
             """)
             st.stop()
 
-        # Se já tiver um projeto válido selecionado, manter
+        # Se já temos um projeto válido selecionado, usa ele
         if 'selected_project' in st.session_state and st.session_state.selected_project in ee_projects:
-            ee.Initialize(credentials, project=st.session_state.selected_project)
-            st.session_state.ee_initialized = True
+            try:
+                ee.Initialize(credentials, project=st.session_state.selected_project)
+                st.session_state.ee_initialized = True
+                st.session_state.ee_credentials = credentials
+            except Exception as e:
+                st.error(f"Erro ao acessar o projeto {st.session_state.selected_project}: {str(e)}")
+                del st.session_state.selected_project
+                st.rerun()
         else:
             # Interface de seleção de projeto
-            col1, col2 = st.columns([3,1])
-            with col1:
-                selected = st.selectbox(
-                    "Selecione o projeto com Earth Engine:",
-                    ee_projects,
-                    index=0,
-                    key='project_selectbox'
-                )
-            with col2:
-                st.write("")  # Espaçamento
-                st.write("")  # Espaçamento
-                if st.button("🔒 Confirmar", key='confirm_project'):
-                    st.session_state.selected_project = selected
-                    st.rerun()
+            st.write("### Selecione seu projeto Google Cloud")
+            
+            # Usar índice para manter a seleção
+            default_index = 0
+            if 'selected_project' in st.session_state and st.session_state.selected_project in ee_projects:
+                default_index = ee_projects.index(st.session_state.selected_project)
+            
+            selected_project = st.selectbox(
+                "Projetos com Earth Engine ativado:",
+                ee_projects,
+                index=default_index,
+                key='project_selection'
+            )
 
-            st.warning("Por favor, selecione e confirme o projeto antes de continuar")
+            if st.button("🔒 Confirmar Projeto", key='confirm_project'):
+                try:
+                    ee.Initialize(credentials, project=selected_project)
+                    st.session_state.selected_project = selected_project
+                    st.session_state.ee_initialized = True
+                    st.session_state.ee_credentials = credentials
+                    st.success(f"Projeto selecionado: {selected_project}")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao inicializar Earth Engine: {str(e)}")
+                    st.stop()
+
+            st.warning("Por favor, selecione e confirme um projeto antes de continuar")
             st.stop()
 
     except Exception as e:

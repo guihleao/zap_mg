@@ -805,13 +805,13 @@ def criar_grafico_unico_municipio(df_municipio, municipio, tipo_dado, tabela_ori
             'PAM_Quantidade_produzida_14-23': 'PAM - Evolução da Quantidade Produzida',
             'PAM_Valor_da_producao_14-23': 'PAM - Evolução do Valor da Produção',
             'PPM_Efetivo_dos_rebanhos_14-23': 'PPM - Evolução do Efetivo dos Rebanhos',
-            'PPM_Prod_origem_animal_14-23': 'Evolução da Quantidade de Produtos de Origem Animal',
-            'PPM_Valor_da_producao_prod_anim': 'Evolução do Valor/Receita dos Produtos de Origem Animal',
-            'PPM_Producao_aquicultura_14-23': 'Evolução da Quantidade Produzida na Aquicultura',
-            'PPM_Valor_producao_aquicultura_': 'Evolução do Valor/Receita da Produção na Aquicultura',
-            'PEVS_Area_silv_14-23': 'Evolução da Área de Silvicultura',
-            'PEVS_Qnt_prod_silv_14-23': 'Evolução da Quantidade Produzida na Silvicultura',
-            'PEVS_Valor_prod_silv_14-23': 'Evolução do Valor da Produção na Silvicultura'
+            'PPM_Prod_origem_animal_14-23': 'PPM - Evolução da Quantidade de Produtos de Origem Animal',
+            'PPM_Valor_da_producao_prod_anim': 'PPM - Evolução do Valor/Receita dos Produtos de Origem Animal',
+            'PPM_Producao_aquicultura_14-23': 'PPM - Evolução da Quantidade Produzida na Aquicultura',
+            'PPM_Valor_producao_aquicultura_': 'PPM - Evolução do Valor/Receita da Produção na Aquicultura',
+            'PEVS_Area_silv_14-23': 'PEVS - Evolução da Área de Silvicultura',
+            'PEVS_Qnt_prod_silv_14-23': 'PEVS - Evolução da Quantidade Produzida na Silvicultura',
+            'PEVS_Valor_prod_silv_14-23': 'PEVS - Evolução do Valor da Produção na Silvicultura'
         }
 
         # Dicionário de unidades e ajustes de escala

@@ -1557,15 +1557,18 @@ else:
                         })
                         st.success("Seleção de produtos confirmada!")
                                     
-                    if st.session_state.get("exportar_srtm_mde") is not None and nome_bacia_export:
-                        if not st.session_state.processing:
-                            if st.button("Processar Dados"):
-                                st.session_state.processing = True
-                                st.session_state.tasks_remoto = []
-                                st.session_state.completed_tasks = 0
-                                st.session_state.resultados = None
-                                st.session_state.agro_completed = False
-                                st.rerun()
+                    if nome_bacia_export:  # Verifica primeiro se o nome foi preenchido
+                        if st.session_state.get("exportar_srtm_mde") is not None:
+                            if not st.session_state.processing:
+                                if st.button("Processar Dados"):
+                                    st.session_state.processing = True
+                                    st.session_state.tasks_remoto = []
+                                    st.session_state.completed_tasks = 0
+                                    st.session_state.resultados = None
+                                    st.session_state.agro_completed = False
+                                    st.rerun()
+                    else:
+                        st.warning("Por favor, preencha o nome para exportação antes de selecionar os produtos.")
                         
                         if st.session_state.processing:
                             with st.spinner("Processando dados, por favor aguarde..."):

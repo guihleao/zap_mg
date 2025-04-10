@@ -1567,9 +1567,7 @@ else:
                                     st.session_state.resultados = None
                                     st.session_state.agro_completed = False
                                     st.rerun()
-                    else:
-                        st.warning("Por favor, preencha o nome para exportação antes de selecionar os produtos.")
-                        
+                                            
                         if st.session_state.processing:
                             with st.spinner("Processando dados, por favor aguarde..."):
                                 # Verificar se deve processar sensoriamento remoto

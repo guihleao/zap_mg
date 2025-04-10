@@ -1071,7 +1071,6 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                         ws.append(['']*len(df_display.columns))
                         current_row += 1
                         
-                        # CORREÇÃO AQUI: Passando o nome_tabela como tabela_origem
                         img = criar_grafico_unico_municipio(df, municipio, tipo_dado, nome_tabela)
                         if img:
                             graficos_por_municipio[(nome_tabela, municipio)] = img
@@ -1084,11 +1083,22 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
             drive_service = build('drive', 'v3', credentials=st.session_state["ee_credentials"])
             
             # 1. Verificar/Criar pasta ZAP
-            query = "name='ZAP' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+            query = "name='ZAP' and mimeType='application/vnd.google-apps.folder' and trashed=false and 'root' in parents"
             results = drive_service.files().list(q=query, fields="files(id, name)").execute()
             items = results.get('files', [])
             
-            zap_folder_id = items[0]['id'] if items else None
+            if items:
+                zap_folder_id = items[0]['id']
+                st.info(f"Pasta ZAP encontrada: {zap_folder_id}")
+            else:
+                file_metadata = {
+                    'name': 'ZAP',
+                    'mimeType': 'application/vnd.google-apps.folder',
+                    'parents': []
+                }
+                folder = drive_service.files().create(body=file_metadata, fields='id').execute()
+                zap_folder_id = folder.get('id')
+                st.success(f"Pasta ZAP criada com ID: {zap_folder_id}")
             
             # 2. Criar subpasta para os gráficos
             subfolder_name = f"{nome_bacia_export}_graficos"
@@ -1154,6 +1164,11 @@ def gerar_excel_agro(dados_agro, nome_bacia_export):
                 fields='id'
             ).execute()
             
+        except HttpError as http_err:
+            if http_err.resp.status == 404:
+                st.error("Erro 404: Pasta não encontrada. Verifique as permissões do Google Drive.")
+            else:
+                st.error(f"Erro HTTP ao acessar Google Drive: {http_err}")
         except Exception as e:
             st.error(f"❌ Erro ao exportar para o Google Drive: {str(e)}")
             print(f"Erro detalhado: {traceback.format_exc()}")
